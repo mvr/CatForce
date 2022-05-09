@@ -909,26 +909,22 @@ public:
   }
 
   int ValidateMinWidthHeight() {
-    int minX = iters[0]->curx;
+    // Fast path: we know that the iterators are ordered by x.
+    if(iters[0]->curx - iters[numIters-1]->curx >= params.maxW)
+      return NO;
+
     int minY = iters[0]->cury;
-    int maxX = iters[0]->curx;
     int maxY = iters[0]->cury;
 
     for (int i = 1; i < numIters; i++) {
-      if (iters[i]->curx > maxX)
-        maxX = iters[i]->curx;
-
       if (iters[i]->cury > maxY)
         maxY = iters[i]->cury;
-
-      if (iters[i]->curx < minX)
-        minX = iters[i]->curx;
 
       if (iters[i]->cury < minY)
         minY = iters[i]->cury;
     }
 
-    if (maxX - minX >= params.maxW || maxY - minY >= params.maxH)
+    if (maxY - minY >= params.maxH)
       return NO;
     else
       return YES;
