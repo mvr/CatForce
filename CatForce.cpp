@@ -1291,10 +1291,7 @@ int main(int argc, char *argv[]) {
   const int numIters = searcher.numIters;
   // Main loop of search on iters
   do {
-    int valid = Validate(&searcher.iters[0], numIters);
-
-    if (valid == NO)
-      continue;
+    int valid = YES;
 
     // width-height validation enabled
     if (validateWH) {
