@@ -340,16 +340,24 @@ int AreDisjoint(LifeState *main, LifeState *pat) {
 }
 
 int Contains(LifeState *main, LifeState *spark) {
-  int min = spark->min;
-  int max = spark->max;
-  uint64_t *mainState = main->state;
-  uint64_t *sparkState = spark->state;
+    // int min = spark->min;
+    // int max = spark->max;
+    int min = 0;
+    int max = N-1;
+    uint64_t *mainState = main->state;
+    uint64_t *sparkState = spark->state;
 
-  for (int i = min; i <= max; i++)
-    if ((mainState[i] & sparkState[i]) != (sparkState[i]))
-      return NO;
+    uint64_t differences = 0;
+    #pragma clang loop vectorize(enable)
+    for (int i = min; i <= max; i++) {
+        uint64_t difference = (mainState[i] & sparkState[i]) ^ (sparkState[i]);
+        differences |= difference;
+    }
 
-  return YES;
+    if(differences == 0)
+        return YES;
+    else
+        return NO;
 }
 
 int AreDisjoint(LifeState *main, LifeState *pat, int targetDx, int targetDy) {
