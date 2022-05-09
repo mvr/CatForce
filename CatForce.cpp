@@ -711,6 +711,7 @@ public:
   std::vector<LifeIterator *> iters;
   std::vector<LifeTarget *> targetFilter;
   std::vector<LifeTarget *> targets;
+  std::vector<LifeTarget *> preShifted;
   std::vector<std::vector<LifeTarget *>> forbiddenTargets;
   std::vector<std::vector<std::vector<int>>> statexyGen;
   std::vector<LifeState *> preIterated;
@@ -816,6 +817,7 @@ public:
                                   params.searchArea[3], states.size()));
       activated.push_back(0);
       absentCount.push_back(0);
+      preShifted.push_back(NewTarget(NewState(), NewState()));
     }
 
     numIters = iters.size();
@@ -951,16 +953,20 @@ public:
   }
 
   void PutItersState() {
-    for (int i = 0; i < numIters; i++)
+    for (int i = 0; i < numIters; i++) {
+      Copy(preShifted[i]->wanted, targets[iters[i]->curs]->wanted);
+      Copy(preShifted[i]->unwanted, targets[iters[i]->curs]->unwanted);
+      Transform(preShifted[i]->wanted,   iters[i]->curx, iters[i]->cury);
+      Transform(preShifted[i]->unwanted, iters[i]->curx, iters[i]->cury);
       PutState(iters[i]);
+    }
   }
 
   int CatalystCollide() {
     Run(1);
 
     for (int i = 0; i < numIters; i++) {
-      if (Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx,
-                   iters[i]->cury) == NO) {
+      if (Contains(GlobalState, preShifted[i]) == NO) {
         return YES;
       }
     }
@@ -994,8 +1000,7 @@ public:
 
   bool UpdateActivationCountersFail() {
     for (int j = 0; j < numIters; j++) {
-      if (Contains(GlobalState, targets[iters[j]->curs], iters[j]->curx,
-                   iters[j]->cury) == NO) {
+      if (Contains(GlobalState, preShifted[j]) == NO) {
         activated[j] = YES;
         absentCount[j]++;
 
