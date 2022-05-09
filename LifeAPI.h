@@ -1097,13 +1097,19 @@ void Run(int numIter) { Evolve(GlobalState, numIter); }
 void Join(LifeState *main, LifeState *delta) { Copy(main, delta, OR); }
 
 void Join(LifeState *main, LifeState *delta, int dx, int dy) {
+  uint64_t rotated[N] = {0};
   for (int i = delta->min; i <= delta->max; i++) {
     int idx = (i + dx + N) % N;
-
-    if (dy < 0)
-      main->state[idx] |= CirculateRight(delta->state[i], -dy);
-    else
-      main->state[idx] |= CirculateRight(delta->state[i], 64 - dy);
+    rotated[idx] = delta->state[i];
+  }
+  if (dy < 0) {
+    for (int i = 0; i <= N - 1; i++) {
+      main->state[i] |= CirculateRight(rotated[i], -dy);
+    }
+  } else {
+    for (int i = 0; i <= N - 1; i++) {
+      main->state[i] |= CirculateRight(rotated[i], 64 - dy);
+    }
   }
 
   main->min = 0;
