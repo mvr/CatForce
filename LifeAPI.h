@@ -1,15 +1,15 @@
-//LifeAPI provide comfortable functions (API) to manipulate, iterate, evolve, compare and report Life objects. This is mainly done
-//in order to provide fast (using C) but still comfortable search utility. 
-//Contributor Chris Cain. 
-//Written by Michael Simkin 2014
+// LifeAPI provide comfortable functions (API) to manipulate, iterate, evolve,
+// compare and report Life objects. This is mainly done in order to provide fast
+// (using C) but still comfortable search utility. Contributor Chris Cain.
+// Written by Michael Simkin 2014
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define N 64
-#define CAPTURE_COUNT 10 
+#define CAPTURE_COUNT 10
 #define MAX_ITERATIONS 200
 
 #define SUCCESS 1
@@ -19,1786 +19,1473 @@
 #define NO 0
 
 #ifdef __MSC_VER
-#  include <intrin.h>
-#  define __builtin_popcount __popcnt64
+#include <intrin.h>
+#define __builtin_popcount __popcnt64
 #endif
 
 enum CopyType { COPY, OR, XOR, AND };
 enum EvolveType { EVOLVE, LEAVE };
 
-typedef struct 
-{
-	char* value;
-	int size;
-	int allocated;
-	
+typedef struct {
+  char *value;
+  int size;
+  int allocated;
+
 } LifeString;
 
-void FreeString(LifeString* string)
-{
-	free(string->value);
-	free(string);
+void FreeString(LifeString *string) {
+  free(string->value);
+  free(string);
 }
 
-LifeString* NewString()
-{
-	LifeString* result = (LifeString*)(malloc(sizeof(LifeString)));
-	
-	result->value = (char*)(malloc(2 * sizeof(char)));
-	result->value[0] = '\0';
-	result->size = 1;
-	result->allocated = 1;
-	
-	return result;
+LifeString *NewString() {
+  LifeString *result = (LifeString *)(malloc(sizeof(LifeString)));
+
+  result->value = (char *)(malloc(2 * sizeof(char)));
+  result->value[0] = '\0';
+  result->size = 1;
+  result->allocated = 1;
+
+  return result;
 }
 
-void Clear(LifeString* s)
-{
-	s->value[0] = '\0';
-	s->size = 1;
-
+void Clear(LifeString *s) {
+  s->value[0] = '\0';
+  s->size = 1;
 }
 
-void Realloc(LifeString* string)
-{
-	int empty = NO;
-	
-	if(string->value[0] == '\0')
-		empty = YES;
-	
-	if(empty == NO)
-	{
-		string->value = (char*)(realloc(string->value, string->allocated * 2 * sizeof(char)));
-	}
-	else
-	{
-		string->value = (char*)(malloc(string->allocated * 2 * sizeof(char)));
-		string->value[0] = '\0';
-	}
-	
-	string->allocated *= 2;
+void Realloc(LifeString *string) {
+  int empty = NO;
+
+  if (string->value[0] == '\0')
+    empty = YES;
+
+  if (empty == NO) {
+    string->value =
+        (char *)(realloc(string->value, string->allocated * 2 * sizeof(char)));
+  } else {
+    string->value = (char *)(malloc(string->allocated * 2 * sizeof(char)));
+    string->value[0] = '\0';
+  }
+
+  string->allocated *= 2;
 }
 
-void Realloc(LifeString* string, int size)
-{
-	while(string->allocated <= string->size + size + 1)
-		Realloc(string);
+void Realloc(LifeString *string, int size) {
+  while (string->allocated <= string->size + size + 1)
+    Realloc(string);
 }
 
-void Append(LifeString* string, const char* val)
-{
-	Realloc(string, strlen(val));
-	strcat(string->value, val);
-	string->size = strlen(string->value);
+void Append(LifeString *string, const char *val) {
+  Realloc(string, strlen(val));
+  strcat(string->value, val);
+  string->size = strlen(string->value);
 }
 
-void Append(LifeString* string, int val)
-{
-	char str[10];
-	sprintf(str, "%d", val);
-	Append(string, str);
+void Append(LifeString *string, int val) {
+  char str[10];
+  sprintf(str, "%d", val);
+  Append(string, str);
 }
 
-LifeString* NewString(const char* val)
-{
-	LifeString* result = NewString();
-	Append(result, val);
-	return result;
+LifeString *NewString(const char *val) {
+  LifeString *result = NewString();
+  Append(result, val);
+  return result;
 }
 
-typedef struct 
-{
-	int min;
-	int max; 
-	int gen; 
-	uint64_t  state[N];
-	
-	LifeString* emittedGliders;  
-	
+typedef struct {
+  int min;
+  int max;
+  int gen;
+  uint64_t state[N];
+
+  LifeString *emittedGliders;
+
 } LifeState;
 
-static LifeState* GlobalState;
-static LifeState* Captures[CAPTURE_COUNT];
-static LifeState* Temp, *Temp1, *Temp2;
+static LifeState *GlobalState;
+static LifeState *Captures[CAPTURE_COUNT];
+static LifeState *Temp, *Temp1, *Temp2;
 
-inline uint64_t CirculateLeft(uint64_t x){
-	return (x << 1) | (x >> (63));
+inline uint64_t CirculateLeft(uint64_t x) { return (x << 1) | (x >> (63)); }
+
+inline uint64_t CirculateLeft(uint64_t x, int k) {
+  return (x << k) | (x >> (64 - k));
 }
 
-inline uint64_t CirculateLeft(uint64_t x, int k)
-{
-	return (x << k) | (x >> (64 - k));
+inline uint64_t CirculateRight(uint64_t x, int k) {
+  return (x >> k) | (x << (64 - k));
 }
 
-inline uint64_t CirculateRight(uint64_t x, int k)
-{
-	return (x >> k) | (x << (64 - k));
+inline uint64_t CirculateRight(uint64_t x) { return (x >> 1) | (x << (63)); }
+
+void Set(int x, int y, uint64_t *state) { state[x] |= (1ULL << (y)); }
+
+void Erase(int x, int y, uint64_t *state) { state[x] &= ~(1ULL << (y)); }
+
+int Get(int x, int y, uint64_t *state) { return (state[x] & (1ULL << y)) >> y; }
+
+void SetCell(LifeState *state, int x, int y, int val) {
+
+  if (val == 1) {
+    Set((x + 32) % N, (y + 32) % 64, state->state);
+  }
+  if (val == 0)
+    Erase((x + 32) % 64, (y + 32) % 64, state->state);
 }
 
-inline uint64_t CirculateRight(uint64_t x)
-{
-	return (x >> 1) | (x << (63));
+int GetCell(LifeState *state, int x, int y) {
+  return Get((x + 32) % 64, (y + 32) % 64, state->state);
 }
 
-void Set(int x, int y, uint64_t  *state)
-{
-	state[x] |= (1ULL << (y));
+int GetCell(int x, int y) { return GetCell(GlobalState, x, y); }
+
+void SetCell(int x, int y, int val) { SetCell(GlobalState, x, y, val); }
+
+uint64_t GetHash(LifeState *state) {
+  uint64_t result = 0;
+
+  for (int i = 0; i < N; i++) {
+    result += CirculateLeft(state->state[i], (int)(i / 2));
+  }
+
+  return result;
 }
 
-void Erase(int x, int y, uint64_t  *state)
-{
-	state[x] &= ~(1ULL << (y));
+void ExpandMinMax(int *min, int *max) {
+  *min = *min - 2;
+  *max = *max + 2;
+
+  if (*min <= 0 || *max >= N - 1) {
+    (*min) = 0;
+    (*max) = N - 1;
+  }
 }
 
-int Get(int x, int y, uint64_t  *state)
-{
-	return (state[x] & (1ULL << y)) >> y;
+void RefitMinMax(LifeState *state) {
+  int min = state->min;
+  int max = state->max;
+  uint64_t *states = state->state;
+
+  for (int i = min; i <= max; i++) {
+    if (states[i] != 0) {
+      state->min = i;
+      break;
+    }
+  }
+
+  for (int i = max; i >= min; i--) {
+    if (states[i] != 0) {
+      state->max = i;
+      break;
+    }
+  }
+
+  ExpandMinMax(&(state->min), &(state->max));
 }
 
-void SetCell(LifeState* state, int x, int y, int val)
-{
-	
-	if(val == 1)
-	{
-		Set((x + 32) % N, (y + 32) % 64, state->state);
-	}
-	if(val == 0)
-		Erase((x + 32) % 64, (y + 32) % 64,  state->state);
+void RecalculateMinMax(LifeState *state) {
+  state->min = N - 1;
+  state->max = 0;
+  uint64_t *states = state->state;
+
+  for (int i = 0; i < N; i++) {
+    if (states[i] != 0) {
+      state->min = i;
+      break;
+    }
+  }
+
+  for (int i = N - 1; i >= 0; i--) {
+    if (states[i] != 0) {
+
+      state->max = i;
+      break;
+    }
+  }
+
+  ExpandMinMax(&(state->min), &(state->max));
 }
 
-int GetCell(LifeState* state, int x, int y)
-{
-	return Get((x + 32) % 64, (y + 32) % 64, state->state);
+void Print(LifeState *state) {
+  int i, j;
+
+  for (i = 0; i < N; i++) {
+    for (j = 0; j < 64; j++) {
+      if (GetCell(state, j - 32, i - 32) == 0) {
+        int hor = 0;
+        int ver = 0;
+
+        if ((i - 32) % 10 == 0)
+          hor = 1;
+
+        if ((j - 32) % 10 == 0)
+          ver = 1;
+
+        if (hor == 1 && ver == 1)
+          printf("+");
+        else if (hor == 1)
+          printf("-");
+        else if (ver == 1)
+          printf("|");
+        else
+          printf(".");
+      } else
+        printf("O");
+    }
+    printf("\n");
+  }
+
+  printf("\n\n\n\n\n\n");
 }
 
-int GetCell(int x, int y)
-{
-	return GetCell(GlobalState, x, y);
+void Copy(LifeState *main, LifeState *delta, CopyType op) {
+  if (op == COPY) {
+    for (int i = 0; i < N; i++)
+      main->state[i] = delta->state[i];
+
+    main->gen = delta->gen;
+  }
+  if (op == OR) {
+    for (int i = 0; i < N; i++)
+      main->state[i] |= delta->state[i];
+  }
+  if (op == AND) {
+    for (int i = 0; i < N; i++)
+      main->state[i] &= delta->state[i];
+  }
+  if (op == XOR) {
+    for (int i = 0; i < N; i++)
+      main->state[i] ^= delta->state[i];
+  }
+
+  RecalculateMinMax(main);
 }
 
-void SetCell(int x, int y, int val)
-{
-	SetCell(GlobalState, x, y, val);
+void Copy(LifeState *main, LifeState *delta) { Copy(main, delta, COPY); }
+
+int GetPop(LifeState *state) {
+  int pop = 0;
+  int min = state->min;
+  int max = state->max;
+  uint64_t *mainState = state->state;
+
+  for (int i = min; i <= max; i++) {
+    pop += __builtin_popcountll(mainState[i]);
+  }
+
+  return pop;
 }
 
-uint64_t GetHash(LifeState* state)
-{
-	uint64_t result = 0; 
-	
-	for(int i = 0; i < N; i++)
-	{
-		result += CirculateLeft(state->state[i], (int)(i  / 2));
-	}
-	
-	return result;
+int GetPop() { return GetPop(GlobalState); }
+
+int GetPop(int captureIdx) { return GetPop(Captures[captureIdx]); }
+
+void Inverse(LifeState *state) {
+  for (int i = 0; i < N; i++) {
+    state->state[i] = ~(state->state[i]);
+  }
 }
 
-void ExpandMinMax(int* min, int* max)
-{
-	*min = *min - 2;
-	*max = *max + 2;
-	
-	if(*min <= 0 || *max >= N - 1)
-	{
-		(*min) = 0;
-		(*max) = N - 1;
-		
-	}
+void ClearData(LifeState *state) {
+  int i;
+
+  for (i = 0; i < N; i++)
+    state->state[i] = 0;
+
+  state->min = 0;
+  state->max = N - 1;
+  state->gen = 0;
+
+  Clear(state->emittedGliders);
 }
 
-void RefitMinMax(LifeState* state)
-{
-	int min = state->min;
-	int max = state->max;
-	uint64_t * states = state->state;
-	
-	for(int i = min; i <= max; i++)
-	{
-		if(states[i] != 0)
-		{
-			state-> min = i;
-			break;
-		}
-	}
-	
-	for(int i = max; i >= min; i--)
-	{
-		if(states[i] != 0)
-		{
-			state-> max  = i;
-			break;
-		}
-	}
-	
-	ExpandMinMax(&(state-> min), &(state-> max));	
+LifeState *NewState() {
+  LifeState *result = (LifeState *)(malloc(sizeof(LifeState)));
+  result->emittedGliders = NewString();
+  ClearData(result);
+
+  return result;
 }
 
-void RecalculateMinMax(LifeState* state)
-{
-	state-> min = N - 1;
-	state-> max = 0;
-	uint64_t * states = state->state;
-	
-	for(int i = 0; i < N; i++)
-	{
-		if(states[i] != 0)
-		{
-			state-> min = i;
-			break;
-		}
-	}
-	
-	for(int i = N - 1; i >= 0; i--)
-	{
-		if(states[i] != 0)
-		{
-		
-			state-> max  = i;
-			break;
-		}
-	}
-	
-	ExpandMinMax(&(state-> min), &(state-> max));	
+void FreeState(LifeState *state) {
+  FreeString(state->emittedGliders);
+  free(state);
 }
 
-void Print(LifeState *state)
-{
-	int i, j;
-	
-	for(i = 0; i < N; i++)
-	{
-		for(j = 0; j < 64; j++)
-		{
-			if(GetCell(state, j - 32, i - 32) == 0)
-			{
-				int hor = 0;
-				int ver = 0;
-				
-				if((i - 32) % 10 == 0)
-					hor = 1;
-				
-				if((j - 32) % 10 == 0)
-					ver = 1;
-								
-				if(hor == 1 && ver == 1)
-					printf ("+");
-				else if(hor == 1)
-					printf ("-");
-				else if(ver == 1)
-					printf ("|");
-				else
-					printf (".");
-			}
-			else
-				printf ("O");
-		}
-		printf("\n");
-	}
-	
-	printf("\n\n\n\n\n\n");
-	
+int AreEqual(LifeState *pat1, LifeState *pat2) {
+  for (int i = 0; i < N; i++)
+    if (pat1->state[i] != pat2->state[i])
+      return NO;
+
+  return YES;
 }
 
-void Copy(LifeState* main, LifeState* delta, CopyType op)
-{
-	if(op == COPY)
-	{	
-		for(int i = 0; i < N; i++)
-			main->state[i] = delta->state[i];
-			
-		main->gen = delta->gen;
-	}
-	if(op == OR)
-	{	
-		for(int i = 0; i < N; i++)
-			main->state[i] |= delta->state[i];
-	}
-	if(op == AND)
-	{	
-		for(int i = 0; i < N; i++)
-			main->state[i] &= delta->state[i];
-		
-	}
-	if(op == XOR)
-	{	
-		for(int i = 0; i < N; i++)
-			main->state[i] ^= delta->state[i];
-	}
-	
-	RecalculateMinMax(main);
+int AreEqual(LifeState *pat1) { return AreEqual(GlobalState, pat1); }
+
+int AreEqual(int idx) { return AreEqual(GlobalState, Captures[idx]); }
+
+int AreDisjoint(LifeState *main, LifeState *pat) {
+  int min = pat->min;
+  int max = pat->max;
+  uint64_t *patState = pat->state;
+  uint64_t *mainState = main->state;
+
+  for (int i = min; i <= max; i++)
+    if (((~mainState[i]) & patState[i]) != patState[i])
+      return NO;
+
+  return YES;
 }
 
-void Copy(LifeState* main, LifeState* delta)
-{
-	Copy(main, delta, COPY);
+int Contains(LifeState *main, LifeState *spark) {
+  int min = spark->min;
+  int max = spark->max;
+  uint64_t *mainState = main->state;
+  uint64_t *sparkState = spark->state;
+
+  for (int i = min; i <= max; i++)
+    if ((mainState[i] & sparkState[i]) != (sparkState[i]))
+      return NO;
+
+  return YES;
 }
 
-int GetPop(LifeState* state)
-{
-	int pop = 0;
-	int min = state->min;
-	int max = state->max;
-	uint64_t * mainState = state->state;
-	
-	for(int i = min; i <= max; i++)
-	{
-		pop += __builtin_popcountll(mainState[i]);
-	}
-	
-	return pop;
+int AreDisjoint(LifeState *main, LifeState *pat, int targetDx, int targetDy) {
+  int min = pat->min;
+  int max = pat->max;
+  uint64_t *patState = pat->state;
+  uint64_t *mainState = main->state;
+  int dy = (targetDy + 64) % 64;
+
+  for (int i = min; i <= max; i++) {
+    int curX = (N + i + targetDx) % N;
+
+    if (((~CirculateRight(mainState[curX], dy)) & patState[i]) != patState[i])
+      return NO;
+  }
+
+  return YES;
 }
 
-int GetPop()
-{
-	return GetPop(GlobalState);
+int Contains(LifeState *main, LifeState *spark, int targetDx, int targetDy) {
+  int min = spark->min;
+  int max = spark->max;
+
+  uint64_t *mainState = main->state;
+  uint64_t *sparkState = spark->state;
+  int dy = (targetDy + 64) % 64;
+
+  for (int i = min; i <= max; i++) {
+    int curX = (N + i + targetDx) % N;
+
+    if ((CirculateRight(mainState[curX], dy) & sparkState[i]) !=
+        (sparkState[i]))
+      return NO;
+  }
+  return YES;
 }
 
-int GetPop(int captureIdx)
-{
-	return GetPop(Captures[captureIdx]);
+int AllOn(LifeState *spark) { return Contains(GlobalState, spark); }
+
+int AllOff(LifeState *spark) { return AreDisjoint(GlobalState, spark); }
+
+void Reverse(uint64_t *state, int idxS, int idxE) {
+  for (int i = 0; idxS + i < idxE - i; i++) {
+    int l = idxS + i;
+    int r = idxE - i;
+
+    uint64_t temp = state[l];
+    state[l] = state[r];
+    state[r] = temp;
+  }
 }
 
-void Inverse(LifeState* state)
-{	
-	for(int i = 0; i < N; i++)
-	{
-		state->state[i] = ~(state->state[i]);
-	}
+void CirculateUp(uint64_t *state, int anyk) {
+  int k = (anyk + 64 * 10) % 64;
+
+  Reverse(state, 0, N - 1);
+  Reverse(state, 0, k - 1);
+  Reverse(state, k, N - 1);
 }
 
-void ClearData(LifeState* state)
-{
-	int i; 
-	
-	for(i = 0; i < N; i++)
-		state->state[i] = 0;
-	
-	state -> min = 0;
-	state -> max = N - 1;
-	state->gen = 0;
-	
-	Clear(state->emittedGliders);
+void Move(LifeState *state, int x, int y) {
+  for (int i = 0; i < N; i++) {
+    if (y < 0)
+      state->state[i] = CirculateRight(state->state[i], -y);
+    else
+      state->state[i] = CirculateRight(state->state[i], 64 - y);
+  }
 
+  if (x < 0)
+    CirculateUp(state->state, 64 + x);
+  else
+    CirculateUp(state->state, x);
+
+  state->min = 0;
+  state->max = N - 1;
 }
 
-LifeState* NewState()
-{
-	LifeState* result = (LifeState*)(malloc(sizeof(LifeState)));
-	result->emittedGliders = NewString();
-	ClearData(result);
-	
-	return result;
+void FlipX(LifeState *state) {
+  Reverse(state->state, 0, N - 1);
+  Move(state, 1, 0);
 }
 
-void FreeState(LifeState* state)
-{
-	FreeString(state->emittedGliders);
-	free(state);
+void FlipX() { FlipX(GlobalState); }
+
+void FlipX(int idx) { FlipX(Captures[idx]); }
+
+void Transform(LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
+               int dyy) {
+  ClearData(Temp2);
+  ClearData(Temp1);
+  Copy(Temp1, state);
+  Move(Temp1, dx, dy);
+
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < 64; j++) {
+      int x = i - 32;
+      int y = j - 32;
+
+      int x1 = x * dxx + y * dxy;
+      int y1 = x * dyx + y * dyy;
+
+      int val = GetCell(Temp1, x1, y1);
+
+      SetCell(Temp2, x, y, val);
+    }
+  }
+
+  Copy(state, Temp2);
+  RecalculateMinMax(state);
 }
 
-int AreEqual(LifeState* pat1, LifeState* pat2)
-{
-	for(int i = 0; i < N; i++)
-		if(pat1->state[i] != pat2->state[i])
-			return NO;
-			
-	return YES;
+void Transform(LifeState *state, int dx, int dy) { Move(state, dx, dy); }
+
+void GetBoundary(LifeState *state, LifeState *boundary) {
+  for (int i = 0; i < N; i++) {
+    uint64_t col = state->state[i];
+    Temp->state[i] = col | CirculateLeft(col) | CirculateRight(col);
+  }
+
+  boundary->state[0] = Temp->state[N - 1] | Temp->state[0] | Temp->state[1];
+
+  for (int i = 1; i < N - 1; i++)
+    boundary->state[i] =
+        Temp->state[i - 1] | Temp->state[i] | Temp->state[i + 1];
+
+  boundary->state[N - 1] =
+      Temp->state[N - 2] | Temp->state[N - 1] | Temp->state[0];
+
+  for (int i = 0; i < N; i++)
+    boundary->state[i] &= ~(state->state[i]);
 }
 
-int AreEqual(LifeState* pat1)
-{
-	return AreEqual(GlobalState, pat1);
+void GetBoundary(LifeState *state, int captureIdx) {
+  GetBoundary(state, Captures[captureIdx]);
 }
 
-int AreEqual(int idx)
-{
-	return AreEqual(GlobalState, Captures[idx]);
+void GetBoundary(LifeState *boundary) { GetBoundary(GlobalState, boundary); }
+
+void GetBoundary(int captureIdx) {
+  GetBoundary(GlobalState, Captures[captureIdx]);
 }
 
-int AreDisjoint(LifeState* main, LifeState* pat)
-{
-	int min = pat->min;
-	int max = pat->max;
-	uint64_t * patState = pat->state;
-	uint64_t * mainState = main->state;
-	
-	for(int i = min; i <= max; i++)
-		if(((~mainState[i]) & patState[i]) != patState[i])
-			return NO;
-			
-	return YES;
-}
+int Parse(LifeState *state, const char *rle, int starti) {
+  char ch;
+  int cnt, i, j;
+  int x, y;
+  x = 0;
+  y = 0;
+  cnt = 0;
 
-int Contains(LifeState* main, LifeState* spark)
-{
-	int min = spark->min;
-	int max = spark->max;
-	uint64_t * mainState = main->state;
-	uint64_t * sparkState = spark->state;
-	
-	for(int i = min; i <= max; i++)
-		if((mainState[i] & sparkState[i]) != (sparkState[i]))
-			return NO;
-			
-	return YES;
-}
+  ClearData(state);
 
-int AreDisjoint(LifeState* main, LifeState* pat, int targetDx, int targetDy)
-{
-	int min = pat->min;
-	int max = pat->max;
-	uint64_t * patState = pat->state;
-	uint64_t * mainState = main->state;
-	int dy = (targetDy + 64) % 64;
-	
-	for(int i = min; i <= max; i++)
-	{
-		int curX = (N + i + targetDx) % N; 
-		
-		if(((~CirculateRight(mainState[curX], dy)) & patState[i]) != patState[i])
-			return NO;
-	}
+  i = starti;
 
-	return YES;
-}
+  while ((ch = rle[i]) != '\0') {
 
-int Contains(LifeState* main, LifeState* spark, int targetDx, int targetDy)
-{
-	int min = spark->min;
-	int max = spark->max;
-	
-	uint64_t * mainState = main->state;
-	uint64_t * sparkState = spark->state;
-	int dy = (targetDy + 64) % 64;
-	
-	for(int i = min; i <= max; i++)
-	{
-		int curX = (N + i + targetDx) % N; 
-		
-		if((CirculateRight(mainState[curX], dy) & sparkState[i]) != (sparkState[i]))
-			return NO;
-	}		
-	return YES;
-}
+    if (ch >= '0' && ch <= '9') {
+      cnt *= 10;
+      cnt += (ch - '0');
+    } else if (ch == 'o') {
 
-int AllOn(LifeState* spark)
-{
-	return Contains(GlobalState, spark);
-}
+      if (cnt == 0)
+        cnt = 1;
 
-int AllOff(LifeState* spark)
-{
-	return AreDisjoint(GlobalState, spark);
-}
+      for (j = 0; j < cnt; j++) {
+        SetCell(state, x, y, 1);
+        x++;
+      }
 
+      cnt = 0;
+    } else if (ch == 'b') {
+      if (cnt == 0)
+        cnt = 1;
 
-void Reverse(uint64_t  *state, int idxS, int idxE)
-{
-	for(int i = 0; idxS + i <  idxE - i; i++)
-	{
-		int l = idxS + i; 
-		int r = idxE - i;
-		
-		uint64_t temp = state[l];
-		state[l] = state[r];
-		state[r] = temp;
-	}
-}
+      x += cnt;
+      cnt = 0;
 
-void CirculateUp(uint64_t  *state, int anyk)
-{
-	int k = (anyk + 64 * 10) % 64;
-	
-	Reverse(state, 0, N - 1);
-	Reverse(state, 0, k - 1);
-	Reverse(state, k, N - 1);
-}
+    } else if (ch == '$') {
+      if (cnt == 0)
+        cnt = 1;
 
-void Move(LifeState* state, int x, int y)
-{
-	for(int i = 0; i < N; i++)
-	{
-		if(y < 0)
-			state->state[i] = CirculateRight(state->state[i], -y);
-		else
-			state->state[i] = CirculateRight(state->state[i], 64 - y);
-		
-	}
+      if (cnt == 129)
+        return i + 1;
 
-	if(x < 0)
-		CirculateUp(state->state, 64 + x);
-	else
-		CirculateUp(state->state, x);
-		
-	state->min = 0;
-	state->max = N - 1;
-}
-
-
-void FlipX(LifeState* state)
-{	
-	Reverse(state->state, 0, N - 1);
-	Move(state, 1, 0);
-}
-
-
-void FlipX()
-{
-	FlipX(GlobalState);
-}
-
-void FlipX(int idx)
-{
-	FlipX(Captures[idx]);
-	
-}
-
-void Transform(LifeState* state, int dx, int dy, int dxx, int dxy, int dyx, int dyy)
-{
-	ClearData(Temp2);
-	ClearData(Temp1);
-	Copy(Temp1, state);
-	Move(Temp1, dx, dy);
-	
-	for(int i = 0; i < N; i++)
-	{
-		for(int j = 0; j < 64; j++)
-		{
-			int x = i - 32; 
-			int y = j - 32;
-			
-			int x1 = x * dxx + y * dxy;
-			int y1 = x * dyx + y * dyy;
-			
-			int val = GetCell(Temp1, x1, y1);
-			
-			SetCell(Temp2, x, y, val);
-		}
-	}
-	
-	Copy(state, Temp2);
-	RecalculateMinMax(state);
-}
-
-void Transform(LifeState* state, int dx, int dy)
-{
-	Move(state, dx, dy);
-}
-
-
-void GetBoundary(LifeState* state, LifeState* boundary)
-{
-    for(int i = 0; i < N; i++) {
-        uint64_t col = state->state[i];
-        Temp->state[i] = col | CirculateLeft(col) | CirculateRight(col);
+      y += cnt;
+      x = 0;
+      cnt = 0;
+    } else if (ch == '!') {
+      break;
+    } else {
+      return -2;
     }
 
-    boundary->state[0] = Temp->state[N-1] | Temp->state[0] | Temp->state[1];
-    
-    for(int i = 1; i < N-1; i++)
-        boundary->state[i] = Temp->state[i-1] | Temp->state[i] | Temp->state[i+1];
+    i++;
+  }
 
-    boundary->state[N-1] = Temp->state[N-2] | Temp->state[N-1] | Temp->state[0];
-    
-    for(int i = 0; i < N; i++)
-        boundary->state[i] &= ~(state->state[i]);
+  state->min = 0;
+  state->max = N - 1;
+
+  return -1;
 }
 
-void GetBoundary(LifeState* state, int captureIdx)
-{
-	GetBoundary(state, Captures[captureIdx]);
+int Parse(LifeState *state, const char *rle, int dx, int dy) {
+  if (Parse(state, rle, 0) == -1) {
+    Move(state, dx, dy);
+    return SUCCESS;
+  } else {
+    return FAIL;
+  }
 }
 
-void GetBoundary(LifeState* boundary)
-{
-	GetBoundary(GlobalState, boundary);
+int Parse(LifeState *state, const char *rle) { return Parse(state, rle, 0, 0); }
+
+int Parse(LifeState *state, const char *rle, int dx, int dy, int dxx, int dxy,
+          int dyx, int dyy) {
+  int result = Parse(state, rle);
+
+  if (result == SUCCESS)
+    Transform(state, dx, dy, dxx, dxy, dyx, dyy);
+
+  return result;
 }
 
-void GetBoundary(int captureIdx)
-{
-	GetBoundary(GlobalState, Captures[captureIdx]);
-}
+typedef struct {
+  LifeState *wanted;
+  LifeState *unwanted;
 
-
-int Parse(LifeState* state, const char* rle, int starti)
-{
-	char ch;
-	int cnt, i, j; 
-	int x, y;
-	x = 0;
-	y = 0;
-	cnt = 0;
-	
-	ClearData(state);
-	
-	i = starti;
-	
-	while((ch = rle[i]) != '\0')
-	{
-
-		if(ch >= '0' && ch <= '9')
-		{
-			cnt *= 10;
-			cnt += (ch - '0');
-		}
-		else if(ch == 'o')
-		{
-			
-			if(cnt == 0)
-				cnt = 1;
-				
-			for(j = 0; j < cnt; j++)
-			{
-				SetCell(state, x, y, 1);
-				x++;
-			}
-			
-			cnt = 0;
-		}
-		else if(ch == 'b')
-		{
-			if(cnt == 0)
-				cnt = 1;
-			
-			x += cnt;
-			cnt = 0;
-			
-		}
-		else if(ch == '$')
-		{
-			if(cnt == 0)
-				cnt = 1;
-			
-			if(cnt == 129)
-				return i + 1;
-				
-			y += cnt;
-			x = 0;
-			cnt = 0;
-		}
-		else if(ch == '!')
-		{
-			break;
-		}
-		else
-		{
-			return -2;
-		}
-		
-		i++;
-	}
-	
-	state->min = 0;
-	state->max = N - 1;
-	
-	return -1;
-}
-
-int Parse(LifeState* state, const char* rle, int dx, int dy)
-{
-	if(Parse(state, rle, 0) == -1)
-	{
-		Move(state, dx, dy);
-		return SUCCESS;
-	}
-	else 
-	{
-		return FAIL;
-	}
-}
-
-
-int Parse(LifeState* state, const char* rle)
-{
-	return Parse(state, rle, 0, 0);
-}
-
-int Parse(LifeState* state, const char* rle, int dx, int dy, int dxx, int dxy, int dyx, int dyy)
-{
-	int result = Parse(state, rle);
-	
-	if(result == SUCCESS)
-		Transform(state, dx, dy, dxx, dxy, dyx, dyy);
-		
-	return result;
-}
-
-
-
-typedef struct 
-{
-	LifeState* wanted;
-	LifeState* unwanted;
-	
 } LifeTarget;
 
-LifeTarget* NewTarget(LifeState* wanted, LifeState* unwanted)
-{
-	LifeTarget* result = (LifeTarget*)(malloc(sizeof(LifeTarget)));
-	
-	result->wanted = NewState();
-	result->unwanted = NewState();
+LifeTarget *NewTarget(LifeState *wanted, LifeState *unwanted) {
+  LifeTarget *result = (LifeTarget *)(malloc(sizeof(LifeTarget)));
 
-	Copy(result->wanted, wanted);	
-	Copy(result->unwanted, unwanted);
-	
-	RecalculateMinMax(result->wanted);
-	RecalculateMinMax(result->unwanted);
-	
-	return result;
+  result->wanted = NewState();
+  result->unwanted = NewState();
+
+  Copy(result->wanted, wanted);
+  Copy(result->unwanted, unwanted);
+
+  RecalculateMinMax(result->wanted);
+  RecalculateMinMax(result->unwanted);
+
+  return result;
 }
 
-
-
-LifeTarget* NewTarget(LifeState* wanted)
-{
-	GetBoundary(wanted, Temp1);
-	return NewTarget(wanted, Temp1);
+LifeTarget *NewTarget(LifeState *wanted) {
+  GetBoundary(wanted, Temp1);
+  return NewTarget(wanted, Temp1);
 }
 
+LifeTarget *NewTarget(const char *rle, int x, int y, int dxx, int dxy, int dyx,
+                      int dyy) {
+  int result = Parse(Temp2, rle, x, y, dxx, dxy, dyx, dyy);
 
-LifeTarget* NewTarget(const char* rle, int x, int y, int dxx, int dxy, int dyx, int dyy)
-{
-	int result = Parse(Temp2, rle, x, y, dxx, dxy, dyx, dyy);
-	
-	if(result == SUCCESS)
-	{
-		return NewTarget(Temp2);
-	}
-	
-	return NULL;
+  if (result == SUCCESS) {
+    return NewTarget(Temp2);
+  }
+
+  return NULL;
 }
 
-LifeTarget* NewTarget(const char* rle, int x, int y)
-{
-	int result = Parse(Temp2, rle, x, y);
-	
-	if(result == SUCCESS)
-	{
-		return NewTarget(Temp2);
-	}
-	
-	return NULL;
+LifeTarget *NewTarget(const char *rle, int x, int y) {
+  int result = Parse(Temp2, rle, x, y);
+
+  if (result == SUCCESS) {
+    return NewTarget(Temp2);
+  }
+
+  return NULL;
 }
 
-LifeTarget* NewTarget(const char* rle)
-{
-	return NewTarget(rle, 0, 0);
+LifeTarget *NewTarget(const char *rle) { return NewTarget(rle, 0, 0); }
+
+int Contains(LifeState *state, LifeTarget *target, int dx, int dy) {
+  if (Contains(state, target->wanted, dx, dy) == YES &&
+      AreDisjoint(state, target->unwanted, dx, dy) == YES)
+    return YES;
+  else
+    return NO;
 }
 
-int Contains(LifeState* state, LifeTarget* target, int dx, int dy)
-{
-	if(Contains(state, target->wanted, dx, dy) == YES && AreDisjoint(state, target->unwanted, dx, dy) == YES)
-		return YES;
-	else
-		return NO;
+int Contains(LifeState *state, LifeTarget *target) {
+  if (Contains(state, target->wanted) == YES &&
+      AreDisjoint(state, target->unwanted) == YES)
+    return YES;
+  else
+    return NO;
 }
 
-int Contains(LifeState* state, LifeTarget* target)
-{
-	if(Contains(state, target->wanted) == YES && AreDisjoint(state, target->unwanted) == YES)
-		return YES;
-	else
-		return NO;
+int Contains(LifeTarget *target) { return Contains(GlobalState, target); }
+
+void FreeTarget(LifeTarget *iter) {
+  FreeState(iter->wanted);
+  FreeState(iter->unwanted);
+
+  free(iter);
 }
 
-int Contains(LifeTarget* target)
-{
-	return Contains(GlobalState, target);
-}
-
-void FreeTarget(LifeTarget* iter)
-{
-	FreeState(iter -> wanted);
-	FreeState(iter -> unwanted);
-	
-	free(iter);
-}
-
-
-typedef struct 
-{
-  int* xList;
-  int* yList;
+typedef struct {
+  int *xList;
+  int *yList;
   int len;
   int allocated;
 } Locator;
 
-Locator* NewLocator()
-{
-	Locator* result = (Locator*)(malloc(sizeof(Locator)));
-	
-	result->xList = (int*)(malloc(sizeof(int)));
-	result->yList = (int*)(malloc(sizeof(int)));
-	result->len = 0;
-	result->allocated = 1;
-	
-	return result;
+Locator *NewLocator() {
+  Locator *result = (Locator *)(malloc(sizeof(Locator)));
+
+  result->xList = (int *)(malloc(sizeof(int)));
+  result->yList = (int *)(malloc(sizeof(int)));
+  result->len = 0;
+  result->allocated = 1;
+
+  return result;
 }
 
-Locator* Realloc(Locator* locator)
-{
-	if(locator->allocated <= locator->len)
-	{				
-		locator->allocated *= 2;
-		locator->xList = (int*)(realloc(locator->xList, locator->allocated * sizeof(int)));
-		locator->yList = (int*)(realloc(locator->yList, locator->allocated * sizeof(int)));	
-	}
+Locator *Realloc(Locator *locator) {
+  if (locator->allocated <= locator->len) {
+    locator->allocated *= 2;
+    locator->xList =
+        (int *)(realloc(locator->xList, locator->allocated * sizeof(int)));
+    locator->yList =
+        (int *)(realloc(locator->yList, locator->allocated * sizeof(int)));
+  }
 }
 
-void Add(Locator* locator, int x, int y)
-{
-	Realloc(locator);
-	
-	locator->xList[locator->len] = x;
-	locator->yList[locator->len] = y;
-	locator->len++;
+void Add(Locator *locator, int x, int y) {
+  Realloc(locator);
+
+  locator->xList[locator->len] = x;
+  locator->yList[locator->len] = y;
+  locator->len++;
 }
 
-Locator *State2Locator(LifeState* state)
-{
-	Locator* result = NewLocator();
-	
-	for(int j = 0; j < N; j++)
-	{
-        for(int i = 0; i < N; i++)
-		{
-            int val = Get(i, j, state->state);
-			
-			if(val == 1)
-				Add(result, i, j);
-		}
-	}
-	
-	return result;
+Locator *State2Locator(LifeState *state) {
+  Locator *result = NewLocator();
+
+  for (int j = 0; j < N; j++) {
+    for (int i = 0; i < N; i++) {
+      int val = Get(i, j, state->state);
+
+      if (val == 1)
+        Add(result, i, j);
+    }
+  }
+
+  return result;
 }
 
-void ClearAtX(LifeState* state, Locator* locator, int x, uint64_t val)
-{
-	if(val == 0ULL)
-		return;
-	
-	int len = locator->len;
-	int* xList =  locator->xList;
-	int* yList =  locator->yList;
+void ClearAtX(LifeState *state, Locator *locator, int x, uint64_t val) {
+  if (val == 0ULL)
+    return;
 
-	for(int i = 0; i < len; i++)
-	{
-		int idx = (x + xList[i] + N) % N;
-		int circulate = (yList[i] + 64) % 64;
-		
-		state->state[idx] &= ~CirculateLeft(val, circulate);
-	}
+  int len = locator->len;
+  int *xList = locator->xList;
+  int *yList = locator->yList;
+
+  for (int i = 0; i < len; i++) {
+    int idx = (x + xList[i] + N) % N;
+    int circulate = (yList[i] + 64) % 64;
+
+    state->state[idx] &= ~CirculateLeft(val, circulate);
+  }
 }
 
-uint64_t LocateAtX(LifeState* state, Locator* locator, int x, int negate)
-{
-	uint64_t result = ~0ULL;
-	int len = locator->len;
-	int* xList =  locator->xList;
-	int* yList =  locator->yList;
+uint64_t LocateAtX(LifeState *state, Locator *locator, int x, int negate) {
+  uint64_t result = ~0ULL;
+  int len = locator->len;
+  int *xList = locator->xList;
+  int *yList = locator->yList;
 
-	for(int i = 0; i < len; i++)
-	{
-		int idx = (x + xList[i] + N) % N;
-		int circulate = (yList[i] + 64) % 64;
-		
-		if(negate == NO)
-			result &= CirculateRight(state->state[idx], circulate);
-		else
-			result &= ~CirculateRight(state->state[idx],circulate);
-		
-		if(result == 0ULL)
-			break;
-	}
+  for (int i = 0; i < len; i++) {
+    int idx = (x + xList[i] + N) % N;
+    int circulate = (yList[i] + 64) % 64;
 
-	
-	return result;
+    if (negate == NO)
+      result &= CirculateRight(state->state[idx], circulate);
+    else
+      result &= ~CirculateRight(state->state[idx], circulate);
+
+    if (result == 0ULL)
+      break;
+  }
+
+  return result;
 }
 
-uint64_t LocateAtX(LifeState* state, Locator* onLocator, Locator* offLocator, int x)
-{
-	uint64_t onLocate = LocateAtX(state, onLocator, x, NO);
-	
-	if(onLocate == 0)
-		return 0;
-		
-	return  onLocate & LocateAtX(state, offLocator, x, YES);
+uint64_t LocateAtX(LifeState *state, Locator *onLocator, Locator *offLocator,
+                   int x) {
+  uint64_t onLocate = LocateAtX(state, onLocator, x, NO);
+
+  if (onLocate == 0)
+    return 0;
+
+  return onLocate & LocateAtX(state, offLocator, x, YES);
 }
 
-void LocateInRange(LifeState* state, Locator* locator, LifeState* result, int minx, int maxx, int negate)
-{
-	for(int i = minx; i<= maxx; i++)
-	{
-		result->state[i] = LocateAtX(state, locator, i, negate);
-	}
+void LocateInRange(LifeState *state, Locator *locator, LifeState *result,
+                   int minx, int maxx, int negate) {
+  for (int i = minx; i <= maxx; i++) {
+    result->state[i] = LocateAtX(state, locator, i, negate);
+  }
 }
 
-void LocateInRange(LifeState* state, Locator* onLocator, Locator* offLocator, LifeState* result, int minx, int maxx)
-{
-	for(int i = minx; i<= maxx; i++)
-	{
-		result->state[i] = LocateAtX(state, onLocator, offLocator, i);
-	}
+void LocateInRange(LifeState *state, Locator *onLocator, Locator *offLocator,
+                   LifeState *result, int minx, int maxx) {
+  for (int i = minx; i <= maxx; i++) {
+    result->state[i] = LocateAtX(state, onLocator, offLocator, i);
+  }
 }
 
-void Locate(LifeState* state, Locator* locator, LifeState* result)
-{
-	LocateInRange(state, locator, result, state->min, state->max, NO);
+void Locate(LifeState *state, Locator *locator, LifeState *result) {
+  LocateInRange(state, locator, result, state->min, state->max, NO);
 }
 
-
-typedef struct 
-{
-  Locator* onLocator;
-  Locator* offLocator;
+typedef struct {
+  Locator *onLocator;
+  Locator *offLocator;
 } TargetLocator;
 
+TargetLocator *NewTargetLocator() {
+  TargetLocator *result = (TargetLocator *)(malloc(sizeof(TargetLocator)));
 
-TargetLocator* NewTargetLocator()
-{
-	TargetLocator* result = (TargetLocator*)(malloc(sizeof(TargetLocator)));
-	
-	result->onLocator = NewLocator();
-	result->offLocator = NewLocator();
-	
-	return result;
+  result->onLocator = NewLocator();
+  result->offLocator = NewLocator();
+
+  return result;
 }
 
+TargetLocator *Target2Locator(LifeTarget *target) {
+  TargetLocator *result = (TargetLocator *)(malloc(sizeof(TargetLocator)));
+  result->onLocator = State2Locator(target->wanted);
+  result->offLocator = State2Locator(target->unwanted);
 
-TargetLocator* Target2Locator(LifeTarget* target)
-{
-	TargetLocator* result = (TargetLocator*)(malloc(sizeof(TargetLocator)));
-	result->onLocator = State2Locator(target->wanted);
-	result->offLocator = State2Locator(target->unwanted);
-	
-	return result;
+  return result;
 }
 
-TargetLocator* NewTargetLocator(const char* rle)
-{
-	TargetLocator* result = Target2Locator(NewTarget(rle, -32, -32));
-	return result;
+TargetLocator *NewTargetLocator(const char *rle) {
+  TargetLocator *result = Target2Locator(NewTarget(rle, -32, -32));
+  return result;
 }
 
-
-TargetLocator* NewTargetLocator(const char* rle, int x, int y)
-{
-	TargetLocator* result = Target2Locator(NewTarget(rle, -32 + x, -32 + y));
-	return result;
+TargetLocator *NewTargetLocator(const char *rle, int x, int y) {
+  TargetLocator *result = Target2Locator(NewTarget(rle, -32 + x, -32 + y));
+  return result;
 }
 
-uint64_t LocateAtX(LifeState* state, TargetLocator* targetLocator, int x)
-{
-	return LocateAtX(state, targetLocator->onLocator, targetLocator->offLocator,  x);
+uint64_t LocateAtX(LifeState *state, TargetLocator *targetLocator, int x) {
+  return LocateAtX(state, targetLocator->onLocator, targetLocator->offLocator,
+                   x);
 }
 
-void LocateInRange(LifeState* state, TargetLocator* targetLocator, LifeState* result, int minx, int maxx)
-{
-	return LocateInRange(state, targetLocator->onLocator, targetLocator->offLocator, result, minx, maxx);
+void LocateInRange(LifeState *state, TargetLocator *targetLocator,
+                   LifeState *result, int minx, int maxx) {
+  return LocateInRange(state, targetLocator->onLocator,
+                       targetLocator->offLocator, result, minx, maxx);
 }
 
-void LocateTarget(LifeState* state, TargetLocator* targetLocator, LifeState* result)
-{
-	LocateInRange(state, targetLocator, result, state->min, state->max);
+void LocateTarget(LifeState *state, TargetLocator *targetLocator,
+                  LifeState *result) {
+  LocateInRange(state, targetLocator, result, state->min, state->max);
 }
 
-void LocateTarget(TargetLocator* targetLocator, LifeState* result)
-{
-	LocateTarget(GlobalState, targetLocator, result);
+void LocateTarget(TargetLocator *targetLocator, LifeState *result) {
+  LocateTarget(GlobalState, targetLocator, result);
 }
 
-static TargetLocator* _glidersTarget[4];
+static TargetLocator *_glidersTarget[4];
 
-int RemoveAtX(LifeState *state, int x, int startGiderIdx)
-{
-	int removed = NO;
-	
-	for(int i = startGiderIdx; i < startGiderIdx + 2; i++)
-	{
-		uint64_t gld = LocateAtX(state, _glidersTarget[i], x);
-		
-		if(gld != 0)
-		{
-			removed = YES;
-			ClearAtX(state, _glidersTarget[i]->onLocator, x, gld);
-			
-			for(int j = 0; j < 64; j++)
-			{
-				if(gld % 2 == 1)
-				{
-					Append(state->emittedGliders, "(");
-					Append(state->emittedGliders, i);
-					Append(state->emittedGliders, ",");
-					Append(state->emittedGliders, j);
-					Append(state->emittedGliders, ",");
-					Append(state->emittedGliders, state->gen);
-					Append(state->emittedGliders, ",");
-					Append(state->emittedGliders, x);
-					Append(state->emittedGliders, ")");
-				}
-				
-				gld = gld >> 1;
-				
-				if(gld == 0)
-					break;
-			}
-		}
-	}
-	
-	return removed;
+int RemoveAtX(LifeState *state, int x, int startGiderIdx) {
+  int removed = NO;
+
+  for (int i = startGiderIdx; i < startGiderIdx + 2; i++) {
+    uint64_t gld = LocateAtX(state, _glidersTarget[i], x);
+
+    if (gld != 0) {
+      removed = YES;
+      ClearAtX(state, _glidersTarget[i]->onLocator, x, gld);
+
+      for (int j = 0; j < 64; j++) {
+        if (gld % 2 == 1) {
+          Append(state->emittedGliders, "(");
+          Append(state->emittedGliders, i);
+          Append(state->emittedGliders, ",");
+          Append(state->emittedGliders, j);
+          Append(state->emittedGliders, ",");
+          Append(state->emittedGliders, state->gen);
+          Append(state->emittedGliders, ",");
+          Append(state->emittedGliders, x);
+          Append(state->emittedGliders, ")");
+        }
+
+        gld = gld >> 1;
+
+        if (gld == 0)
+          break;
+      }
+    }
+  }
+
+  return removed;
 }
 
+void RemoveGliders(LifeState *state) {
+  int removed = NO;
+  int x = 1;
 
-void RemoveGliders(LifeState *state)
-{
-	int removed = NO;
-	int x = 1;
-	
-	if(state->min <= 1)
-		if(RemoveAtX(state, 1, 0) == YES)
-			removed = YES;
-	
-	if(state->max >= N - 2)
-		if(RemoveAtX(state, N - 2, 2) == YES)
-			removed = YES;
-			
-	if(removed == YES)
-		RecalculateMinMax(state);
+  if (state->min <= 1)
+    if (RemoveAtX(state, 1, 0) == YES)
+      removed = YES;
+
+  if (state->max >= N - 2)
+    if (RemoveAtX(state, N - 2, 2) == YES)
+      removed = YES;
+
+  if (removed == YES)
+    RecalculateMinMax(state);
 }
 
-void IterateState(LifeState  *lifstate)
-{
-	uint64_t* state = lifstate->state;
-	int min = lifstate->min;
-	int max = lifstate->max;
-	
-	uint64_t tempxor[N];
-	uint64_t tempand[N];
+void IterateState(LifeState *lifstate) {
+  uint64_t *state = lifstate->state;
+  int min = lifstate->min;
+  int max = lifstate->max;
 
-	uint64_t tempState[N];
+  uint64_t tempxor[N];
+  uint64_t tempand[N];
 
-	uint64_t l, r, temp;
-	uint64_t x0, r0, xU, aU, xB, aB;
-	uint64_t a0,a1,a2,c, b0, b1, b2;
+  uint64_t tempState[N];
 
-	int i, idxU, idxB;
-	
-	for(i = min; i <= max; i++)
-	{
-		temp = state[i];
-		l = CirculateLeft(temp);
-		r = CirculateRight(temp);
-		tempxor[i] = l ^ r ^ temp;
-		tempand[i] = ((l | r) & temp) | (l & r);
-	}
+  uint64_t l, r, temp;
+  uint64_t x0, r0, xU, aU, xB, aB;
+  uint64_t a0, a1, a2, c, b0, b1, b2;
 
-	for(i = min; i <= max; i++)
-	{
-		if(i == 0)
-			idxU = N - 1;
-		else
-			idxU = i - 1;
+  int i, idxU, idxB;
 
-		if(i == N - 1)
-			idxB = 0;
-		else
-			idxB = i + 1;
+  for (i = min; i <= max; i++) {
+    temp = state[i];
+    l = CirculateLeft(temp);
+    r = CirculateRight(temp);
+    tempxor[i] = l ^ r ^ temp;
+    tempand[i] = ((l | r) & temp) | (l & r);
+  }
 
-		temp = state[i];
+  for (i = min; i <= max; i++) {
+    if (i == 0)
+      idxU = N - 1;
+    else
+      idxU = i - 1;
 
-		x0 = tempxor[i];
-		r0 = tempand[i];
+    if (i == N - 1)
+      idxB = 0;
+    else
+      idxB = i + 1;
 
-		xU = tempxor[idxU];
-		aU = tempand[idxU];
+    temp = state[i];
 
-		xB = tempxor[idxB];
-		aB = tempand[idxB];
+    x0 = tempxor[i];
+    r0 = tempand[i];
 
-		a0 = x0^xU;
-		c = (x0&xU);
-		a1 = c^aU^r0;
-		a2 = (aU&r0)|((aU|r0)&c);
+    xU = tempxor[idxU];
+    aU = tempand[idxU];
 
-		b0 = xB^a0;
-		c = (xB&a0);
-		b1 = c^aB^a1;
-		b2 = (aB&a1)|((aB|a1)&c);
+    xB = tempxor[idxB];
+    aB = tempand[idxB];
 
-		tempState[i] = (b0&b1&(~b2)&(~a2))|((temp)&(a2^b2)&(~b0)&(~b1));
-		
-	}
-	
-	int s = min + 1;
-	int e =  max - 1;
-	
-	if(s == 1)
-		s = 0;
-	
-	if(e == N - 2)
-		e = N - 1;
-	
-	for(i = s; i <= e; i++)
-	{
-		state[i] = tempState[i];
-	}	
-	
-	RefitMinMax(lifstate);
-	lifstate->gen++;
-	
+    a0 = x0 ^ xU;
+    c = (x0 & xU);
+    a1 = c ^ aU ^ r0;
+    a2 = (aU & r0) | ((aU | r0) & c);
+
+    b0 = xB ^ a0;
+    c = (xB & a0);
+    b1 = c ^ aB ^ a1;
+    b2 = (aB & a1) | ((aB | a1) & c);
+
+    tempState[i] =
+        (b0 & b1 & (~b2) & (~a2)) | ((temp) & (a2 ^ b2) & (~b0) & (~b1));
+  }
+
+  int s = min + 1;
+  int e = max - 1;
+
+  if (s == 1)
+    s = 0;
+
+  if (e == N - 2)
+    e = N - 1;
+
+  for (i = s; i <= e; i++) {
+    state[i] = tempState[i];
+  }
+
+  RefitMinMax(lifstate);
+  lifstate->gen++;
 }
 
+LifeState *NewState(const char *rle, int dx, int dy, int dxx, int dxy, int dyx,
+                    int dyy) {
+  LifeState *result = NewState();
+  Parse(result, rle);
+  Transform(result, dx, dy, dxx, dxy, dyx, dyy);
 
-LifeState* NewState(const char* rle, int dx, int dy, int dxx, int dxy, int dyx, int dyy)
-{
-	LifeState* result = NewState();
-	Parse(result, rle);
-	Transform(result, dx, dy, dxx, dxy, dyx, dyy);
-	
-	return result;
+  return result;
 }
 
-LifeState* NewState(const char* rle, int dx, int dy)
-{
-	LifeState* result = NewState();
-	Parse(result, rle, dx, dy);
-	
-	return result;
+LifeState *NewState(const char *rle, int dx, int dy) {
+  LifeState *result = NewState();
+  Parse(result, rle, dx, dy);
+
+  return result;
 }
 
-LifeState* NewState(const char* rle)
-{
-	return NewState(rle, 0, 0);
+LifeState *NewState(const char *rle) { return NewState(rle, 0, 0); }
+
+const char *GetRLE(LifeState *state) {
+  LifeString *result = NewString();
+
+  int eol_count = 0;
+
+  for (int j = 0; j < N; j++) {
+    int last_val = -1;
+    int run_count = 0;
+
+    for (int i = 0; i < N; i++) {
+      int val = Get(i, j, state->state);
+
+      // Flush linefeeds if we find a live cell
+      if (val == 1 && eol_count > 0) {
+        if (eol_count > 1)
+          Append(result, eol_count);
+
+        Append(result, "$");
+
+        eol_count = 0;
+      }
+
+      // Flush current run if val changes
+      if (val == 1 - last_val) {
+        if (run_count > 1)
+          Append(result, run_count);
+
+        Append(result, last_val ? "o" : "b");
+
+        run_count = 0;
+      }
+
+      run_count++;
+      last_val = val;
+    }
+
+    // Flush run of live cells at end of line
+    if (last_val == 1) {
+      if (run_count > 1)
+        Append(result, run_count);
+
+      Append(result, "o");
+
+      run_count = 0;
+    }
+
+    eol_count++;
+  }
+
+  return result->value;
 }
 
-const char* GetRLE(LifeState *state)
-{
-    LifeString* result = NewString();
-	
-	int eol_count = 0; 
-
-	for(int j = 0; j < N; j++)
-	{
-            int last_val = -1;
-            int run_count = 0;
-			
-           for(int i = 0; i < N; i++)
-		{
-                    int val = Get(i, j, state->state);
-
-                    // Flush linefeeds if we find a live cell
-                    if(val == 1 && eol_count > 0)
-					{
-                            if(eol_count > 1)
-                                Append(result, eol_count);
-                            
-							Append(result, "$");
-                            
-                            eol_count = 0;
-					}
-
-                    // Flush current run if val changes
-                    if (val == 1 - last_val)
-                        {
-                            if(run_count > 1)
-                                Append(result, run_count);
-                            
-							Append(result, last_val ? "o" : "b");
-                            
-                            run_count = 0;
-			}
-
-                    run_count++;
-                    last_val = val;
-                }
-
-            // Flush run of live cells at end of line
-            if (last_val == 1)
-                {
-                    if(run_count > 1)
-                        Append(result, run_count);
-                            
-                    Append(result, "o");
-                            
-                    run_count = 0;
-                }
-
-            eol_count++;
-	}
-        
-	return result->value;
+void PrintRLE(LifeState *state) {
+  printf("\nx = 0, y = 0, rule = B3/S23\n%s!\n\n", GetRLE(state));
 }
 
-void PrintRLE(LifeState *state)
-{
-    printf("\nx = 0, y = 0, rule = B3/S23\n%s!\n\n", GetRLE(state));
+void Print() { Print(GlobalState); }
+
+void Print(int idx) { Print(Captures[idx]); }
+
+void PrintRLE() { PrintRLE(GlobalState); }
+
+void PrintRLE(int idx) { PrintRLE(Captures[idx]); }
+
+void Evolve(LifeState *state, int numIters) {
+  for (int i = 0; i < numIters; i++) {
+    IterateState(state);
+    RemoveGliders(state);
+  }
 }
 
-void Print()
-{
-	Print(GlobalState);
-}
-
-void Print(int idx)
-{
-	Print(Captures[idx]);
-}
-
-void PrintRLE()
-{
-	PrintRLE(GlobalState);
-}
-
-void PrintRLE(int idx)
-{
-	PrintRLE(Captures[idx]);
-}
-
-void Evolve(LifeState* state, int numIters)
-{
-	for(int i = 0; i < numIters; i++)
-	{
-		IterateState(state);
-		RemoveGliders(state);
-	}
-}
-
-void Evolve(LifeState* after, LifeState* before, int numIters)
-{
-        Copy(after, before);
-        Evolve(after, numIters);
+void Evolve(LifeState *after, LifeState *before, int numIters) {
+  Copy(after, before);
+  Evolve(after, numIters);
 }
 
 namespace PRNG {
 
-    //Public domain PRNG by Sebastian Vigna 2014, see http://xorshift.di.unimi.it
+// Public domain PRNG by Sebastian Vigna 2014, see http://xorshift.di.unimi.it
 
-    uint64_t s[16] = { 0x12345678 }; 
-    int p = 0;
-    
-    uint64_t rand64() { 
-        uint64_t s0 = s[ p ];
-	uint64_t s1 = s[ p = ( p + 1 ) & 15 ];
-	s1 ^= s1 << 31; // a
-	s1 ^= s1 >> 11; // b
-	s0 ^= s0 >> 30; // c
-	return ( s[ p ] = s0 ^ s1 ) * 1181783497276652981ULL; 
+uint64_t s[16] = {0x12345678};
+int p = 0;
+
+uint64_t rand64() {
+  uint64_t s0 = s[p];
+  uint64_t s1 = s[p = (p + 1) & 15];
+  s1 ^= s1 << 31; // a
+  s1 ^= s1 >> 11; // b
+  s0 ^= s0 >> 30; // c
+  return (s[p] = s0 ^ s1) * 1181783497276652981ULL;
+}
+
+} // namespace PRNG
+
+void RandomState(LifeState *state) {
+
+  for (int i = 0; i < N; i++)
+    state->state[i] = PRNG::rand64();
+
+  RecalculateMinMax(state);
+}
+
+void RandomState() { RandomState(GlobalState); }
+
+void New() {
+  if (GlobalState == NULL) {
+    GlobalState = NewState();
+    Temp = NewState();
+    Temp1 = NewState();
+    Temp2 = NewState();
+
+    for (int i = 0; i < CAPTURE_COUNT; i++) {
+      Captures[i] = NewState();
     }
 
+    _glidersTarget[0] = NewTargetLocator("2o$obo$o!");
+    _glidersTarget[1] = NewTargetLocator("o$obo$2o!");
+    _glidersTarget[2] = NewTargetLocator("b2o$obo$2bo!", -2, 0);
+    _glidersTarget[3] = NewTargetLocator("2bo$obo$b2o!", -2, 0);
+
+  } else {
+    ClearData(GlobalState);
+  }
 }
 
-void RandomState(LifeState* state) {
+void Capture(LifeState *cap, int idx) { Copy(Captures[idx], cap); }
 
-    for (int i = 0; i < N; i++)
-        state->state[i] = PRNG::rand64();
+void Capture(int idx) { Copy(Captures[idx], GlobalState); }
 
-    RecalculateMinMax(state);
+void Run(int numIter) { Evolve(GlobalState, numIter); }
+
+void Join(LifeState *main, LifeState *delta) { Copy(main, delta, OR); }
+
+void Join(LifeState *main, LifeState *delta, int dx, int dy) {
+  for (int i = delta->min; i <= delta->max; i++) {
+    int idx = (i + dx + N) % N;
+
+    if (dy < 0)
+      main->state[idx] |= CirculateRight(delta->state[i], -dy);
+    else
+      main->state[idx] |= CirculateRight(delta->state[i], 64 - dy);
+  }
+
+  main->min = 0;
+  main->max = N - 1;
 }
 
-void RandomState() {
-    
-    RandomState(GlobalState);
+void PutState(LifeState *state) { Join(GlobalState, state); }
+
+void PutState(LifeState *state, int dx, int dy) {
+  Join(GlobalState, state, dx, dy);
 }
 
-void New()
-{
-	if(GlobalState == NULL)
-	{
-		GlobalState = NewState();
-		Temp = NewState();
-		Temp1 = NewState();
-		Temp2 = NewState();
-		
-		for(int i = 0; i < CAPTURE_COUNT; i++)
-		{
-			Captures[i] =  NewState();
-		}
-		
-		_glidersTarget[0] = NewTargetLocator("2o$obo$o!");
-		_glidersTarget[1] = NewTargetLocator("o$obo$2o!");
-		_glidersTarget[2] = NewTargetLocator("b2o$obo$2bo!", -2, 0);
-		_glidersTarget[3] = NewTargetLocator("2bo$obo$b2o!", -2, 0);
+void PutState(int idx) { PutState(Captures[idx]); }
 
-	}
-	else
-	{
-		ClearData(GlobalState);
-	}
-	
-	
+void PutState(LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
+              int dyy) {
+  ClearData(Temp);
+  Copy(Temp, state);
+  Transform(Temp, dx, dy, dxx, dxy, dyx, dyy);
+  PutState(Temp);
 }
 
-void Capture(LifeState* cap, int idx)
-{
-	Copy(Captures[idx], cap);
+void PutState(LifeState *state, CopyType op) { Copy(GlobalState, state, op); }
+
+int PutState(const char *rle) {
+  ClearData(Temp);
+  int result = Parse(Temp, rle);
+
+  if (result == SUCCESS)
+    PutState(Temp);
+
+  return result;
 }
 
-void Capture(int idx)
-{
-	Copy(Captures[idx], GlobalState);
+int PutState(const char *rle, int x, int y) {
+  ClearData(Temp);
+  int result = Parse(Temp, rle, x, y);
+
+  if (result == SUCCESS)
+    PutState(Temp);
+
+  return result;
 }
 
+int PutState(const char *rle, int dx, int dy, int dxx, int dxy, int dyx,
+             int dyy) {
+  ClearData(Temp);
+  int result = Parse(Temp, rle);
 
-void Run(int numIter)
-{
-	Evolve(GlobalState, numIter);
+  if (result == SUCCESS) {
+    Transform(Temp, dx, dy, dxx, dxy, dyx, dyy);
+    PutState(Temp);
+  }
+
+  return result;
 }
 
-void Join(LifeState* main, LifeState* delta)
-{	
-	Copy(main, delta , OR);
-}
+typedef struct {
+  int x;
+  int y;
+  int w;
+  int h;
+  int s;
 
-void Join(LifeState* main, LifeState* delta, int dx, int dy)
-{	
-	for(int i = delta->min; i <= delta->max; i++)
-	{	
-		int idx = (i + dx + N) % N;
-		
-		if(dy < 0)
-			main->state[idx] |= CirculateRight(delta->state[i], -dy);
-		else
-			main->state[idx] |= CirculateRight(delta->state[i], 64 -dy);
-	}
+  LifeState *States[MAX_ITERATIONS];
 
-	main->min  = 0;
-	main->max  = N - 1;
-}
+  int curx;
+  int cury;
+  int curs;
 
-
-
-void PutState(LifeState* state)
-{
-	Join(GlobalState, state);
-}
-
-void PutState(LifeState* state, int dx, int dy)
-{
-	Join(GlobalState, state, dx, dy);
-}
-
-void PutState(int idx)
-{
-	PutState(Captures[idx]);
-}
-
-void PutState(LifeState* state, int dx, int dy, int dxx, int dxy, int dyx, int dyy)
-{
-	ClearData(Temp);
-	Copy(Temp, state);
-	Transform(Temp, dx, dy, dxx, dxy, dyx, dyy);
-	PutState(Temp);
-}
-
-void PutState(LifeState* state, CopyType op)
-{
-	Copy(GlobalState, state, op);
-}
-
-int PutState(const char* rle)
-{
-	ClearData(Temp);
-	int result = Parse(Temp, rle);
-	
-	if( result == SUCCESS)
-		PutState(Temp);
-		
-	return result;
-}
-
-int PutState(const char* rle, int x, int y)
-{
-	ClearData(Temp);
-	int result = Parse(Temp, rle, x, y);
-	
-	if( result == SUCCESS)
-		PutState(Temp);
-		
-	return result;
-}
-
-int PutState(const char* rle, int dx, int dy, int dxx, int dxy, int dyx, int dyy)
-{
-	ClearData(Temp);
-	int result = Parse(Temp, rle);
-	
-	if( result == SUCCESS)
-	{
-		Transform(Temp, dx, dy, dxx, dxy, dyx, dyy);
-		PutState(Temp);
-	}
-	
-	return result;
-}
-
-typedef struct 
-{
-	int x;
-	int y; 
-	int w; 
-	int h;
-	int s;
-	
-	LifeState* States[MAX_ITERATIONS];
-	
-	int curx;
-	int cury;
-	int curs; 
-	
 } LifeIterator;
 
+LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h, int s,
+                          EvolveType op) {
+  LifeIterator *result = (LifeIterator *)(malloc(sizeof(LifeIterator)));
 
-LifeIterator* NewIterator(LifeState* state, int x, int y, int w, int h, int s, EvolveType op)
-{
-	LifeIterator* result = (LifeIterator*)(malloc(sizeof(LifeIterator)));
+  result->x = x;
+  result->y = y;
+  result->w = w;
+  result->h = h;
+  result->s = s;
 
-	result -> x = x;
-	result -> y = y;
-	result -> w = w;
-	result -> h = h;
-	result -> s = s;
-	
-	result -> curx = x;
-	result -> cury = y;
-	result -> curs = 0;
-	
-	state -> min = 0;
-	state -> max = N - 1;
-	
-	ClearData(Temp);
-	Copy(Temp, state);
-	
-	for(int i = 0; i < s; i++)
-	{
-		result->States[i] = NewState();		
-		Copy(result->States[i], Temp);
-		
-		if(op == EVOLVE)
-			Evolve(Temp, 1);		
-	}
-	
-	return result;
+  result->curx = x;
+  result->cury = y;
+  result->curs = 0;
+
+  state->min = 0;
+  state->max = N - 1;
+
+  ClearData(Temp);
+  Copy(Temp, state);
+
+  for (int i = 0; i < s; i++) {
+    result->States[i] = NewState();
+    Copy(result->States[i], Temp);
+
+    if (op == EVOLVE)
+      Evolve(Temp, 1);
+  }
+
+  return result;
 }
 
+LifeIterator *NewIterator(LifeState *states[], int x, int y, int w, int h,
+                          int s) {
+  LifeIterator *result = NewIterator(states[0], x, y, w, h, s, LEAVE);
 
-LifeIterator* NewIterator(LifeState* states[], int x, int y, int w, int h, int s)
-{
-	LifeIterator* result = NewIterator(states[0], x, y, w, h, s, LEAVE);
-	
-	for(int i = 0; i < s; i++)
-	{
-		result->States[i] = NewState();		
-		Copy(result->States[i], states[i]);
-	}
-	
-	return result;
+  for (int i = 0; i < s; i++) {
+    result->States[i] = NewState();
+    Copy(result->States[i], states[i]);
+  }
+
+  return result;
 }
 
-LifeIterator* NewIterator(LifeState* state, int x, int y, int w, int h, int s)
-{
-	return NewIterator(state, x, y, w, h, s, EVOLVE);
+LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h, int s) {
+  return NewIterator(state, x, y, w, h, s, EVOLVE);
 }
 
-LifeIterator* NewIterator(LifeState* state, int x, int y, int w, int h)
-{
-	return NewIterator(state, x, y, w, h, 1, LEAVE);
+LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h) {
+  return NewIterator(state, x, y, w, h, 1, LEAVE);
 }
 
-LifeIterator* NewIterator(int x, int y, int w, int h)
-{
-	ClearData(Temp);
-	return  NewIterator(Temp, x, y, w, h, 1);
+LifeIterator *NewIterator(int x, int y, int w, int h) {
+  ClearData(Temp);
+  return NewIterator(Temp, x, y, w, h, 1);
 }
 
-void Print(LifeIterator* iter)
-{
-	printf("\n(%d, %d, %d)", iter->curx, iter->cury, iter->curs);
+void Print(LifeIterator *iter) {
+  printf("\n(%d, %d, %d)", iter->curx, iter->cury, iter->curs);
 }
 
-void Print(LifeIterator* iter[], int numIters)
-{
-	for(int i = 0; i < numIters; i++)
-		Print(iter[i]);
+void Print(LifeIterator *iter[], int numIters) {
+  for (int i = 0; i < numIters; i++)
+    Print(iter[i]);
 }
 
-void Print(LifeIterator* iter, const char* name)
-{
-	printf("\nSetCurrent(%s, %d, %d, %d);", name, iter->curx, iter->cury, iter->curs);
+void Print(LifeIterator *iter, const char *name) {
+  printf("\nSetCurrent(%s, %d, %d, %d);", name, iter->curx, iter->cury,
+         iter->curs);
 }
 
-void Reset(LifeIterator* iter)
-{
-	iter -> curx = iter -> x;
-	iter -> cury = iter -> y;
-	iter -> curs = 0;
+void Reset(LifeIterator *iter) {
+  iter->curx = iter->x;
+  iter->cury = iter->y;
+  iter->curs = 0;
 }
 
-int Next(LifeIterator* iter)
-{
-	(iter -> curs)++;
-	
-	if((iter -> curs) < (iter->s))
-		return SUCCESS;
-	
-	(iter -> curs) = 0;
-	(iter -> curx)++;
-	
-	if((iter -> curx) < (iter->x) + (iter->w))
-		return SUCCESS;
-		
-	iter -> curx = iter->x;
-	(iter -> cury)++;
-	
-	if((iter -> cury) < (iter->y) + (iter->h))
-		return SUCCESS;
-	
-	Reset(iter);
-	
-	return FAIL;
+int Next(LifeIterator *iter) {
+  (iter->curs)++;
+
+  if ((iter->curs) < (iter->s))
+    return SUCCESS;
+
+  (iter->curs) = 0;
+  (iter->curx)++;
+
+  if ((iter->curx) < (iter->x) + (iter->w))
+    return SUCCESS;
+
+  iter->curx = iter->x;
+  (iter->cury)++;
+
+  if ((iter->cury) < (iter->y) + (iter->h))
+    return SUCCESS;
+
+  Reset(iter);
+
+  return FAIL;
 }
 
-int Next(LifeIterator *iter1[], int numIters, int toPrint)
-{
-	for(int i = 0; i < numIters; i++)
-	{
-		if(i == numIters - 1)
-		{
-			if(toPrint == YES)
-				Print(iter1[i]);
-		}
-		
-		if(Next(iter1[i]) == SUCCESS)
-			return SUCCESS;
-	}
-	
-	return FAIL;
+int Next(LifeIterator *iter1[], int numIters, int toPrint) {
+  for (int i = 0; i < numIters; i++) {
+    if (i == numIters - 1) {
+      if (toPrint == YES)
+        Print(iter1[i]);
+    }
+
+    if (Next(iter1[i]) == SUCCESS)
+      return SUCCESS;
+  }
+
+  return FAIL;
 }
 
-int Next(LifeIterator *iter1, LifeIterator *iter2, int toPrint)
-{
-	LifeIterator *iters[] = {iter1, iter2};
-    return Next(iters, 2, toPrint);
+int Next(LifeIterator *iter1, LifeIterator *iter2, int toPrint) {
+  LifeIterator *iters[] = {iter1, iter2};
+  return Next(iters, 2, toPrint);
 }
 
-int Next(LifeIterator *iter1, LifeIterator *iter2)
-{
-	return Next(iter1, iter2, YES);
+int Next(LifeIterator *iter1, LifeIterator *iter2) {
+  return Next(iter1, iter2, YES);
 }
 
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3, int toPrint)
-{
-	LifeIterator *iters[] = {iter1, iter2, iter3};
-    return Next(iters, 3, toPrint);
+int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+         int toPrint) {
+  LifeIterator *iters[] = {iter1, iter2, iter3};
+  return Next(iters, 3, toPrint);
 }
 
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3)
-{
-	return Next(iter1, iter2, iter3, YES);
+int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3) {
+  return Next(iter1, iter2, iter3, YES);
 }
 
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3, LifeIterator *iter4, int toPrint)
-{
-	LifeIterator *iters[] = {iter1, iter2, iter3, iter4};
-    return Next(iters, 4, toPrint);
+int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+         LifeIterator *iter4, int toPrint) {
+  LifeIterator *iters[] = {iter1, iter2, iter3, iter4};
+  return Next(iters, 4, toPrint);
 }
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3, LifeIterator *iter4)
-{
-	return Next(iter1, iter2, iter3, iter4, YES);
-}
-
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3, LifeIterator *iter4, LifeIterator *iter5, int toPrint)
-{
-	LifeIterator *iters[] = {iter1, iter2, iter3, iter4, iter5};
-    return Next(iters, 5, toPrint);
+int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+         LifeIterator *iter4) {
+  return Next(iter1, iter2, iter3, iter4, YES);
 }
 
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3, LifeIterator *iter4, LifeIterator *iter5)
-{
-	return Next(iter1, iter2, iter3, iter4, iter5, YES);
+int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+         LifeIterator *iter4, LifeIterator *iter5, int toPrint) {
+  LifeIterator *iters[] = {iter1, iter2, iter3, iter4, iter5};
+  return Next(iters, 5, toPrint);
 }
 
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3, LifeIterator *iter4, LifeIterator *iter5, LifeIterator *iter6, int toPrint)
-{
-	LifeIterator *iters[] = {iter1, iter2, iter3, iter4, iter5, iter6};
-    return Next(iters, 6, toPrint);
+int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+         LifeIterator *iter4, LifeIterator *iter5) {
+  return Next(iter1, iter2, iter3, iter4, iter5, YES);
 }
 
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3, LifeIterator *iter4, LifeIterator *iter5, LifeIterator *iter6)
-{
-	return Next(iter1, iter2, iter3, iter4, iter5, iter6, YES);
+int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+         LifeIterator *iter4, LifeIterator *iter5, LifeIterator *iter6,
+         int toPrint) {
+  LifeIterator *iters[] = {iter1, iter2, iter3, iter4, iter5, iter6};
+  return Next(iters, 6, toPrint);
 }
 
-int Next(LifeIterator *iter1[], int numIters)
-{
-	return Next(iter1, numIters, YES);
+int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+         LifeIterator *iter4, LifeIterator *iter5, LifeIterator *iter6) {
+  return Next(iter1, iter2, iter3, iter4, iter5, iter6, YES);
 }
 
-void FreeIterator(LifeIterator* iter)
-{
-	for(int i = 0; i < iter->s; i++)
-		FreeState(iter->States[i]);
-		
-	free(iter);
+int Next(LifeIterator *iter1[], int numIters) {
+  return Next(iter1, numIters, YES);
 }
 
-void Join(LifeState* state, LifeIterator* iter)
-{
-	Join(state, iter->States[iter -> curs], iter->curx, iter->cury);
+void FreeIterator(LifeIterator *iter) {
+  for (int i = 0; i < iter->s; i++)
+    FreeState(iter->States[i]);
+
+  free(iter);
 }
 
-void PutState(LifeIterator* iter)
-{
-	Join(GlobalState, iter->States[iter -> curs], iter->curx, iter->cury);
+void Join(LifeState *state, LifeIterator *iter) {
+  Join(state, iter->States[iter->curs], iter->curx, iter->cury);
 }
 
-void SetCurrent(LifeIterator* iter, int curx, int cury, int curs)
-{
-	iter -> curx = curx;
-	iter -> cury = cury;
-	iter -> curs = curs;
+void PutState(LifeIterator *iter) {
+  Join(GlobalState, iter->States[iter->curs], iter->curx, iter->cury);
 }
 
-int Validate(LifeIterator *iter1, LifeIterator *iter2)
-{
-	if(iter1->curx > iter2->curx)
-		return SUCCESS;
-	
-	if(iter1->curx < iter2->curx)
-		return FAIL;
-	
-	if(iter1->cury > iter2->cury)
-		return SUCCESS;
-	
-	if(iter1->cury < iter2->cury)
-		return FAIL;
-		
-	if(iter1->curs > iter2->curs)
-		return SUCCESS;
-		
-	return FAIL;
+void SetCurrent(LifeIterator *iter, int curx, int cury, int curs) {
+  iter->curx = curx;
+  iter->cury = cury;
+  iter->curs = curs;
 }
 
-int Validate(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3)
-{
-	if(Validate(iter1, iter2) == FAIL)
-		return FAIL;
-	
-	if(Validate(iter2, iter3) == FAIL)
-		return FAIL;
-	
-	return SUCCESS;
+int Validate(LifeIterator *iter1, LifeIterator *iter2) {
+  if (iter1->curx > iter2->curx)
+    return SUCCESS;
+
+  if (iter1->curx < iter2->curx)
+    return FAIL;
+
+  if (iter1->cury > iter2->cury)
+    return SUCCESS;
+
+  if (iter1->cury < iter2->cury)
+    return FAIL;
+
+  if (iter1->curs > iter2->curs)
+    return SUCCESS;
+
+  return FAIL;
 }
 
-int Validate(LifeIterator *iters[], int iterCount)
-{
-	for(int i = 0; i < iterCount - 1; i++)
-		if(Validate(iters[i], iters[i + 1]) == FAIL)
-			return FAIL;
-			
-	return SUCCESS;
+int Validate(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3) {
+  if (Validate(iter1, iter2) == FAIL)
+    return FAIL;
+
+  if (Validate(iter2, iter3) == FAIL)
+    return FAIL;
+
+  return SUCCESS;
 }
 
-typedef struct 
-{
-	LifeState** results;
-	int size;
-	int allocated;
-	
+int Validate(LifeIterator *iters[], int iterCount) {
+  for (int i = 0; i < iterCount - 1; i++)
+    if (Validate(iters[i], iters[i + 1]) == FAIL)
+      return FAIL;
+
+  return SUCCESS;
+}
+
+typedef struct {
+  LifeState **results;
+  int size;
+  int allocated;
+
 } LifeResults;
 
-LifeResults* NewResults()
-{
-	LifeResults* result = (LifeResults*)(malloc(sizeof(LifeResults)));
-	
-	result->results = (LifeState**)(malloc(10 * sizeof(LifeState*)));
-	
-	for(int i = 0; i < 10; i++)
-	{
-		(result->results)[i] = NewState();
-	}
-	
-	result->allocated = 10;
-	result->size = 0;
-	
-	return result;
+LifeResults *NewResults() {
+  LifeResults *result = (LifeResults *)(malloc(sizeof(LifeResults)));
+
+  result->results = (LifeState **)(malloc(10 * sizeof(LifeState *)));
+
+  for (int i = 0; i < 10; i++) {
+    (result->results)[i] = NewState();
+  }
+
+  result->allocated = 10;
+  result->size = 0;
+
+  return result;
 }
 
-void Add(LifeResults* results, LifeState* state)
-{
-	if(results->size == results->allocated)
-	{
-		results->results = (LifeState**)(realloc(results->results, results->allocated * 2 * sizeof(LifeState*)));
-		results->allocated *= 2;
-		
-		for(int i = results->size; i < 2 * (results->size); i++)
-		{
-			(results->results)[i] = NewState();
-		}
-	}
-	
-	Copy((results->results)[results->size], state);
-	results->size++;
+void Add(LifeResults *results, LifeState *state) {
+  if (results->size == results->allocated) {
+    results->results = (LifeState **)(realloc(
+        results->results, results->allocated * 2 * sizeof(LifeState *)));
+    results->allocated *= 2;
+
+    for (int i = results->size; i < 2 * (results->size); i++) {
+      (results->results)[i] = NewState();
+    }
+  }
+
+  Copy((results->results)[results->size], state);
+  results->size++;
 }
 
-void Add(LifeResults* results)
-{
-	Add(results, GlobalState);
+void Add(LifeResults *results) { Add(results, GlobalState); }
+
+char *ReadFile(const char *filePath) {
+  char *buffer = (char *)malloc(1);
+  buffer[0] = '\0';
+  long length;
+  FILE *f = fopen(filePath, "r");
+
+  if (f) {
+    fseek(f, 0, SEEK_END);
+    length = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    buffer = (char *)realloc(buffer, length);
+    if (buffer) {
+      int len = fread(buffer, 1, length, f); // len unused
+    }
+    fclose(f);
+  }
+
+  return buffer;
 }
 
-char* ReadFile(const char *filePath)
-{
-	char* buffer = (char*) malloc(1);
-	buffer[0] = '\0';
-	long length;
-	FILE * f = fopen (filePath, "r");
+void SaveResults(LifeResults *results, const char *filePath) {
+  FILE *f;
+  f = fopen(filePath, "wb");
 
-	if (f)
-	{
-	  fseek (f, 0, SEEK_END);
-	  length = ftell (f);
-	  fseek (f, 0, SEEK_SET);
-	  buffer = (char*)realloc (buffer, length);
-	  if (buffer)
-	  {
-		int len = fread (buffer, 1, length, f); // len unused
-	  }
-	  fclose (f);
-	  
-	}	
-	
-	return buffer;
+  for (int i = 0; i < results->size; i++) {
+    fputs(GetRLE((results->results)[i]), f);
+    fprintf(f, "129$");
+  }
 
+  fclose(f);
 }
 
-void SaveResults(LifeResults* results, const char* filePath)
-{
-	FILE *f;
-    f = fopen(filePath, "wb");
-	
-	for(int i = 0; i < results->size; i++)
-	{	
-		fputs(GetRLE((results->results)[i]), f);
-		fprintf(f,	"129$");
-	}
-	
-	fclose(f);
-}
+LifeResults *LoadResults(const char *filePath) {
+  LifeResults *results = NewResults();
 
-LifeResults* LoadResults(const char* filePath)
-{
-	LifeResults* results = NewResults();
-	
-	char* rle = ReadFile(filePath);
-	int idx = 0;
-	
-	while(rle[idx] != '\0')
-	{
-		ClearData(Temp);
-		idx = Parse(Temp, rle, idx);
-		Move(Temp, -32, -32);
-		Add(results, Temp);
-	}
-	
-	return results;
+  char *rle = ReadFile(filePath);
+  int idx = 0;
+
+  while (rle[idx] != '\0') {
+    ClearData(Temp);
+    idx = Parse(Temp, rle, idx);
+    Move(Temp, -32, -32);
+    Add(results, Temp);
+  }
+
+  return results;
 }
