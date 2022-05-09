@@ -21,6 +21,15 @@ const int rot90anti[] = {0, -1, 1, 0};
 const int symmXY[] = {0, 1, 1, 0};
 const int symmYX[] = {0, -1, -1, 0};
 
+enum Symmetry {
+  NONE,
+  HORIZONTAL,
+  HORIZONTALEVEN,
+  DIAGONAL,
+  DIAGONALEVENX,
+  DIAGONALEVENBOTH,
+};
+
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
   std::string item;
@@ -44,6 +53,7 @@ public:
   int searchArea[4];
   int maxW;
   int maxH;
+  Symmetry symmetricSearch;
   std::vector<std::string> targetFilter;
   std::vector<int> filterdx;
   std::vector<int> filterdy;
@@ -69,6 +79,7 @@ public:
     outputFile = "results.rle";
     maxW = -1;
     maxH = -1;
+    symmetricSearch = NONE;
     fullReportFile = "";
     combineResults = false;
   }
@@ -189,6 +200,8 @@ void ReadParams(std::string fname, std::vector<CatalystInput> &catalysts,
   std::string fullReport = "full-report";
   std::string combine = "combine-results";
 
+  std::string symmetry = "symmetry";
+
   std::string line;
 
   while (std::getline(infile, line)) {
@@ -283,9 +296,80 @@ void ReadParams(std::string fname, std::vector<CatalystInput> &catalysts,
           params.combineSurvive.push_back(atoi(elems[i].c_str()));
       }
 
+      if (elems[0] == symmetry) {
+        if(elems[1] == "horizontal") {
+          params.symmetricSearch = HORIZONTAL;
+        } else if (elems[1] == "horizontaleven") {
+          params.symmetricSearch = HORIZONTALEVEN;
+        } else if (elems[1] == "diagonal") {
+          params.symmetricSearch = DIAGONAL;
+        } else if (elems[1] == "diagonalevenx") {
+          params.symmetricSearch = DIAGONALEVENX;
+        } else if (elems[1] == "diagonalevenboth") {
+          params.symmetricSearch = DIAGONALEVENBOTH;
+        }
+      }
+
+
     } catch (const std::exception &ex) {
     }
   }
+}
+
+void ApplySym(LifeState *state, Symmetry sym) {
+  if (sym == HORIZONTAL) {
+    FlipX(state);
+  } else if (sym == HORIZONTALEVEN) {
+    Reverse(state->state, 0, N - 1);
+  } else if (sym == DIAGONAL) {
+    FlipX(state);
+    FlipY(state);
+  } else if (sym == DIAGONALEVENX) {
+    Reverse(state->state, 0, N - 1);
+    FlipY(state);
+  } else if (sym == DIAGONALEVENBOTH) {
+    Reverse(state->state, 0, N - 1);
+    BitReverse(state);
+  }
+}
+
+void PutStateWSym(LifeState *state, int x, int y, Symmetry sym) {
+  PutState(state, x, y);
+  if (sym == NONE)
+    return;
+  LifeState transformed;
+  for (int i = 0; i < N; i++)
+    transformed.state[i] = 0;
+
+  transformed.min = 0;
+  transformed.max = N - 1;
+  transformed.gen = 0;
+
+  Join(&transformed, state, x, y);
+  ApplySym(&transformed, sym);
+  PutState(&transformed);
+}
+
+void PutStateWSym(LifeState *state, Symmetry sym) {
+  PutState(state);
+  if (sym == NONE)
+    return;
+
+  LifeState transformed;
+  Copy(&transformed, state);
+  ApplySym(&transformed, sym);
+  PutState(&transformed);
+}
+
+void PutStateWSym(LifeIterator *iter, Symmetry sym) {
+  PutState(iter);
+  if (sym == NONE)
+    return;
+
+  LifeState transformed;
+  Copy(&transformed, iter->States[iter->curs], iter->curx, iter->cury);
+  ApplySym(&transformed, sym);
+  PutState(&transformed);
 }
 
 void GenerateStates(const std::vector<CatalystInput> &catalysts,
@@ -345,8 +429,8 @@ void XYStartGenPerState(
 
       for (int y = 0; y < 64; y++) {
         New();
-        PutState(states[i], x, y);
-        PutState(pat);
+        PutStateWSym(states[i], x, y, params.symmetricSearch);
+        PutStateWSym(pat, params.symmetricSearch);
         int j;
 
         for (j = 0; j < params.maxGen + 5; j++) {
@@ -372,7 +456,7 @@ void XYStartGenPerState(
 void PreIteratePat(LifeState *pat, std::vector<LifeState *> &preIterated,
                    const SearchParams &params) {
   New();
-  PutState(pat);
+  PutStateWSym(pat, params.symmetricSearch);
 
   for (int i = 0; i < params.maxGen + 5; i++) {
     LifeState *t = NewState();
@@ -957,7 +1041,7 @@ public:
 
   void PutItersState() {
     for (int i = 0; i < numIters; i++) {
-      PutState(iters[i]);
+      PutStateWSym(iters[i], params.symmetricSearch);
     }
   }
 
@@ -1037,12 +1121,8 @@ public:
 
   void PutCurrentState() {
     New();
-
-    for (int j = 0; j < numIters; j++) {
-      PutState(iters[j]);
-    }
-
-    PutState(pat);
+    PutItersState();
+    PutStateWSym(pat, params.symmetricSearch);
   }
 
   bool ValidateFilters(const int &maxFilterGen) {
