@@ -956,8 +956,8 @@ public:
     for (int i = 0; i < numIters; i++) {
       Copy(preShifted[i]->wanted, targets[iters[i]->curs]->wanted);
       Copy(preShifted[i]->unwanted, targets[iters[i]->curs]->unwanted);
-      Transform(preShifted[i]->wanted,   iters[i]->curx, iters[i]->cury);
-      Transform(preShifted[i]->unwanted, iters[i]->curx, iters[i]->cury);
+      Move(preShifted[i]->wanted,   iters[i]->curx, iters[i]->cury);
+      Move(preShifted[i]->unwanted, iters[i]->curx, iters[i]->cury);
       PutState(iters[i]);
     }
   }
