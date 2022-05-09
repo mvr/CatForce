@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string.h>
 
 #define N 64
 #define CAPTURE_COUNT 10
@@ -425,21 +426,16 @@ void CirculateUp(uint64_t *state, int anyk) {
 void Move(LifeState *state, int x, int y) {
   uint64_t temp[N];
 
-  if (y < 0) {
-    for (int i = 0; i < N; i++) {
-      int idx = (i - x + N) % N;
-      temp[i] = CirculateRight(state->state[idx], -y);
-    }
-  } else {
-    for (int i = 0; i < N; i++) {
-      int idx = (i - x + N) % N;
-      temp[i] = CirculateRight(state->state[idx], 64 - y);
-    }
-  }
+  if (x < 0)
+    x += N;
+  if (y < 0)
+    y += 64;
 
-  for (int i = 0; i < N; i++) {
-    state->state[i] = temp[i];
-  }
+  for (int i = 0; i < N; i++)
+    temp[i] = CirculateRight(state->state[i], 64-y);
+
+  memmove(state->state,     temp + (N-x), x*sizeof(uint64_t));
+  memmove(state->state + x, temp,         (N-x)*sizeof(uint64_t));
 
   state->min = 0;
   state->max = N - 1;
@@ -1136,20 +1132,23 @@ void Run(int numIter) { Evolve(GlobalState, numIter); }
 
 void Join(LifeState *main, LifeState *delta) { Copy(main, delta, OR); }
 
-void Join(LifeState *main, LifeState *delta, int dx, int dy) {
-  uint64_t rotated[N] = {0};
-  for (int i = delta->min; i <= delta->max; i++) {
-    int idx = (i + dx + N) % N;
-    rotated[idx] = delta->state[i];
-  }
-  if (dy < 0) {
-    for (int i = 0; i <= N - 1; i++) {
-      main->state[i] |= CirculateRight(rotated[i], -dy);
-    }
-  } else {
-    for (int i = 0; i <= N - 1; i++) {
-      main->state[i] |= CirculateRight(rotated[i], 64 - dy);
-    }
+void Join(LifeState *__restrict__ main, LifeState *__restrict__ delta, int x, int y) {
+  uint64_t temp1[N] = {0};
+  uint64_t temp2[N];
+
+  if (x < 0)
+    x += N;
+  if (y < 0)
+    y += 64;
+
+  for (int i = delta->min; i <= delta->max; i++)
+    temp1[i] = CirculateRight(delta->state[i], 64-y);
+
+  memmove(temp2,     temp1 + (N-x), x*sizeof(uint64_t));
+  memmove(temp2 + x, temp1,         (N-x)*sizeof(uint64_t));
+
+  for (int i = 0; i < N; i++) {
+    main->state[i] |= temp2[i];
   }
 
   main->min = 0;
