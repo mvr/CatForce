@@ -870,21 +870,18 @@ void RemoveGliders(LifeState *state) {
 
 void IterateState(LifeState *lifstate) {
   uint64_t *state = lifstate->state;
-  int min = lifstate->min;
-  int max = lifstate->max;
+  // int min = lifstate->min;
+  // int max = lifstate->max;
+  int min = 0;
+  int max = N - 1;
 
   uint64_t tempxor[N];
   uint64_t tempand[N];
 
   uint64_t tempState[N];
 
-  uint64_t l, r, temp;
-  uint64_t x0, r0, xU, aU, xB, aB;
-  uint64_t a0, a1, a2, c, b0, b1, b2;
-
-  int i, idxU, idxB;
-
-  for (i = min; i <= max; i++) {
+  for (int i = min; i <= max; i++) {
+    uint64_t l, r, temp;
     temp = state[i];
     l = CirculateLeft(temp);
     r = CirculateRight(temp);
@@ -892,7 +889,10 @@ void IterateState(LifeState *lifstate) {
     tempand[i] = ((l | r) & temp) | (l & r);
   }
 
-  for (i = min; i <= max; i++) {
+  #pragma clang loop unroll(full)
+  for (int i = min; i <= max; i++) {
+    int idxU;
+    int idxB;
     if (i == 0)
       idxU = N - 1;
     else
@@ -903,26 +903,26 @@ void IterateState(LifeState *lifstate) {
     else
       idxB = i + 1;
 
-    temp = state[i];
+    uint64_t temp = state[i];
 
-    x0 = tempxor[i];
-    r0 = tempand[i];
+    uint64_t x0 = tempxor[i];
+    uint64_t r0 = tempand[i];
 
-    xU = tempxor[idxU];
-    aU = tempand[idxU];
+    uint64_t xU = tempxor[idxU];
+    uint64_t aU = tempand[idxU];
 
-    xB = tempxor[idxB];
-    aB = tempand[idxB];
+    uint64_t xB = tempxor[idxB];
+    uint64_t aB = tempand[idxB];
 
-    a0 = x0 ^ xU;
-    c = (x0 & xU);
-    a1 = c ^ aU ^ r0;
-    a2 = (aU & r0) | ((aU | r0) & c);
+    uint64_t a0 = x0 ^ xU;
+    uint64_t c = (x0 & xU);
+    uint64_t a1 = c ^ aU ^ r0;
+    uint64_t a2 = (aU & r0) | ((aU | r0) & c);
 
-    b0 = xB ^ a0;
-    c = (xB & a0);
-    b1 = c ^ aB ^ a1;
-    b2 = (aB & a1) | ((aB | a1) & c);
+    uint64_t b0 = xB ^ a0;
+    uint64_t d = (xB & a0);
+    uint64_t b1 = d ^ aB ^ a1;
+    uint64_t b2 = (aB & a1) | ((aB | a1) & d);
 
     tempState[i] =
         (b0 & b1 & (~b2) & (~a2)) | ((temp) & (a2 ^ b2) & (~b0) & (~b1));
@@ -937,7 +937,7 @@ void IterateState(LifeState *lifstate) {
   if (e == N - 2)
     e = N - 1;
 
-  for (i = s; i <= e; i++) {
+  for (int i = s; i <= e; i++) {
     state[i] = tempState[i];
   }
 
