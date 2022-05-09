@@ -419,17 +419,23 @@ void CirculateUp(uint64_t *state, int anyk) {
 }
 
 void Move(LifeState *state, int x, int y) {
-  for (int i = 0; i < N; i++) {
-    if (y < 0)
-      state->state[i] = CirculateRight(state->state[i], -y);
-    else
-      state->state[i] = CirculateRight(state->state[i], 64 - y);
+  uint64_t temp[N];
+
+  if (y < 0) {
+    for (int i = 0; i < N; i++) {
+      int idx = (i - x + N) % N;
+      temp[i] = CirculateRight(state->state[idx], -y);
+    }
+  } else {
+    for (int i = 0; i < N; i++) {
+      int idx = (i - x + N) % N;
+      temp[i] = CirculateRight(state->state[idx], 64 - y);
+    }
   }
 
-  if (x < 0)
-    CirculateUp(state->state, 64 + x);
-  else
-    CirculateUp(state->state, x);
+  for (int i = 0; i < N; i++) {
+    state->state[i] = temp[i];
+  }
 
   state->min = 0;
   state->max = N - 1;
