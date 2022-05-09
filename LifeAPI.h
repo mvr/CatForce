@@ -1339,14 +1339,25 @@ int Next(LifeIterator *iter[], int numIters, int toPrint) {
     iter[i]->cury = iter[i]->y;
   }
 
-  if (toPrint == YES && i == numIters - 1) Print(iter[numIters - 1]);
-  if(i == numIters) return FAIL;
+  if (toPrint == YES && i == numIters - 1)
+    Print(iter[numIters - 1]);
+
+  if (i == numIters)
+    return FAIL;
+  if (i == numIters-1)
+    i--;
 
   // Otherwise, count back down and reset everything we passed.
-  for(int j = i-1; j >= 0; j--) {
-    iter[j]->curx = std::max(iter[j]->curx, iter[j+1]->curx);
-    iter[j]->cury = std::max(iter[j]->cury, iter[j+1]->cury);
-    iter[j]->curs = 0;
+  for (int j = i; j >= 0; j--) {
+    if (iter[j]->curx < iter[j + 1]->curx) {
+      iter[j]->curx = iter[j + 1]->curx;
+      if (iter[j]->cury < iter[j + 1]->cury) {
+        iter[j]->cury = iter[j + 1]->cury;
+        if (iter[j]->curs <= iter[j + 1]->curs) {
+          iter[j]->curs = iter[j + 1]->curs;
+        }
+      }
+    }
   }
 
   return SUCCESS;
