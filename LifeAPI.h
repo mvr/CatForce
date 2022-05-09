@@ -868,6 +868,50 @@ void RemoveGliders(LifeState *state) {
     RecalculateMinMax(state);
 }
 
+void inline Add(uint64_t& b1, uint64_t &b0, const uint64_t& val)
+{
+    b1 |= b0 & val;
+    b0 ^= val;
+}
+
+void inline Add_Init(uint64_t& b1, uint64_t& b0, const uint64_t& val)
+{
+    b1 = b0 & val;
+    b0 ^= val;
+}
+
+void inline Add(uint64_t& b2, uint64_t& b1, uint64_t &b0, const uint64_t& val)
+{
+    uint64_t t_b2 = b0 & val;
+
+    b2 |= t_b2 & b1;
+    b1 ^= t_b2;
+    b0 ^= val;
+}
+
+void inline Add_Init(uint64_t& b2, uint64_t& b1, uint64_t &b0, uint64_t& val)
+{
+    uint64_t t_b2 = b0 & val;
+
+    b2 = t_b2&b1;
+    b1 ^= t_b2;
+    b0 ^= val;
+}
+
+uint64_t inline Evolve(const uint64_t& temp, const uint64_t& bU0, const uint64_t& bU1, const uint64_t& bB0, const uint64_t& bB1)
+{
+    uint64_t sum0, sum1, sum2;
+    sum0 = temp << 1;
+    Add_Init(sum1, sum0, temp >> 1);
+
+    Add(sum1, sum0, bU0);
+    Add_Init(sum2, sum1, bU1);
+    Add(sum2, sum1, sum0, bB0);
+    Add(sum2, sum1, bB1);
+
+    return ~sum2 & sum1 & (temp | sum0);
+}
+
 void IterateState(LifeState *lifstate) {
   uint64_t *state = lifstate->state;
   // int min = lifstate->min;
@@ -903,29 +947,7 @@ void IterateState(LifeState *lifstate) {
     else
       idxB = i + 1;
 
-    uint64_t temp = state[i];
-
-    uint64_t x0 = tempxor[i];
-    uint64_t r0 = tempand[i];
-
-    uint64_t xU = tempxor[idxU];
-    uint64_t aU = tempand[idxU];
-
-    uint64_t xB = tempxor[idxB];
-    uint64_t aB = tempand[idxB];
-
-    uint64_t a0 = x0 ^ xU;
-    uint64_t c = (x0 & xU);
-    uint64_t a1 = c ^ aU ^ r0;
-    uint64_t a2 = (aU & r0) | ((aU | r0) & c);
-
-    uint64_t b0 = xB ^ a0;
-    uint64_t d = (xB & a0);
-    uint64_t b1 = d ^ aB ^ a1;
-    uint64_t b2 = (aB & a1) | ((aB | a1) & d);
-
-    tempState[i] =
-        (b0 & b1 & (~b2) & (~a2)) | ((temp) & (a2 ^ b2) & (~b0) & (~b1));
+    tempState[i] = Evolve(state[i], tempxor[idxU], tempand[idxU], tempxor[idxB], tempand[idxB]);
   }
 
   int s = min + 1;
