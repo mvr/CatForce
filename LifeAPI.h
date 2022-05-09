@@ -1311,18 +1311,36 @@ int Next(LifeIterator *iter) {
   return FAIL;
 }
 
-int Next(LifeIterator *iter1[], int numIters, int toPrint) {
-  for (int i = 0; i < numIters; i++) {
-    if (i == numIters - 1) {
-      if (toPrint == YES)
-        Print(iter1[i]);
-    }
+int Next(LifeIterator *iter[], int numIters, int toPrint) {
+  int i = 0;
+  for (i = 0; i < numIters; i++) {
+    (iter[i]->curs)++;
+    if ((iter[i]->curs) < (iter[i]->s))
+      break;
+    iter[i]->curs = 0;
 
-    if (Next(iter1[i]) == SUCCESS)
-      return SUCCESS;
+    (iter[i]->curx)++;
+    if ((iter[i]->curx) < (iter[i]->x) + (iter[i]->w))
+      break;
+    iter[i]->curx = iter[i]->x;
+
+    (iter[i]->cury)++;
+    if ((iter[i]->cury) < (iter[i]->y) + (iter[i]->h))
+      break;
+    iter[i]->cury = iter[i]->y;
   }
 
-  return FAIL;
+  if (toPrint == YES && i == numIters - 1) Print(iter[numIters - 1]);
+  if(i == numIters) return FAIL;
+
+  // Otherwise, count back down and reset everything we passed.
+  for(int j = i-1; j >= 0; j--) {
+    iter[j]->curx = std::max(iter[j]->curx, iter[j+1]->curx);
+    iter[j]->cury = std::max(iter[j]->cury, iter[j+1]->cury);
+    iter[j]->curs = 0;
+  }
+
+  return SUCCESS;
 }
 
 int Next(LifeIterator *iter1, LifeIterator *iter2, int toPrint) {
