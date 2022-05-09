@@ -1,0 +1,26 @@
+==Setup==
+max-gen 100
+start-gen 1
+num-catalyst 2
+stable-interval 15
+symmetry diagonal
+
+--search area---
+search-area -1 -15 20 30
+#fit-in-width-height 12 8
+
+-pattern--
+pat 2b3o$bo3bo$o5bo$o5bo$o5bo$bo3bo$2b3o! -1 1
+
+==Catalysts==
+cat 2o$2o 60 0 0 . 
+cat 2o$o$b3o$3bo! 12 -2 -2 *
+cat bo$obo$obo$bo! 50 -1 -2 /
+cat b2o$o2bo$bobo$2bo 35 -2 -2 +
+cat bo$obo$bo! 15 -1 -1 .
+cat 2o$obo$bo! 25 -1 -1 +
+cat 2o$obo$b2o! 35 -1 -1 |
+
+==Output===
+output sym.rle 
+
