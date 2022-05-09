@@ -96,13 +96,13 @@ LifeString *NewString(const char *val) {
 }
 
 typedef struct {
+  uint64_t state[N];
+
   int min;
   int max;
   int gen;
-  uint64_t state[N];
 
-  LifeString *emittedGliders;
-
+  // LifeString *emittedGliders;
 } LifeState;
 
 static LifeState *GlobalState;
@@ -326,19 +326,19 @@ void ClearData(LifeState *state) {
   state->max = N - 1;
   state->gen = 0;
 
-  Clear(state->emittedGliders);
+  // Clear(state->emittedGliders);
 }
 
 LifeState *NewState() {
   LifeState *result = (LifeState *)(malloc(sizeof(LifeState)));
-  result->emittedGliders = NewString();
+  // result->emittedGliders = NewString();
   ClearData(result);
 
   return result;
 }
 
 void FreeState(LifeState *state) {
-  FreeString(state->emittedGliders);
+  // FreeString(state->emittedGliders);
   free(state);
 }
 
@@ -902,15 +902,15 @@ int RemoveAtX(LifeState *state, int x, int startGiderIdx) {
 
       for (int j = 0; j < 64; j++) {
         if (gld % 2 == 1) {
-          Append(state->emittedGliders, "(");
-          Append(state->emittedGliders, i);
-          Append(state->emittedGliders, ",");
-          Append(state->emittedGliders, j);
-          Append(state->emittedGliders, ",");
-          Append(state->emittedGliders, state->gen);
-          Append(state->emittedGliders, ",");
-          Append(state->emittedGliders, x);
-          Append(state->emittedGliders, ")");
+          // Append(state->emittedGliders, "(");
+          // Append(state->emittedGliders, i);
+          // Append(state->emittedGliders, ",");
+          // Append(state->emittedGliders, j);
+          // Append(state->emittedGliders, ",");
+          // Append(state->emittedGliders, state->gen);
+          // Append(state->emittedGliders, ",");
+          // Append(state->emittedGliders, x);
+          // Append(state->emittedGliders, ")");
         }
 
         gld = gld >> 1;
