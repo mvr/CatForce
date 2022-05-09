@@ -948,12 +948,15 @@ public:
     return minIter;
   }
 
+  void PreShiftIters() {
+    for (int i = 0; i < numIters; i++) {
+      Copy(preShifted[i]->wanted,   targets[iters[i]->curs]->wanted, iters[i]->curx, iters[i]->cury);
+      Copy(preShifted[i]->unwanted, targets[iters[i]->curs]->unwanted, iters[i]->curx, iters[i]->cury);
+    }
+  }
+
   void PutItersState() {
     for (int i = 0; i < numIters; i++) {
-      Copy(preShifted[i]->wanted, targets[iters[i]->curs]->wanted);
-      Copy(preShifted[i]->unwanted, targets[iters[i]->curs]->unwanted);
-      Move(preShifted[i]->wanted,   iters[i]->curx, iters[i]->cury);
-      Move(preShifted[i]->unwanted, iters[i]->curx, iters[i]->cury);
       PutState(iters[i]);
     }
   }
@@ -1083,6 +1086,7 @@ public:
     // Place catalysts first and check if they collide.
     New();
 
+    PreShiftIters();
     PutItersState();
     if (CatalystCollide() == YES)
       return;

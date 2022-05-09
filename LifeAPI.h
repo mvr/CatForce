@@ -265,6 +265,24 @@ void Copy(LifeState *main, LifeState *delta, CopyType op) {
 }
 
 void Copy(LifeState *main, LifeState *delta) { Copy(main, delta, COPY); }
+inline void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta,
+                 int x, int y) {
+  uint64_t temp1[N] = {0};
+
+  if (x < 0)
+    x += N;
+  if (y < 0)
+    y += 64;
+
+  for (int i = delta->min; i <= delta->max; i++)
+    temp1[i] = CirculateRight(delta->state[i], 64 - y);
+
+  memmove(main->state, temp1 + (N - x), x * sizeof(uint64_t));
+  memmove(main->state + x, temp1, (N - x) * sizeof(uint64_t));
+
+  main->min = 0;
+  main->max = N - 1;
+}
 
 int GetPop(LifeState *state) {
   int pop = 0;
