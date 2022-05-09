@@ -1132,7 +1132,7 @@ void Run(int numIter) { Evolve(GlobalState, numIter); }
 
 void Join(LifeState *main, LifeState *delta) { Copy(main, delta, OR); }
 
-void Join(LifeState *__restrict__ main, LifeState *__restrict__ delta, int x, int y) {
+inline void Join(LifeState *__restrict__ main, LifeState *__restrict__ delta, int x, int y) {
   uint64_t temp1[N] = {0};
   uint64_t temp2[N];
 
