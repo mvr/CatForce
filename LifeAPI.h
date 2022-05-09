@@ -278,8 +278,13 @@ inline void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta,
   if (y < 0)
     y += 64;
 
-  for (int i = delta->min; i <= delta->max; i++)
-    temp1[i] = CirculateRight(delta->state[i], 64 - y);
+  if (y != 0) {
+    for (int i = delta->min; i <= delta->max; i++)
+      temp1[i] = CirculateLeft(delta->state[i], y);
+  } else {
+    for (int i = delta->min; i <= delta->max; i++)
+      temp1[i] = delta->state[i];
+  }
 
   memmove(main->state, temp1 + (N - x), x * sizeof(uint64_t));
   memmove(main->state + x, temp1, (N - x) * sizeof(uint64_t));
@@ -453,8 +458,13 @@ void Move(LifeState *state, int x, int y) {
   if (y < 0)
     y += 64;
 
-  for (int i = 0; i < N; i++)
-    temp[i] = CirculateRight(state->state[i], 64-y);
+  if (y != 0) {
+    for (int i = 0; i < N; i++)
+      temp[i] = CirculateLeft(state->state[i], y);
+  } else {
+    for (int i = 0; i < N; i++)
+      temp[i] = state->state[i];
+  }
 
   memmove(state->state,     temp + (N-x), x*sizeof(uint64_t));
   memmove(state->state + x, temp,         (N-x)*sizeof(uint64_t));
@@ -1163,8 +1173,13 @@ inline void Join(LifeState *__restrict__ main, LifeState *__restrict__ delta, in
   if (y < 0)
     y += 64;
 
-  for (int i = delta->min; i <= delta->max; i++)
-    temp1[i] = CirculateRight(delta->state[i], 64-y);
+  if (y != 0) {
+    for (int i = delta->min; i <= delta->max; i++)
+      temp1[i] = CirculateLeft(delta->state[i], y);
+  } else {
+    for (int i = delta->min; i <= delta->max; i++)
+      temp1[i] = delta->state[i];
+  }
 
   memmove(temp2,     temp1 + (N-x), x*sizeof(uint64_t));
   memmove(temp2 + x, temp1,         (N-x)*sizeof(uint64_t));
