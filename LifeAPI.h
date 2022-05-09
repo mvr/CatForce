@@ -482,6 +482,27 @@ void FlipX() { FlipX(GlobalState); }
 
 void FlipX(int idx) { FlipX(Captures[idx]); }
 
+uint64_t BitReverse (uint64_t x) {
+  const uint64_t h1 = 0x5555555555555555ULL;
+  const uint64_t h2 = 0x3333333333333333ULL;
+  const uint64_t h4 = 0x0F0F0F0F0F0F0F0FULL;
+  const uint64_t v1 = 0x00FF00FF00FF00FFULL;
+  const uint64_t v2 = 0x0000FFFF0000FFFFULL;
+  x = ((x >>  1) & h1) | ((x & h1) <<  1);
+  x = ((x >>  2) & h2) | ((x & h2) <<  2);
+  x = ((x >>  4) & h4) | ((x & h4) <<  4);
+  x = ((x >>  8) & v1) | ((x & v1) <<  8);
+  x = ((x >> 16) & v2) | ((x & v2) << 16);
+  x = ( x >> 32)       | ( x       << 32);
+  return x;
+}
+
+void BitReverse(LifeState *state){
+  for (int i = 0; i < N; i++) {
+    state->state[i] = BitReverse(state->state[i]);
+  }
+}
+
 void Transform(LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
                int dyy) {
   ClearData(Temp2);
@@ -505,6 +526,11 @@ void Transform(LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
 
   Copy(state, Temp2);
   RecalculateMinMax(state);
+}
+
+void FlipY(LifeState *state) {
+  BitReverse(state);
+  Move(state, 0, 1);
 }
 
 void Transform(LifeState *state, int dx, int dy) { Move(state, dx, dy); }
