@@ -241,7 +241,8 @@ void Print(LifeState *state) {
   printf("\n\n\n\n\n\n");
 }
 
-void Copy(LifeState *main, LifeState *delta, CopyType op) {
+void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta,
+                 CopyType op) {
   if (op == COPY) {
     for (int i = 0; i < N; i++)
       main->state[i] = delta->state[i];
@@ -264,7 +265,10 @@ void Copy(LifeState *main, LifeState *delta, CopyType op) {
   RecalculateMinMax(main);
 }
 
-void Copy(LifeState *main, LifeState *delta) { Copy(main, delta, COPY); }
+void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta) {
+  Copy(main, delta, COPY);
+}
+
 inline void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta,
                  int x, int y) {
   uint64_t temp1[N] = {0};
