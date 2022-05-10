@@ -19,10 +19,31 @@
 #define YES 1
 #define NO 0
 
+#ifdef __GNUC__
+#ifndef __clang__
+#include <x86intrin.h>
+#endif
+#endif
+
 #ifdef __MSC_VER
 #include <intrin.h>
 #define __builtin_popcount __popcnt64
 #endif
+
+
+// void fastMemcpy(void *pvDest, void *pvSrc, size_t nBytes) {
+//   assert(nBytes % 32 == 0);
+//   assert((intptr_t(pvDest) & 31) == 0);
+//   assert((intptr_t(pvSrc) & 31) == 0);
+//   const __m256i *pSrc = reinterpret_cast<const __m256i*>(pvSrc);
+//   __m256i *pDest = reinterpret_cast<__m256i*>(pvDest);
+//   int64_t nVects = nBytes / sizeof(*pSrc);
+//   for (; nVects > 0; nVects--, pSrc++, pDest++) {
+//     const __m256i loaded = _mm256_stream_load_si256(pSrc);
+//     _mm256_stream_si256(pDest, loaded);
+//   }
+//   _mm_sfence();
+// }
 
 enum CopyType { COPY, OR, XOR, AND };
 enum EvolveType { EVOLVE, LEAVE };
@@ -84,7 +105,7 @@ void Append(LifeString *string, const char *val) {
 }
 
 void Append(LifeString *string, int val) {
-  char str[10];
+  char str[11];
   sprintf(str, "%d", val);
   Append(string, str);
 }
