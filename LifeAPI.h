@@ -127,7 +127,7 @@ typedef struct {
 } LifeState;
 
 static LifeState *GlobalState;
-static LifeState *Captures[CAPTURE_COUNT];
+// static LifeState *Captures[CAPTURE_COUNT];
 
 #ifdef __GNUC__
 #ifndef __clang__
@@ -336,7 +336,7 @@ int GetPop(LifeState *state) {
 
 int GetPop() { return GetPop(GlobalState); }
 
-int GetPop(int captureIdx) { return GetPop(Captures[captureIdx]); }
+// int GetPop(int captureIdx) { return GetPop(Captures[captureIdx]); }
 
 void Inverse(LifeState *state) {
   for (int i = 0; i < N; i++) {
@@ -380,7 +380,7 @@ int AreEqual(LifeState *pat1, LifeState *pat2) {
 
 int AreEqual(LifeState *pat1) { return AreEqual(GlobalState, pat1); }
 
-int AreEqual(int idx) { return AreEqual(GlobalState, Captures[idx]); }
+// int AreEqual(int idx) { return AreEqual(GlobalState, Captures[idx]); }
 
 inline int AreDisjoint(LifeState *main, LifeState *pat) {
   int min = 0;
@@ -503,7 +503,7 @@ void FlipX(LifeState *state) {
 
 void FlipX() { FlipX(GlobalState); }
 
-void FlipX(int idx) { FlipX(Captures[idx]); }
+// void FlipX(int idx) { FlipX(Captures[idx]); }
 
 uint64_t BitReverse (uint64_t x) {
   const uint64_t h1 = 0x5555555555555555ULL;
@@ -588,15 +588,15 @@ void GetBoundary(LifeState *state, LifeState *boundary) {
     boundary->state[i] &= ~(state->state[i]);
 }
 
-void GetBoundary(LifeState *state, int captureIdx) {
-  GetBoundary(state, Captures[captureIdx]);
-}
+// void GetBoundary(LifeState *state, int captureIdx) {
+//   GetBoundary(state, Captures[captureIdx]);
+// }
 
 void GetBoundary(LifeState *boundary) { GetBoundary(GlobalState, boundary); }
 
-void GetBoundary(int captureIdx) {
-  GetBoundary(GlobalState, Captures[captureIdx]);
-}
+// void GetBoundary(int captureIdx) {
+//   GetBoundary(GlobalState, Captures[captureIdx]);
+// }
 
 int Parse(LifeState *state, const char *rle, int starti) {
   char ch;
@@ -1155,11 +1155,11 @@ void PrintRLE(LifeState *state) {
 
 void Print() { Print(GlobalState); }
 
-void Print(int idx) { Print(Captures[idx]); }
+// void Print(int idx) { Print(Captures[idx]); }
 
 void PrintRLE() { PrintRLE(GlobalState); }
 
-void PrintRLE(int idx) { PrintRLE(Captures[idx]); }
+// void PrintRLE(int idx) { PrintRLE(Captures[idx]); }
 
 void Evolve(LifeState *state, int numIters) {
   for (int i = 0; i < numIters; i++) {
@@ -1205,9 +1205,9 @@ void New() {
   if (GlobalState == NULL) {
     GlobalState = NewState();
 
-    for (int i = 0; i < CAPTURE_COUNT; i++) {
-      Captures[i] = NewState();
-    }
+    // for (int i = 0; i < CAPTURE_COUNT; i++) {
+    //   Captures[i] = NewState();
+    // }
 
     _glidersTarget[0] = NewTargetLocator("2o$obo$o!");
     _glidersTarget[1] = NewTargetLocator("o$obo$2o!");
@@ -1219,9 +1219,9 @@ void New() {
   }
 }
 
-void Capture(LifeState *cap, int idx) { Copy(Captures[idx], cap); }
+// void Capture(LifeState *cap, int idx) { Copy(Captures[idx], cap); }
 
-void Capture(int idx) { Copy(Captures[idx], GlobalState); }
+// void Capture(int idx) { Copy(Captures[idx], GlobalState); }
 
 void Run(int numIter) { Evolve(GlobalState, numIter); }
 
@@ -1256,7 +1256,7 @@ void PutState(LifeState *state, int dx, int dy) {
   Join(GlobalState, state, dx, dy);
 }
 
-void PutState(int idx) { PutState(Captures[idx]); }
+// void PutState(int idx) { PutState(Captures[idx]); }
 
 void PutState(LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
               int dyy) {
