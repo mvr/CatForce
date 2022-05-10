@@ -1354,7 +1354,7 @@ public:
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cout << "Usage CatForce.exe <in file>";
+    std::cout << "Usage CatForce.exe <in file>" << std::endl;
     exit(0);
   }
 
@@ -1421,6 +1421,4 @@ int main(int argc, char *argv[]) {
   clock_t end = clock();
   printf("Total elapsed time: %f seconds\n",
          (double)(end - searcher.begin) / CLOCKS_PER_SEC);
-
-  getchar();
 }
