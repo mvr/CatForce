@@ -314,6 +314,14 @@ void ReadParams(std::string fname, std::vector<CatalystInput> &catalysts,
     } catch (const std::exception &ex) {
     }
   }
+  if(params.pat.length() == 0) {
+    std::cout << "Did not read any pattern!" << std::endl;
+    exit(0);
+  }
+  if(catalysts.size() == 0) {
+    std::cout << "Did not read any catalysts!" << std::endl;
+    exit(0);
+  }
 }
 
 void ApplySym(LifeState *state, Symmetry sym) {
