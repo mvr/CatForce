@@ -108,17 +108,17 @@ typedef struct {
 static LifeState *GlobalState;
 static LifeState *Captures[CAPTURE_COUNT];
 
-inline uint64_t CirculateLeft(uint64_t x) { return (x << 1) | (x >> (63)); }
+inline uint64_t RotateLeft(uint64_t x, unsigned int k) {
+  return __builtin_rotateleft64(x,k);
+}
+inline uint64_t RotateLeft(uint64_t x) { return RotateLeft(x,1); }
 
-inline uint64_t CirculateLeft(uint64_t x, int k) {
-  return (x << k) | (x >> (64 - k));
+
+inline uint64_t RotateRight(uint64_t x, int k) {
+  return __builtin_rotateright64(x,k);
 }
 
-inline uint64_t CirculateRight(uint64_t x, int k) {
-  return (x >> k) | (x << (64 - k));
-}
-
-inline uint64_t CirculateRight(uint64_t x) { return (x >> 1) | (x << (63)); }
+inline uint64_t RotateRight(uint64_t x) { return RotateRight(x,1); }
 
 void Set(int x, int y, uint64_t *state) { state[x] |= (1ULL << (y)); }
 
@@ -147,7 +147,7 @@ uint64_t GetHash(LifeState *state) {
   uint64_t result = 0;
 
   for (int i = 0; i < N; i++) {
-    result += CirculateLeft(state->state[i], (int)(i / 2));
+    result += RotateLeft(state->state[i], (int)(i / 2));
   }
 
   return result;
@@ -277,13 +277,8 @@ inline void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta,
   if (y < 0)
     y += 64;
 
-  if (y != 0) {
-    for (int i = delta->min; i <= delta->max; i++)
-      temp1[i] = CirculateLeft(delta->state[i], y);
-  } else {
-    for (int i = delta->min; i <= delta->max; i++)
-      temp1[i] = delta->state[i];
-  }
+  for (int i = delta->min; i <= delta->max; i++)
+    temp1[i] = RotateLeft(delta->state[i], y);
 
   memmove(main->state, temp1 + (N - x), x * sizeof(uint64_t));
   memmove(main->state + x, temp1, (N - x) * sizeof(uint64_t));
@@ -401,7 +396,7 @@ int AreDisjoint(LifeState *main, LifeState *pat, int targetDx, int targetDy) {
   for (int i = min; i <= max; i++) {
     int curX = (N + i + targetDx) % N;
 
-    if (((~CirculateRight(mainState[curX], dy)) & patState[i]) != patState[i])
+    if (((~RotateRight(mainState[curX], dy)) & patState[i]) != patState[i])
       return NO;
   }
 
@@ -419,7 +414,7 @@ int Contains(LifeState *main, LifeState *spark, int targetDx, int targetDy) {
   for (int i = min; i <= max; i++) {
     int curX = (N + i + targetDx) % N;
 
-    if ((CirculateRight(mainState[curX], dy) & sparkState[i]) !=
+    if ((RotateRight(mainState[curX], dy) & sparkState[i]) !=
         (sparkState[i]))
       return NO;
   }
@@ -457,13 +452,8 @@ void Move(LifeState *state, int x, int y) {
   if (y < 0)
     y += 64;
 
-  if (y != 0) {
-    for (int i = 0; i < N; i++)
-      temp[i] = CirculateLeft(state->state[i], y);
-  } else {
-    for (int i = 0; i < N; i++)
-      temp[i] = state->state[i];
-  }
+  for (int i = 0; i < N; i++)
+    temp[i] = RotateLeft(state->state[i], y);
 
   memmove(state->state,     temp + (N-x), x*sizeof(uint64_t));
   memmove(state->state + x, temp,         (N-x)*sizeof(uint64_t));
@@ -498,7 +488,7 @@ uint64_t BitReverse (uint64_t x) {
 
 void BitReverse(LifeState *state){
   for (int i = 0; i < N; i++) {
-    state->state[i] = BitReverse(state->state[i]);
+    state->state[i] = __builtin_bitreverse64(state->state[i]);
   }
 }
 
@@ -790,7 +780,7 @@ void ClearAtX(LifeState *state, Locator *locator, int x, uint64_t val) {
     int idx = (x + xList[i] + N) % N;
     int circulate = (yList[i] + 64) % 64;
 
-    state->state[idx] &= ~CirculateLeft(val, circulate);
+    state->state[idx] &= ~RotateLeft(val, circulate);
   }
 }
 
@@ -805,9 +795,9 @@ uint64_t LocateAtX(LifeState *state, Locator *locator, int x, int negate) {
     int circulate = (yList[i] + 64) % 64;
 
     if (negate == NO)
-      result &= CirculateRight(state->state[idx], circulate);
+      result &= RotateRight(state->state[idx], circulate);
     else
-      result &= ~CirculateRight(state->state[idx], circulate);
+      result &= ~RotateRight(state->state[idx], circulate);
 
     if (result == 0ULL)
       break;
@@ -1007,8 +997,8 @@ void IterateState(LifeState *lifstate) {
   for (int i = min; i <= max; i++) {
     uint64_t l, r, temp;
     temp = state[i];
-    l = CirculateLeft(temp);
-    r = CirculateRight(temp);
+    l = RotateLeft(temp);
+    r = RotateRight(temp);
     tempxor[i] = l ^ r ^ temp;
     tempand[i] = ((l | r) & temp) | (l & r);
   }
@@ -1204,13 +1194,8 @@ inline void Join(LifeState *__restrict__ main, LifeState *__restrict__ delta, in
   if (y < 0)
     y += 64;
 
-  if (y != 0) {
-    for (int i = delta->min; i <= delta->max; i++)
-      temp1[i] = CirculateLeft(delta->state[i], y);
-  } else {
-    for (int i = delta->min; i <= delta->max; i++)
-      temp1[i] = delta->state[i];
-  }
+  for (int i = delta->min; i <= delta->max; i++)
+    temp1[i] = RotateLeft(delta->state[i], y);
 
   memmove(temp2,     temp1 + (N-x), x*sizeof(uint64_t));
   memmove(temp2 + x, temp1,         (N-x)*sizeof(uint64_t));
