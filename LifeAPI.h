@@ -107,7 +107,6 @@ typedef struct {
 
 static LifeState *GlobalState;
 static LifeState *Captures[CAPTURE_COUNT];
-static LifeState *Temp, *Temp1, *Temp2;
 
 inline uint64_t CirculateLeft(uint64_t x) { return (x << 1) | (x >> (63)); }
 
@@ -505,10 +504,11 @@ void BitReverse(LifeState *state){
 
 void Transform(LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
                int dyy) {
-  ClearData(Temp2);
-  ClearData(Temp1);
-  Copy(Temp1, state);
-  Move(Temp1, dx, dy);
+  LifeState Temp1, Temp2;
+  ClearData(&Temp1);
+  ClearData(&Temp2);
+  Copy(&Temp1, state);
+  Move(&Temp1, dx, dy);
 
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < 64; j++) {
@@ -518,13 +518,13 @@ void Transform(LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
       int x1 = x * dxx + y * dxy;
       int y1 = x * dyx + y * dyy;
 
-      int val = GetCell(Temp1, x1, y1);
+      int val = GetCell(&Temp1, x1, y1);
 
-      SetCell(Temp2, x, y, val);
+      SetCell(&Temp2, x, y, val);
     }
   }
 
-  Copy(state, Temp2);
+  Copy(state, &Temp2);
   RecalculateMinMax(state);
 }
 
@@ -536,19 +536,21 @@ void FlipY(LifeState *state) {
 void Transform(LifeState *state, int dx, int dy) { Move(state, dx, dy); }
 
 void GetBoundary(LifeState *state, LifeState *boundary) {
+  LifeState Temp;
+  ClearData(&Temp);
   for (int i = 0; i < N; i++) {
     uint64_t col = state->state[i];
-    Temp->state[i] = col | CirculateLeft(col) | CirculateRight(col);
+    Temp.state[i] = col | RotateLeft(col) | RotateRight(col);
   }
 
-  boundary->state[0] = Temp->state[N - 1] | Temp->state[0] | Temp->state[1];
+  boundary->state[0] = Temp.state[N - 1] | Temp.state[0] | Temp.state[1];
 
   for (int i = 1; i < N - 1; i++)
     boundary->state[i] =
-        Temp->state[i - 1] | Temp->state[i] | Temp->state[i + 1];
+        Temp.state[i - 1] | Temp.state[i] | Temp.state[i + 1];
 
   boundary->state[N - 1] =
-      Temp->state[N - 2] | Temp->state[N - 1] | Temp->state[0];
+      Temp.state[N - 2] | Temp.state[N - 1] | Temp.state[0];
 
   for (int i = 0; i < N; i++)
     boundary->state[i] &= ~(state->state[i]);
@@ -667,26 +669,32 @@ LifeTarget *NewTarget(LifeState *wanted, LifeState *unwanted) {
 }
 
 LifeTarget *NewTarget(LifeState *wanted) {
-  GetBoundary(wanted, Temp1);
-  return NewTarget(wanted, Temp1);
+  LifeState Temp;
+  ClearData(&Temp);
+  GetBoundary(wanted, &Temp);
+  return NewTarget(wanted, &Temp);
 }
 
 LifeTarget *NewTarget(const char *rle, int x, int y, int dxx, int dxy, int dyx,
                       int dyy) {
-  int result = Parse(Temp2, rle, x, y, dxx, dxy, dyx, dyy);
+  LifeState Temp;
+  ClearData(&Temp);
+  int result = Parse(&Temp, rle, x, y, dxx, dxy, dyx, dyy);
 
   if (result == SUCCESS) {
-    return NewTarget(Temp2);
+    return NewTarget(&Temp);
   }
 
   return NULL;
 }
 
 LifeTarget *NewTarget(const char *rle, int x, int y) {
-  int result = Parse(Temp2, rle, x, y);
+  LifeState Temp;
+  ClearData(&Temp);
+  int result = Parse(&Temp, rle, x, y);
 
   if (result == SUCCESS) {
-    return NewTarget(Temp2);
+    return NewTarget(&Temp);
   }
 
   return NULL;
@@ -1164,9 +1172,6 @@ void RandomState() { RandomState(GlobalState); }
 void New() {
   if (GlobalState == NULL) {
     GlobalState = NewState();
-    Temp = NewState();
-    Temp1 = NewState();
-    Temp2 = NewState();
 
     for (int i = 0; i < CAPTURE_COUNT; i++) {
       Captures[i] = NewState();
@@ -1228,42 +1233,46 @@ void PutState(int idx) { PutState(Captures[idx]); }
 
 void PutState(LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
               int dyy) {
-  ClearData(Temp);
-  Copy(Temp, state);
-  Transform(Temp, dx, dy, dxx, dxy, dyx, dyy);
-  PutState(Temp);
+  LifeState Temp;
+  ClearData(&Temp);
+  Copy(&Temp, state);
+  Transform(&Temp, dx, dy, dxx, dxy, dyx, dyy);
+  PutState(&Temp);
 }
 
 void PutState(LifeState *state, CopyType op) { Copy(GlobalState, state, op); }
 
 int PutState(const char *rle) {
-  ClearData(Temp);
-  int result = Parse(Temp, rle);
+  LifeState Temp;
+  ClearData(&Temp);
+  int result = Parse(&Temp, rle);
 
   if (result == SUCCESS)
-    PutState(Temp);
+    PutState(&Temp);
 
   return result;
 }
 
 int PutState(const char *rle, int x, int y) {
-  ClearData(Temp);
-  int result = Parse(Temp, rle, x, y);
+  LifeState Temp;
+  ClearData(&Temp);
+  int result = Parse(&Temp, rle, x, y);
 
   if (result == SUCCESS)
-    PutState(Temp);
+    PutState(&Temp);
 
   return result;
 }
 
 int PutState(const char *rle, int dx, int dy, int dxx, int dxy, int dyx,
              int dyy) {
-  ClearData(Temp);
-  int result = Parse(Temp, rle);
+  LifeState Temp;
+  ClearData(&Temp);
+  int result = Parse(&Temp, rle);
 
   if (result == SUCCESS) {
-    Transform(Temp, dx, dy, dxx, dxy, dyx, dyy);
-    PutState(Temp);
+    Transform(&Temp, dx, dy, dxx, dxy, dyx, dyy);
+    PutState(&Temp);
   }
 
   return result;
@@ -1301,15 +1310,17 @@ LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h, int s,
   state->min = 0;
   state->max = N - 1;
 
-  ClearData(Temp);
-  Copy(Temp, state);
+
+  LifeState Temp;
+  ClearData(&Temp);
+  Copy(&Temp, state);
 
   for (int i = 0; i < s; i++) {
     result->States[i] = NewState();
-    Copy(result->States[i], Temp);
+    Copy(result->States[i], &Temp);
 
     if (op == EVOLVE)
-      Evolve(Temp, 1);
+      Evolve(&Temp, 1);
   }
 
   return result;
@@ -1335,10 +1346,12 @@ LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h) {
   return NewIterator(state, x, y, w, h, 1, LEAVE);
 }
 
-LifeIterator *NewIterator(int x, int y, int w, int h) {
-  ClearData(Temp);
-  return NewIterator(Temp, x, y, w, h, 1);
-}
+// This cannot be good
+// LifeIterator *NewIterator(int x, int y, int w, int h) {
+//   LifeState Temp;
+//   ClearData(&Temp);
+//   return NewIterator(&Temp, x, y, w, h, 1);
+// }
 
 void Print(LifeIterator *iter) {
   printf("\n(%d, %d, %d)", iter->curx, iter->cury, iter->curs);
@@ -1618,10 +1631,11 @@ LifeResults *LoadResults(const char *filePath) {
   int idx = 0;
 
   while (rle[idx] != '\0') {
-    ClearData(Temp);
-    idx = Parse(Temp, rle, idx);
-    Move(Temp, -32, -32);
-    Add(results, Temp);
+    LifeState Temp;
+    ClearData(&Temp);
+    idx = Parse(&Temp, rle, idx);
+    Move(&Temp, -32, -32);
+    Add(results, &Temp);
   }
 
   return results;
