@@ -3,6 +3,7 @@
 // (using C) but still comfortable search utility. Contributor Chris Cain.
 // Written by Michael Simkin 2014
 
+#include <algorithm>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -188,47 +189,48 @@ void ExpandMinMax(int *min, int *max) {
   }
 }
 
-void RefitMinMax(LifeState *state) {
-  int min = state->min;
-  int max = state->max;
-  uint64_t *states = state->state;
+// void RefitMinMax(LifeState *state) {
+//   int min = state->min;
+//   int max = state->max;
+//   uint64_t *states = state->state;
 
-  for (int i = min; i <= max; i++) {
-    if (states[i] != 0) {
-      state->min = i;
-      break;
-    }
-  }
+//   for (int i = min; i <= max; i++) {
+//     if (states[i] != 0) {
+//       state->min = i;
+//       break;
+//     }
+//   }
 
-  for (int i = max; i >= min; i--) {
-    if (states[i] != 0) {
-      state->max = i;
-      break;
-    }
-  }
+//   for (int i = max; i >= min; i--) {
+//     if (states[i] != 0) {
+//       state->max = i;
+//       break;
+//     }
+//   }
 
-  ExpandMinMax(&(state->min), &(state->max));
-}
+//   ExpandMinMax(&(state->min), &(state->max));
+// }
 
 void RecalculateMinMax(LifeState *state) {
-  state->min = N - 1;
-  state->max = 0;
+  int min = 0;
+  int max = N-1;
   uint64_t *states = state->state;
 
   for (int i = 0; i < N; i++) {
     if (states[i] != 0) {
-      state->min = i;
+      min = i;
       break;
     }
   }
 
   for (int i = N - 1; i >= 0; i--) {
     if (states[i] != 0) {
-
-      state->max = i;
+      max = i;
       break;
     }
   }
+  state->max = max;
+  state->min = min;
 
   ExpandMinMax(&(state->min), &(state->max));
 }
@@ -271,11 +273,17 @@ void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta,
     for (int i = 0; i < N; i++)
       main->state[i] = delta->state[i];
 
+    main->min = delta->min;
+    main->max = delta->max;
     main->gen = delta->gen;
+    return;
   }
   if (op == OR) {
     for (int i = 0; i < N; i++)
       main->state[i] |= delta->state[i];
+    main->min = std::min(main->min, delta->min);
+    main->max = std::max(main->max, delta->max);
+    return;
   }
   if (op == AND) {
     for (int i = 0; i < N; i++)
@@ -342,7 +350,7 @@ void ClearData(LifeState *state) {
     state->state[i] = 0;
 
   state->min = 0;
-  state->max = N - 1;
+  state->max = 0;
   state->gen = 0;
 
   // Clear(state->emittedGliders);
@@ -483,8 +491,13 @@ void Move(LifeState *state, int x, int y) {
   memmove(state->state,     temp + (N-x), x*sizeof(uint64_t));
   memmove(state->state + x, temp,         (N-x)*sizeof(uint64_t));
 
-  state->min = 0;
-  state->max = N - 1;
+  if ((state->min + x) % N < (state->max + x) % N) {
+    state->min = (state->min + x) % N;
+    state->max = (state->max + x) % N;
+  } else {
+    state->min = 0;
+    state->max = N - 1;
+  }
 }
 
 void FlipX(LifeState *state) {
@@ -637,6 +650,7 @@ int Parse(LifeState *state, const char *rle, int starti) {
 
   state->min = 0;
   state->max = N - 1;
+  RecalculateMinMax(state);
 
   return -1;
 }
@@ -1045,20 +1059,26 @@ void IterateState(LifeState *lifstate) {
     tempState[i] = Evolve(state[i], tempxor[idxU], tempand[idxU], tempxor[idxB], tempand[idxB]);
   }
 
-  int s = min + 1;
-  int e = max - 1;
+  // int s = min + 1;
+  // int e = max - 1;
 
-  if (s == 1)
-    s = 0;
+  // if (s == 1)
+  //   s = 0;
 
-  if (e == N - 2)
-    e = N - 1;
+  // if (e == N - 2)
+  //   e = N - 1;
 
-  for (int i = s; i <= e; i++) {
+  // for (int i = s; i <= e; i++) {
+  //   state[i] = tempState[i];
+  // }
+  //
+  for (int i = 0; i < N; i++) {
     state[i] = tempState[i];
   }
 
-  RefitMinMax(lifstate);
+  // RecalculateMinMax(lifstate);
+  lifstate->min = 0;
+  lifstate->max = N-1;
   lifstate->gen++;
 }
 
@@ -1317,9 +1337,7 @@ LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h, int s,
   result->cury = y;
   result->curs = 0;
 
-  state->min = 0;
-  state->max = N - 1;
-
+  RecalculateMinMax(state);
 
   LifeState Temp;
   ClearData(&Temp);
