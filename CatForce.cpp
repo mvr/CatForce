@@ -184,6 +184,10 @@ void ReadParams(std::string fname, std::vector<CatalystInput> &catalysts,
                 SearchParams &params) {
   std::ifstream infile;
   infile.open(fname.c_str(), std::ifstream::in);
+  if(!infile.good()) {
+    std::cout << "Could not open file!" << std::endl;
+    exit(0);
+  }
 
   std::string Cat = "cat";
   std::string maxGen = "max-gen";
