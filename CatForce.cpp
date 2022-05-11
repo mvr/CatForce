@@ -1367,6 +1367,7 @@ int main(int argc, char *argv[]) {
   }
 
   // LifeAPI initialization.
+  GlobalState = NULL;
   New();
 
   std::cout << "Input: " << argv[1] << std::endl
