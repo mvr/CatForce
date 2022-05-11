@@ -22,12 +22,17 @@
 #ifdef __GNUC__
 #ifndef __clang__
 #include <x86intrin.h>
+#define __builtin_rotateleft64 __rolq
+#define __builtin_rotateright64 __rorq
+#define __builtin_bitreverse64 BitReverse
 #endif
 #endif
 
 #ifdef __MSC_VER
 #include <intrin.h>
 #define __builtin_popcount __popcnt64
+#define __builtin_rotateleft64 _rotl64
+#define __builtin_rotateright64 _rotr64
 #endif
 
 
@@ -129,19 +134,6 @@ typedef struct {
 static LifeState *GlobalState;
 // static LifeState *Captures[CAPTURE_COUNT];
 
-#ifdef __GNUC__
-#ifndef __clang__
-inline uint64_t RotateLeft(uint64_t x, unsigned int k) {
-  return __rolq(x,k);
-}
-
-inline uint64_t RotateRight(uint64_t x, unsigned int k) {
-  return __rorq(x,k);
-}
-#endif
-#endif
-
-#ifdef __clang__
 inline uint64_t RotateLeft(uint64_t x, unsigned int k) {
   return __builtin_rotateleft64(x,k);
 }
@@ -149,7 +141,6 @@ inline uint64_t RotateLeft(uint64_t x, unsigned int k) {
 inline uint64_t RotateRight(uint64_t x, unsigned int k) {
   return __builtin_rotateright64(x,k);
 }
-#endif
 
 inline uint64_t RotateLeft(uint64_t x) { return RotateLeft(x,1); }
 inline uint64_t RotateRight(uint64_t x) { return RotateRight(x,1); }
@@ -522,15 +513,7 @@ uint64_t BitReverse (uint64_t x) {
 
 void BitReverse(LifeState *state){
   for (int i = 0; i < N; i++) {
-#ifdef __GNUC__
-#ifndef __clang__
-    state->state[i] = BitReverse(state->state[i]);
-#endif
-#endif
-#if __clang__
     state->state[i] = __builtin_bitreverse64(state->state[i]);
-#endif
-
   }
 }
 
