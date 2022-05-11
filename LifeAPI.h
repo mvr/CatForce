@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string.h>
+#include <vector>
 
 #define N 64
 #define CAPTURE_COUNT 10
@@ -782,6 +783,7 @@ Locator *Realloc(Locator *locator) {
     locator->yList =
         (int *)(realloc(locator->yList, locator->allocated * sizeof(int)));
   }
+  return locator;
 }
 
 void Add(Locator *locator, int x, int y) {
@@ -963,7 +965,6 @@ int RemoveAtX(LifeState *state, int x, int startGiderIdx) {
 
 void RemoveGliders(LifeState *state) {
   int removed = NO;
-  int x = 1;
 
   if (state->min <= 1)
     if (RemoveAtX(state, 1, 0) == YES)
@@ -1530,13 +1531,13 @@ void FreeIterator(LifeIterator *iter) {
   free(iter);
 }
 
-void Join(LifeState *state, LifeIterator *iter) {
-  Join(state, iter->States[iter->curs], iter->curx, iter->cury);
-}
+// void Join(LifeState *state, LifeIterator *iter) {
+//   Join(state, iter->States[iter->curs], iter->curx, iter->cury);
+// }
 
-void PutState(LifeIterator *iter) {
-  Join(GlobalState, iter->States[iter->curs], iter->curx, iter->cury);
-}
+// void PutState(LifeIterator *iter) {
+//   Join(GlobalState, iter->States[iter->curs], iter->curx, iter->cury);
+// }
 
 void SetCurrent(LifeIterator *iter, int curx, int cury, int curs) {
   iter->curx = curx;
@@ -1667,4 +1668,174 @@ LifeResults *LoadResults(const char *filePath) {
   }
 
   return results;
+}
+typedef struct {
+  int count;
+
+  int x;
+  int y;
+  int w;
+  int h;
+  int s;
+
+  int maxW;
+  int maxH;
+
+  std::vector<LifeState *> states;
+  std::vector<LifeTarget *> targets;
+  std::vector<std::vector<std::vector<bool> > > timely;
+  std::vector<std::vector<std::vector<int> > >  activations;
+
+  std::vector<int> curx;
+  std::vector<int> cury;
+  std::vector<int> curs;
+  std::vector<int> cumulMinY;
+  std::vector<int> cumulMaxY;
+  std::vector<LifeTarget *> shiftedTargets;
+  std::vector<LifeState *> cumulative; // backwards! e.g. 1|2|3, 2|3, 3
+  std::vector<int> cumulActivation;
+  std::vector<bool> cumulTimely;
+} Enumerator;
+
+void Reset(Enumerator &enu) {
+  enu.curx = std::vector<int>(enu.count, enu.x);
+  enu.cury = std::vector<int>(enu.count, enu.y);
+  enu.curs = std::vector<int>(enu.count, 0);
+
+  enu.cumulMinY = std::vector<int>(enu.count, enu.y);
+  enu.cumulMaxY = std::vector<int>(enu.count, enu.y);
+
+  enu.cumulTimely = std::vector<bool>(enu.count, true);
+
+  for (int i = 0; i < enu.s; i++) {
+    std::vector<std::vector<bool> > xyVec;
+    for (int x = 0; x < 64; x++) {
+      std::vector<bool> xVec(64, true);
+      xyVec.push_back(xVec);
+    }
+    enu.timely.push_back(xyVec);
+
+    enu.targets.push_back(NewTarget(enu.states[i]));
+  }
+
+  for (int i = 0; i < enu.count; i++) {
+    enu.shiftedTargets.push_back(NewTarget(NewState(), NewState()));
+    enu.cumulative.push_back(NewState());
+  }
+  for (int i = enu.count - 1; i >= 0; i--) {
+    Copy(enu.shiftedTargets[i]->wanted,   enu.targets[enu.curs[i]]->wanted, enu.curx[i], enu.cury[i]);
+    Copy(enu.shiftedTargets[i]->unwanted, enu.targets[enu.curs[i]]->unwanted, enu.curx[i], enu.cury[i]);
+    Copy(enu.cumulative[i], enu.shiftedTargets[i]->wanted);
+    if(i < enu.count-1)
+      Join(enu.cumulative[i], enu.cumulative[i + 1]);
+  }
+}
+
+int NaiveNext(Enumerator &enu, int i);
+
+int Next(Enumerator &enu, int i) {
+  while (true) {
+    int n = NaiveNext(enu, i);
+    if(n == FAIL)
+      return FAIL;
+
+    if (i == enu.count - 1) {
+      Copy(enu.shiftedTargets[i]->wanted, enu.targets[enu.curs[i]]->wanted, enu.curx[i], enu.cury[i]);
+      Copy(enu.shiftedTargets[i]->unwanted, enu.targets[enu.curs[i]]->unwanted, enu.curx[i], enu.cury[i]);
+
+      break;
+    }
+
+    if (enu.curx[i] < enu.curx[i + 1]) {
+      enu.curx[i] = enu.curx[i + 1];
+      if (enu.cury[i] < enu.cury[i + 1]) {
+        enu.cury[i] = enu.cury[i + 1];
+        if (enu.curs[i] <= enu.curs[i + 1]) {
+          enu.curs[i] = enu.curs[i + 1];
+        }
+      }
+    }
+    // Check timelyness
+    enu.cumulTimely[i] = enu.cumulTimely[i+1] || enu.timely[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64];
+    if (i == 0 && !enu.cumulTimely[i])
+      continue;
+
+    // Check bounds
+    if (enu.maxW != -1)
+      if (enu.curx[i] - enu.curx[enu.count-1] > enu.maxW) {
+        continue;
+      }
+
+    if (enu.maxH != -1) {
+      if( enu.cury[i] - enu.cumulMinY[i+1] > enu.maxH ||
+          enu.cumulMaxY[i+1] - enu.cury[i] > enu.maxH ) {
+        continue;
+      }
+    }
+
+    Copy(enu.shiftedTargets[i]->wanted, enu.targets[enu.curs[i]]->wanted, enu.curx[i], enu.cury[i]);
+    Copy(enu.shiftedTargets[i]->unwanted, enu.targets[enu.curs[i]]->unwanted, enu.curx[i], enu.cury[i]);
+
+    // Check overlap
+    LifeState temp;
+    Copy(&temp, enu.shiftedTargets[i]->wanted);
+    Join(&temp, enu.cumulative[i + 1]);
+    Run(&temp, 1);
+    if (Contains(&temp, enu.shiftedTargets[i]->wanted) == NO)
+      continue;
+
+    break;
+  }
+
+  if(i == enu.count-1) {
+    enu.cumulMinY[i] = enu.cury[i];
+    enu.cumulMaxY[i] = enu.cury[i];
+
+    enu.cumulActivation[i] = enu.activations[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64];
+    enu.cumulTimely[i] = enu.timely[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64];
+
+    Copy(enu.cumulative[i], enu.shiftedTargets[i]->wanted);
+  }
+
+
+  if(i < enu.count-1) {
+    // Update timelyness
+    enu.cumulActivation[i] = std::min(enu.cumulActivation[i+1], enu.activations[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64]);
+
+    // Update Y bounds
+    enu.cumulMinY[i] = std::min(enu.cumulMinY[i + 1], enu.cury[i]);
+    enu.cumulMaxY[i] = std::max(enu.cumulMaxY[i + 1], enu.cury[i]);
+
+    // Update cumulative
+    Copy(enu.cumulative[i], enu.shiftedTargets[i]->wanted);
+    Join(enu.cumulative[i], enu.cumulative[i + 1]);
+  }
+
+  return SUCCESS;
+}
+
+int NaiveNext(Enumerator &enu, int i) {
+  if(i == enu.count)
+    return FAIL;
+
+  enu.curx[i]++;
+  if (enu.curx[i] < enu.x + enu.w)
+    return SUCCESS;
+  enu.curx[i] = enu.x;
+
+  enu.cury[i]++;
+  if (enu.cury[i] < enu.y + enu.h)
+    return SUCCESS;
+  enu.cury[i] = enu.y;
+
+  enu.curs[i]++;
+  if (enu.curs[i] < enu.s)
+    return SUCCESS;
+  enu.curs[i] = 0;
+
+  return Next(enu, i+1);
+}
+
+int Next(Enumerator &enu) {
+  return Next(enu, 0);
 }

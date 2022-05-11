@@ -373,17 +373,6 @@ void PutStateWSym(LifeState *state, Symmetry sym) {
   PutState(&transformed);
 }
 
-void PutStateWSym(LifeIterator *iter, Symmetry sym) {
-  PutState(iter);
-  if (sym == NONE)
-    return;
-
-  LifeState transformed;
-  Copy(&transformed, iter->States[iter->curs], iter->curx, iter->cury);
-  ApplySym(&transformed, sym);
-  PutState(&transformed);
-}
-
 void GenerateStates(const std::vector<CatalystInput> &catalysts,
                     std::vector<LifeState *> &states,
                     std::vector<std::vector<LifeTarget *>> &forbidden,
@@ -561,28 +550,28 @@ public:
   int maxGenSurvive;
   int firstGenSurvive;
 
-  SearchResult(LifeState *initState, const std::vector<LifeIterator *> &iters,
+  SearchResult(LifeState *initState, const Enumerator &enu,
                int firstGenSurviveIn, int genSurvive) {
     init = NewState();
-    Copy(init, initState, COPY);
+    Copy(init, initState);
 
-    for (int i = 0; i < iters.size(); i++) {
-      params.push_back(iters[i]->curs);
-      params.push_back(iters[i]->curx);
-      params.push_back(iters[i]->cury);
+    for (int i = 0; i < enu.count; i++) {
+      params.push_back(enu.curs[i]);
+      params.push_back(enu.curx[i]);
+      params.push_back(enu.cury[i]);
     }
 
     maxGenSurvive = genSurvive;
     firstGenSurvive = firstGenSurviveIn;
   }
 
-  int SetIters(std::vector<LifeIterator *> &iters, const int &startIdx) {
+  int SetIters(Enumerator &enu, const int &startIdx) {
     int idx = startIdx;
 
     for (int i = 0; i < params.size(); i += 3) {
-      iters[idx]->curs = params[i];
-      iters[idx]->curx = params[i + 1];
-      iters[idx]->cury = params[i + 2];
+      enu.curs[idx] = params[i];
+      enu.curx[idx] = params[i + 1];
+      enu.cury[idx] = params[i + 2];
       idx++;
     }
 
@@ -617,7 +606,7 @@ public:
   Category(LifeState *catalystRemoved, SearchResult *firstResult,
            int catDeltaIn, int maxGen) {
     categoryKey = NewState();
-    Copy(categoryKey, catalystRemoved, COPY);
+    Copy(categoryKey, catalystRemoved);
     results.push_back(firstResult);
     catDelta = catDeltaIn;
     tempCat = NewState();
@@ -625,7 +614,7 @@ public:
     maxgen = maxGen;
 
     ClearData(tempCat);
-    Copy(tempCat, categoryKey, COPY);
+    Copy(tempCat, categoryKey);
     Evolve(tempCat, maxgen - tempCat->gen);
     hash = GetHash(tempCat);
   }
@@ -637,10 +626,10 @@ public:
       return false;
 
     ClearData(tempCat);
-    Copy(tempCat, categoryKey, COPY);
+    Copy(tempCat, categoryKey);
 
     ClearData(tempTest);
-    Copy(tempTest, test, COPY);
+    Copy(tempTest, test);
 
     if (tempTest->gen > tempCat->gen)
       Evolve(tempCat, tempTest->gen - tempCat->gen);
@@ -737,36 +726,36 @@ public:
   }
 
   void Add(LifeState *init, LifeState *afterCatalyst, LifeState *catalysts,
-           const std::vector<LifeIterator *> &iters, int firstGenSurvive,
+           const Enumerator &enu, int firstGenSurvive,
            int genSurvive) {
     LifeState *result = NewState();
 
     ClearData(result);
-    Copy(result, afterCatalyst, COPY);
+    Copy(result, afterCatalyst);
     Copy(result, catalysts, XOR);
 
     Evolve(result, maxgen - result->gen);
     uint64_t hash = GetHash(result);
 
     ClearData(result);
-    Copy(result, afterCatalyst, COPY);
+    Copy(result, afterCatalyst);
     Copy(result, catalysts, XOR);
 
     for (int i = 0; i < categories.size(); i++) {
       if (categories[i]->BelongsTo(result, hash)) {
-        if (categories[i]->results[0]->params.size() == 3 * iters.size())
+        if (categories[i]->results[0]->params.size() == 3 * enu.count)
           categories[i]->Add(
-              new SearchResult(init, iters, firstGenSurvive, genSurvive));
+              new SearchResult(init, enu, firstGenSurvive, genSurvive));
         return;
       }
     }
 
     LifeState *categoryKey = NewState();
-    Copy(categoryKey, afterCatalyst, COPY);
+    Copy(categoryKey, afterCatalyst);
     Copy(categoryKey, catalysts, XOR);
 
     categories.push_back(new Category(
-        categoryKey, new SearchResult(init, iters, firstGenSurvive, genSurvive),
+        categoryKey, new SearchResult(init, enu, firstGenSurvive, genSurvive),
         catDelta, maxgen));
   }
 
@@ -797,23 +786,23 @@ public:
 
 class CatalystSearcher {
 public:
-  std::string result;
+  // std::string result;
   clock_t begin;
   std::vector<LifeState *> states;
   std::vector<int> maxSurvive;
   SearchParams params;
   LifeState *pat;
   int numIters;
-  std::vector<LifeIterator *> iters;
+  // std::vector<LifeIterator *> iters;
+  Enumerator enu;
   std::vector<LifeTarget *> targetFilter;
   std::vector<LifeTarget *> targets;
-  std::vector<LifeTarget *> preShifted;
+  // std::vector<LifeTarget *> preShifted;
   std::vector<std::vector<LifeTarget *>> forbiddenTargets;
   std::vector<std::vector<std::vector<int>>> statexyGen;
   std::vector<LifeState *> preIterated;
   std::vector<int> activated;
   std::vector<int> absentCount;
-  std::vector<LifeState *> statesArr;
   clock_t current;
   long long idx;
   int found;
@@ -838,12 +827,28 @@ public:
   LifeState *catalysts;
 
   void Init(char *inputFile) {
-    result = "x = 0, y = 0, rule = B3/S23\n";
+    // result = "x = 0, y = 0, rule = B3/S23\n";
     begin = clock();
     InitCatalysts(inputFile, states, forbiddenTargets, maxSurvive, params);
     pat = NewState(params.pat.c_str(), params.xPat, params.yPat);
     numIters = params.numCatalysts;
     categoryContainer = new CategoryContainer(params.maxGen);
+
+    enu.count = params.numCatalysts;
+    enu.x = params.searchArea[0];
+    enu.y = params.searchArea[1];
+    enu.w = params.searchArea[2];
+    enu.h = params.searchArea[3];
+    enu.maxW = params.maxW;
+    enu.maxH = params.maxH;
+    enu.s = states.size();
+    enu.states = std::vector<LifeState *>();
+    for (int i = 0; i < enu.s; i++) {
+      LifeState *state = NewState();
+      Copy(state, states[i]);
+      enu.states.push_back(state);
+    }
+    Reset(enu);
 
     for (int i = 0; i < params.targetFilter.size(); i++)
       targetFilter.push_back(NewTarget(params.targetFilter[i].c_str(),
@@ -853,6 +858,17 @@ public:
       targets.push_back(NewTarget(states[i]));
 
     XYStartGenPerState(targets, pat, params, states, statexyGen);
+    enu.activations = statexyGen;
+    enu.cumulActivation = std::vector<int>(enu.count, enu.activations[0][(enu.x + 64) % 64][(enu.y + 64) % 64]);
+    for (int i = 0; i < enu.s; i++) {
+      for (int x = 0; x < 64; x++) {
+        for (int y = 0; y < 64; y++) {
+          int minIter = statexyGen[i][x][y];
+          enu.timely[i][x][y] = (minIter >= params.startGen && minIter < params.lastGen);
+        }
+      }
+    }
+
 
     PreIteratePat(pat, preIterated, params);
     AddIterators(numIters);
@@ -866,9 +882,12 @@ public:
     int fact = 1;
 
     for (int i = 0; i < numIters; i++) {
-      total *= (iters[i]->w);
-      total *= (iters[i]->h);
-      total *= (iters[i]->s);
+      // total *= (iters[i]->w);
+      // total *= (iters[i]->h);
+      // total *= (iters[i]->s);
+      total *= params.searchArea[2];
+      total *= params.searchArea[3];
+      total *= states.size();
       fact *= (i + 1);
     }
 
@@ -888,7 +907,6 @@ public:
 
     filterMaxGen = FilterMaxGen();
     iterationMaxGen = params.maxGen;
-    numIters = numIters;
 
     init = NewState();
     afterCatalyst = NewState();
@@ -908,15 +926,11 @@ public:
 
   void AddIterators(int num) {
     for (int i = 0; i < num; i++) {
-      iters.push_back(NewIterator(&states[0], params.searchArea[0],
-                                  params.searchArea[1], params.searchArea[2],
-                                  params.searchArea[3], states.size()));
       activated.push_back(0);
       absentCount.push_back(0);
-      preShifted.push_back(NewTarget(NewState(), NewState()));
     }
 
-    numIters = iters.size();
+    numIters = num;
   }
 
   int FilterMaxGen() {
@@ -1006,18 +1020,18 @@ public:
 
   int ValidateMinWidthHeight() {
     // Fast path: we know that the iterators are ordered by x.
-    if(iters[0]->curx - iters[numIters-1]->curx >= params.maxW)
+    if(enu.curx[0] - enu.curx[numIters-1] >= params.maxW)
       return NO;
 
-    int minY = iters[0]->cury;
-    int maxY = iters[0]->cury;
+    int minY = enu.cury[0];
+    int maxY = enu.cury[0];
 
     for (int i = 1; i < numIters; i++) {
-      if (iters[i]->cury > maxY)
-        maxY = iters[i]->cury;
+      if (enu.cury[i] > maxY)
+        maxY = enu.cury[i];
 
-      if (iters[i]->cury < minY)
-        minY = iters[i]->cury;
+      if (enu.cury[i] < minY)
+        minY = enu.cury[i];
     }
 
     if (maxY - minY >= params.maxH)
@@ -1027,12 +1041,12 @@ public:
   }
 
   int LastNonActiveGeneration() {
-    int minIter = statexyGen[iters[0]->curs][(iters[0]->curx + 64) % 64]
-                            [(iters[0]->cury + 64) % 64];
+    int minIter = statexyGen[enu.curs[0]][(enu.curx[0] + 64) % 64]
+                            [(enu.cury[0] + 64) % 64];
 
     for (int i = 1; i < numIters; i++) {
-      int startGen = statexyGen[iters[i]->curs][(iters[i]->curx + 64) % 64]
-                               [(iters[i]->cury + 64) % 64];
+      int startGen = statexyGen[enu.curs[i]][(enu.curx[i] + 64) % 64]
+                               [(enu.cury[i] + 64) % 64];
 
       if (startGen < minIter)
         minIter = startGen;
@@ -1044,24 +1058,22 @@ public:
     return minIter;
   }
 
-  void PreShiftIters() {
-    for (int i = 0; i < numIters; i++) {
-      Copy(preShifted[i]->wanted,   targets[iters[i]->curs]->wanted, iters[i]->curx, iters[i]->cury);
-      Copy(preShifted[i]->unwanted, targets[iters[i]->curs]->unwanted, iters[i]->curx, iters[i]->cury);
-    }
-  }
+  // void PreShiftIters() {
+  //   for (int i = 0; i < numIters; i++) {
+  //     Copy(preShifted[i]->wanted,   targets[enu.curs[i]]->wanted, enu.curx[i], enu.cury[i]);
+  //     Copy(preShifted[i]->unwanted, targets[enu.curs[i]]->unwanted, enu.curx[i], enu.cury[i]);
+  //   }
+  // }
 
   void PutItersState() {
-    for (int i = 0; i < numIters; i++) {
-      PutStateWSym(iters[i], params.symmetricSearch);
-    }
+    PutStateWSym(enu.cumulative[0], params.symmetricSearch);
   }
 
   int CatalystCollide() {
     Run(1);
 
     for (int i = 0; i < numIters; i++) {
-      if (Contains(GlobalState, preShifted[i]) == NO) {
+      if (Contains(GlobalState, enu.shiftedTargets[i]) == NO) {
         return YES;
       }
     }
@@ -1081,9 +1093,9 @@ public:
 
     for (int i = 0; i <= curIter + 1; i++) {
       for (int j = 0; j < numIters; j++) {
-        for (int k = 0; k < forbiddenTargets[iters[j]->curs].size(); k++) {
-          if (Contains(GlobalState, forbiddenTargets[iters[j]->curs][k],
-                       iters[j]->curx, iters[j]->cury) == YES)
+        for (int k = 0; k < forbiddenTargets[enu.curs[j]].size(); k++) {
+          if (Contains(GlobalState, forbiddenTargets[enu.curs[j]][k],
+                       enu.curx[j], enu.cury[j]) == YES)
             return true;
         }
       }
@@ -1095,11 +1107,11 @@ public:
 
   bool UpdateActivationCountersFail() {
     for (int j = 0; j < numIters; j++) {
-      if (Contains(GlobalState, preShifted[j]) == NO) {
+      if (Contains(GlobalState, enu.shiftedTargets[j]) == NO) {
         activated[j] = YES;
         absentCount[j]++;
 
-        if (absentCount[j] > maxSurvive[iters[j]->curs]) {
+        if (absentCount[j] > maxSurvive[enu.curs[j]]) {
           return true;
         }
       } else {
@@ -1168,21 +1180,16 @@ public:
   }
 
   void UpdateResults() {
-
-    int minIter = LastNonActiveGeneration();
+    int minIter = enu.cumulActivation[0]; // LastNonActiveGeneration();
 
     // Activation before first generation allowed to be activated
-    if (minIter < params.startGen || minIter >= params.lastGen)
-      return;
+    // if (minIter < params.startGen || minIter >= params.lastGen)
+    //   return;
 
     // Place catalysts first and check if they collide.
     New();
 
-    PreShiftIters();
     PutItersState();
-    if (CatalystCollide() == YES)
-      return;
-
     PutState(preIterated[minIter]);
 
     // Initial searcher countters for absense and activation
@@ -1237,24 +1244,22 @@ public:
 
         // If all filters validated update results
         if (valid) {
-          ClearData(catalysts);
-          ClearData(init);
-          ClearData(afterCatalyst);
-
           New();
+
           PutItersState();
+          Copy(catalysts, GlobalState);
 
-          Copy(catalysts, GlobalState, COPY);
           PutCurrentState();
-          Copy(init, GlobalState, COPY);
+          Copy(init, GlobalState);
+
           Run(i - surviveCountForUpdate + 2);
-          Copy(afterCatalyst, GlobalState, COPY);
+          Copy(afterCatalyst, GlobalState);
 
-          categoryContainer->Add(init, afterCatalyst, catalysts, iters,
+          categoryContainer->Add(init, afterCatalyst, catalysts, enu,
                                  i - surviveCountForUpdate + 2, genSurvive);
-          PutCurrentState();
-          result.append(GetRLE(GlobalState));
-          result.append("100$");
+          // PutCurrentState();
+          // result.append(GetRLE(GlobalState));
+          // result.append("100$");
           found++;
         }
 
@@ -1308,7 +1313,7 @@ public:
     searcher->counter = 0;
 
     for (int i = 0; i < base.size(); i++) {
-      int idx = base[i]->SetIters(searcher->iters, 0);
+      int idx = base[i]->SetIters(searcher->enu, 0);
       int baselast = base[i]->maxGenSurvive;
       int basefirst = base[i]->firstGenSurvive;
 
@@ -1321,7 +1326,7 @@ public:
         if (curlast < basefirst || baselast < curfirst)
           continue;
 
-        cur[j]->SetIters(searcher->iters, idx);
+        cur[j]->SetIters(searcher->enu, idx);
         searcher->UpdateResults();
       }
     }
@@ -1358,7 +1363,7 @@ public:
 
     for (int i = 0; i < found->categories.size(); i++) {
       searcher->numIters =
-          found->categories[i]->results[0]->SetIters(searcher->iters, 0);
+          found->categories[i]->results[0]->SetIters(searcher->enu, 0);
       searcher->UpdateResults();
     }
   }
@@ -1384,26 +1389,25 @@ int main(int argc, char *argv[]) {
             << "Initialization finished, searching..." << std::endl
             << std::endl;
 
-  const bool validateWH = searcher.params.maxW > 0 && searcher.params.maxH > 0;
-  const int numIters = searcher.numIters;
+  // const bool validateWH = searcher.params.maxW > 0 && searcher.params.maxH > 0;
   // Main loop of search on iters
   do {
-    int valid = YES;
+    // int valid = YES;
 
     // width-height validation enabled
-    if (validateWH) {
-      valid = searcher.ValidateMinWidthHeight();
-    }
+    // if (validateWH) {
+    //   valid = searcher.ValidateMinWidthHeight();
+    // }
 
     searcher.IncreaseIndexAndReport();
 
     // Valid remains YES after width-height Validation
-    if (valid == NO)
-      continue;
+    // if (valid == NO)
+    //   continue;
 
     searcher.UpdateResults();
 
-  } while (Next(&searcher.iters[0], numIters, NO));
+  } while (Next(searcher.enu));
 
   // Print report one final time (update files with the final results).
   searcher.Report();
