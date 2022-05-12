@@ -1747,12 +1747,11 @@ int Next(Enumerator &enu, int i) {
     if(n == FAIL)
       return FAIL;
 
-    // Check collision too early
-    if (!enu.slowEnough[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64]) {
-      continue;
-    }
-
     if (i == enu.count - 1) {
+      // Check collision too early (only relevant condition)
+      if (!enu.slowEnough[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64]) {
+        continue;
+      }
       Copy(enu.shiftedTargets[i]->wanted, enu.targets[enu.curs[i]]->wanted, enu.curx[i], enu.cury[i]);
 
       break;
@@ -1767,6 +1766,11 @@ int Next(Enumerator &enu, int i) {
           continue;
         }
       }
+    }
+
+    // Check collision too early
+    if (!enu.slowEnough[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64]) {
+      continue;
     }
 
     // Check bounds
