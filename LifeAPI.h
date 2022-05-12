@@ -583,6 +583,8 @@ void GetBoundary(LifeState *state, LifeState *boundary) {
 
   for (int i = 0; i < N; i++)
     boundary->state[i] &= ~(state->state[i]);
+
+  RecalculateMinMax(boundary);
 }
 
 // void GetBoundary(LifeState *state, int captureIdx) {
