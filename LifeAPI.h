@@ -1229,6 +1229,7 @@ void New() {
 
 // void Capture(int idx) { Copy(Captures[idx], GlobalState); }
 
+void Run(LifeState *state, int numIter) { Evolve(state, numIter); }
 void Run(int numIter) { Evolve(GlobalState, numIter); }
 
 void Join(LifeState *main, LifeState *delta) { Copy(main, delta, OR); }
