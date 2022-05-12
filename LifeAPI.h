@@ -1635,7 +1635,7 @@ char *ReadFile(const char *filePath) {
     fseek(f, 0, SEEK_SET);
     buffer = (char *)realloc(buffer, length);
     if (buffer) {
-      int len = fread(buffer, 1, length, f); // len unused
+      fread(buffer, 1, length, f);
     }
     fclose(f);
   }
