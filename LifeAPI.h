@@ -1170,7 +1170,7 @@ void PrintRLE() { PrintRLE(GlobalState); }
 void Evolve(LifeState *state, int numIters) {
   for (int i = 0; i < numIters; i++) {
     IterateState(state);
-    RemoveGliders(state);
+    // RemoveGliders(state);
   }
 }
 
