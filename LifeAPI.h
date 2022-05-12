@@ -1685,7 +1685,8 @@ typedef struct {
 
   std::vector<LifeState *> states;
   std::vector<LifeTarget *> targets;
-  std::vector<std::vector<std::vector<bool> > > timely;
+  std::vector<std::vector<std::vector<bool>>> quickEnough;
+  std::vector<std::vector<std::vector<bool>>> slowEnough;
   std::vector<std::vector<std::vector<int> > >  activations;
 
   std::vector<int> curx;
@@ -1710,12 +1711,16 @@ void Reset(Enumerator &enu) {
   enu.cumulTimely = std::vector<bool>(enu.count, true);
 
   for (int i = 0; i < enu.s; i++) {
-    std::vector<std::vector<bool> > xyVec;
+    std::vector<std::vector<bool>> q2Vec;
+    std::vector<std::vector<bool>> s2Vec;
     for (int x = 0; x < 64; x++) {
-      std::vector<bool> xVec(64, true);
-      xyVec.push_back(xVec);
+      std::vector<bool> qVec(64, true);
+      q2Vec.push_back(qVec);
+      std::vector<bool> sVec(64, true);
+      s2Vec.push_back(sVec);
     }
-    enu.timely.push_back(xyVec);
+    enu.quickEnough.push_back(q2Vec);
+    enu.slowEnough.push_back(s2Vec);
 
     enu.targets.push_back(NewTarget(enu.states[i]));
   }
@@ -1741,26 +1746,27 @@ int Next(Enumerator &enu, int i) {
     if(n == FAIL)
       return FAIL;
 
+    // Check collision too early
+    if (!enu.slowEnough[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64]) {
+      continue;
+    }
+
     if (i == enu.count - 1) {
       Copy(enu.shiftedTargets[i]->wanted, enu.targets[enu.curs[i]]->wanted, enu.curx[i], enu.cury[i]);
-      Copy(enu.shiftedTargets[i]->unwanted, enu.targets[enu.curs[i]]->unwanted, enu.curx[i], enu.cury[i]);
 
       break;
     }
 
-    if (enu.curx[i] < enu.curx[i + 1]) {
+    if (enu.curx[i] <= enu.curx[i + 1]) {
       enu.curx[i] = enu.curx[i + 1];
-      if (enu.cury[i] < enu.cury[i + 1]) {
+      if (enu.cury[i] <= enu.cury[i + 1]) {
         enu.cury[i] = enu.cury[i + 1];
         if (enu.curs[i] <= enu.curs[i + 1]) {
           enu.curs[i] = enu.curs[i + 1];
+          continue;
         }
       }
     }
-    // Check timelyness
-    enu.cumulTimely[i] = enu.cumulTimely[i+1] || enu.timely[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64];
-    if (i == 0 && !enu.cumulTimely[i])
-      continue;
 
     // Check bounds
     if (enu.maxW != -1)
@@ -1775,26 +1781,32 @@ int Next(Enumerator &enu, int i) {
       }
     }
 
+    // Check collision too late
+    enu.cumulTimely[i] = enu.cumulTimely[i+1] || enu.quickEnough[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64];
+    if (i == 0 && !enu.cumulTimely[i])
+      continue;
+
     Copy(enu.shiftedTargets[i]->wanted, enu.targets[enu.curs[i]]->wanted, enu.curx[i], enu.cury[i]);
-    Copy(enu.shiftedTargets[i]->unwanted, enu.targets[enu.curs[i]]->unwanted, enu.curx[i], enu.cury[i]);
 
     // Check overlap
     LifeState temp;
-    Copy(&temp, enu.shiftedTargets[i]->wanted);
-    Join(&temp, enu.cumulative[i + 1]);
+    Copy(&temp, enu.cumulative[i + 1]);
+    Join(&temp, enu.shiftedTargets[i]->wanted);
     Run(&temp, 1);
     if (Contains(&temp, enu.shiftedTargets[i]->wanted) == NO)
       continue;
 
     break;
   }
+  // Not needed in the loop
+  Copy(enu.shiftedTargets[i]->unwanted, enu.targets[enu.curs[i]]->unwanted, enu.curx[i], enu.cury[i]);
 
   if(i == enu.count-1) {
     enu.cumulMinY[i] = enu.cury[i];
     enu.cumulMaxY[i] = enu.cury[i];
 
     enu.cumulActivation[i] = enu.activations[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64];
-    enu.cumulTimely[i] = enu.timely[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64];
+    enu.cumulTimely[i] = enu.quickEnough[enu.curs[i]][(enu.curx[i] + 64) % 64][(enu.cury[i] + 64) % 64];
 
     Copy(enu.cumulative[i], enu.shiftedTargets[i]->wanted);
   }

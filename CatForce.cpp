@@ -864,7 +864,8 @@ public:
       for (int x = 0; x < 64; x++) {
         for (int y = 0; y < 64; y++) {
           int minIter = statexyGen[i][x][y];
-          enu.timely[i][x][y] = (minIter >= params.startGen && minIter < params.lastGen);
+          enu.quickEnough[i][x][y] = minIter < params.lastGen;
+          enu.slowEnough[i][x][y] = params.startGen <= minIter;
         }
       }
     }
