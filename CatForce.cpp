@@ -834,6 +834,7 @@ public:
     pat = NewState(params.pat.c_str(), params.xPat, params.yPat);
     numIters = params.numCatalysts;
     categoryContainer = new CategoryContainer(params.maxGen);
+    fullCategoryContainer = new CategoryContainer(params.maxGen);
 
     enu.count = params.numCatalysts;
     enu.x = params.searchArea[0];
@@ -881,6 +882,8 @@ public:
     total = 1;
     counter = 0;
 
+    fullfound = 0;
+
     int fact = 1;
 
     for (int i = 0; i < numIters; i++) {
@@ -900,8 +903,6 @@ public:
 
     if (total == 0)
       total++;
-
-    fullReport = "x = 0, y = 0, rule = B3/S23\n";
 
     hasFilter = params.targetFilter.size() > 0;
     reportAll = params.fullReportFile.length() != 0;
