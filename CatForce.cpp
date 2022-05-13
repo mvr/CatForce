@@ -806,10 +806,11 @@ public:
   clock_t current;
   long long idx;
   int found;
+  int fullfound;
   long long total;
-  std::string fullReport;
   unsigned short int counter;
   CategoryContainer *categoryContainer;
+  CategoryContainer *fullCategoryContainer;
 
   // flags and memeber for the search
 
@@ -967,7 +968,10 @@ public:
     std::cout << std::setprecision(1) << std::fixed << percent << "%,"
               << idx / 1000000 << "M/" << total
               << "M, cats/find: " << categoryContainer->categories.size() << "/"
-              << found << ", now: ";
+              << found
+              << ", unfiltered: " << fullCategoryContainer->categories.size() << "/"
+              << fullfound
+              << ", now: ";
     PrintTime(sec);
     std::cout << ", est: ";
     PrintTime(estimation);
@@ -979,7 +983,8 @@ public:
     // resultsFile(params.outputFile.c_str()); resultsFile << result;
     // resultsFile.close();
 
-    categoryContainer->Sort();
+    // categoryContainer->Sort();
+    // fullCategoryContainer->Sort();
 
     if (saveFile) {
       std::cout << "Saving " << params.outputFile << std::endl;
@@ -990,9 +995,12 @@ public:
       catResultsFile.close();
 
       if (params.fullReportFile.length() != 0) {
-        std::ofstream allfile(params.fullReportFile.c_str());
-        allfile << fullReport;
-        allfile.close();
+        std::cout << "Saving " << params.fullReportFile << std::endl;
+
+        std::ofstream fullCatResultsFile(params.fullReportFile.c_str());
+        fullCatResultsFile << "x = 0, y = 0, rule = B3/S23\n";
+        fullCatResultsFile << fullCategoryContainer->CategoriesRLE();
+        fullCatResultsFile.close();
       }
     }
   }
@@ -1221,32 +1229,9 @@ public:
 
       // If everything was actuvated and stable for stableInterval then report.
       if (surviveCount >= surviveCountForUpdate) {
-        bool valid = true;
-
-        int genSurvive;
-
-        for (genSurvive = i; genSurvive < iterationMaxGen; genSurvive++) {
-          Run(1);
-
-          if (UpdateActivationCountersFail())
-            break;
-        }
-        // If has fitlter validate them;
-        if (hasFilter) {
-          PutCurrentState();
-          valid = ValidateFilters(filterMaxGen);
-        }
-
-        if (!valid)
-          break;
-
-        if (HasForbidden(i + 3))
-          break;
-
-        // If all filters validated update results
-        if (valid) {
+        // if reportAll - ignore filters and update fullReport
+        if (reportAll) {
           New();
-
           PutItersState();
           Copy(catalysts, GlobalState);
 
@@ -1256,21 +1241,37 @@ public:
           Run(i - surviveCountForUpdate + 2);
           Copy(afterCatalyst, GlobalState);
 
-          categoryContainer->Add(init, afterCatalyst, catalysts, enu,
-                                 i - surviveCountForUpdate + 2, genSurvive);
-          // PutCurrentState();
-          // result.append(GetRLE(GlobalState));
-          // result.append("100$");
-          found++;
+          fullfound++;
+
+          fullCategoryContainer->Add(init, afterCatalyst, catalysts, enu,
+                                 i - surviveCountForUpdate + 2, 0);
         }
 
-        // if reportAll - ignore filters and update fullReport
-        if (reportAll) {
+        // If has fitlter validate them;
+        if (hasFilter) {
           PutCurrentState();
-
-          fullReport.append(GetRLE(GlobalState));
-          fullReport.append("100$");
+          if(!ValidateFilters(filterMaxGen))
+            break;
         }
+
+        if (HasForbidden(i + 3))
+          break;
+
+        // If all filters validated update results
+        New();
+        PutItersState();
+        Copy(catalysts, GlobalState);
+
+        PutCurrentState();
+        Copy(init, GlobalState);
+
+        Run(i - surviveCountForUpdate + 2);
+        Copy(afterCatalyst, GlobalState);
+
+        categoryContainer->Add(init, afterCatalyst, catalysts, enu,
+                               i - surviveCountForUpdate + 2, 0);
+        found++;
+
         break;
       }
     }
@@ -1294,7 +1295,7 @@ public:
 
   CategoryMultiplicator(CatalystSearcher *bruteSearch) {
     searcher = bruteSearch;
-    searcher->categoryContainer->Sort();
+    // searcher->categoryContainer->Sort();
     searcher->categoryContainer->RemoveTail();
 
     for (int i = 0; i < searcher->categoryContainer->categories.size(); i++) {
@@ -1332,7 +1333,7 @@ public:
       }
     }
 
-    searcher->categoryContainer->Sort();
+    // searcher->categoryContainer->Sort();
     searcher->categoryContainer->RemoveTail();
   }
 
