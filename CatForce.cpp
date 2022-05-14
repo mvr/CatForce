@@ -780,10 +780,10 @@ public:
     Copy(result, afterCatalyst);
     Copy(result, catalysts, XOR);
 
-    for (auto & categorie : categories) {
-      if (categorie->BelongsTo(result, hash)) {
-        if (categorie->results[0]->params.size() == 3 * enu.count)
-          categorie->Add(
+    for (auto & category: categories) {
+      if (category->BelongsTo(result, hash)) {
+        if (category->results[0]->params.size() == 3 * enu.count)
+          category->Add(
               new SearchResult(init, enu, firstGenSurvive, genSurvive));
         return;
       }
@@ -799,24 +799,24 @@ public:
   }
 
   void Sort() {
-    for (auto & categorie : categories)
-      categorie->Sort();
+    for (auto & category: categories)
+      category->Sort();
   }
 
   void Print() {
-    for (auto & categorie : categories)
-      categorie->Print();
+    for (auto & category: categories)
+      category->Print();
   }
 
   void RemoveTail() {
-    for (auto & categorie : categories)
-      categorie->RemoveTail();
+    for (auto & category: categories)
+      category->RemoveTail();
   }
 
   std::string CategoriesRLE() {
     std::stringstream ss;
-    for (auto & categorie : categories) {
-      ss << categorie->RLE();
+    for (auto & category: categories) {
+      ss << category->RLE();
     }
 
     return ss.str();
@@ -1343,9 +1343,9 @@ public:
     // searcher->categoryContainer->Sort();
     searcher->categoryContainer->RemoveTail();
 
-    for (auto & categorie : searcher->categoryContainer->categories) {
-      base.push_back(categorie->results[0]);
-      cur.push_back(categorie->results[0]);
+    for (auto & category: searcher->categoryContainer->categories) {
+      base.push_back(category->results[0]);
+      cur.push_back(category->results[0]);
     }
 
     searcher->AddIterators(searcher->numIters);
@@ -1385,11 +1385,11 @@ public:
   void ReinitializeCurrent(int size, int iters) {
     cur.clear();
 
-    for (auto & categorie : searcher->categoryContainer->categories) {
-      if (categorie
+    for (auto & category: searcher->categoryContainer->categories) {
+      if (category
               ->results[0]
               ->params.size() == 3 * size)
-        cur.push_back(categorie->results[0]);
+        cur.push_back(category->results[0]);
     }
 
     searcher->AddIterators(iters);
@@ -1408,9 +1408,9 @@ public:
     searcher->categoryContainer =
         new CategoryContainer(searcher->params.maxGen);
 
-    for (auto & categorie : found->categories) {
+    for (auto & category: found->categories) {
       searcher->numIters =
-          categorie->results[0]->SetIters(searcher->enu, 0);
+          category->results[0]->SetIters(searcher->enu, 0);
       searcher->UpdateResults();
     }
   }
