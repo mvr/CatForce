@@ -22,8 +22,8 @@ const int symmXY[] = {0, 1, 1, 0};
 const int symmYX[] = {0, -1, -1, 0};
 
 const int MAIN_STEP = 1;
-__attribute__((flatten)) void MainRun() {
-  IterateState(GlobalState);
+__attribute__((flatten)) void MainRun(LifeState &state) {
+  IterateState(&state);
 }
 
 // const int MAIN_STEP = 2;
@@ -379,8 +379,8 @@ void ApplySym(LifeState *state, Symmetry sym) {
   }
 }
 
-void PutStateWSym(LifeState *state, int x, int y, Symmetry sym) {
-  PutState(state, x, y);
+void PutStateWSym(LifeState *main, LifeState *state, int x, int y, Symmetry sym) {
+  Join(main, state, x, y);
   if (sym == NONE)
     return;
   LifeState transformed;
@@ -393,18 +393,18 @@ void PutStateWSym(LifeState *state, int x, int y, Symmetry sym) {
 
   Join(&transformed, state, x, y);
   ApplySym(&transformed, sym);
-  PutState(&transformed);
+  Join(main, &transformed);
 }
 
-void PutStateWSym(LifeState *state, Symmetry sym) {
-  PutState(state);
+void PutStateWSym(LifeState *main, LifeState *state, Symmetry sym) {
+  Join(main, state);
   if (sym == NONE)
     return;
 
   LifeState transformed;
   Copy(&transformed, state);
   ApplySym(&transformed, sym);
-  PutState(&transformed);
+  Join(main, &transformed);
 }
 
 void GenerateStates(const std::vector<CatalystInput> &catalysts,
@@ -463,16 +463,17 @@ void XYStartGenPerState(
       std::vector<int> xVec;
 
       for (int y = 0; y < 64; y++) {
-        New();
-        PutStateWSym(states[i], x, y, params.symmetricSearch);
-        PutStateWSym(pat, params.symmetricSearch);
+        LifeState state;
+        ClearData(&state);
+        PutStateWSym(&state, states[i], x, y, params.symmetricSearch);
+        PutStateWSym(&state, pat, params.symmetricSearch);
         int j;
 
         for (j = 0; j < params.maxGen + 5; j++) {
-          if (Contains(GlobalState, targets[i], x, y) == NO) {
+          if (Contains(&state, targets[i], x, y) == NO) {
             break;
           }
-          Run(1);
+          Run(&state, 1);
         }
 
         if (j == params.maxGen + 4)
@@ -490,14 +491,15 @@ void XYStartGenPerState(
 
 void PreIteratePat(LifeState *pat, std::vector<LifeState *> &preIterated,
                    const SearchParams &params) {
-  New();
-  PutStateWSym(pat, params.symmetricSearch);
+  LifeState workspace;
+  ClearData(&workspace);
+  PutStateWSym(&workspace, pat, params.symmetricSearch);
 
   for (int i = 0; i < params.maxGen + 5; i++) {
     LifeState *t = NewState();
-    Copy(t, GlobalState);
+    Copy(t, &workspace);
     preIterated.push_back(t);
-    Run(1);
+    Run(&workspace, 1);
   }
 }
 
@@ -1112,15 +1114,15 @@ public:
   //   }
   // }
 
-  void PutItersState() {
-    PutStateWSym(enu.cumulative[0], params.symmetricSearch);
+  void PutItersState(LifeState *workspace) {
+    PutStateWSym(workspace, enu.cumulative[0], params.symmetricSearch);
   }
 
-  int CatalystCollide() {
-    Run(1);
+  int CatalystCollide(LifeState* workspace) {
+    Run(workspace, 1);
 
     for (int i = 0; i < numIters; i++) {
-      if (Contains(GlobalState, enu.shiftedTargets[i]) == NO) {
+      if (Contains(workspace, enu.shiftedTargets[i]) == NO) {
         return YES;
       }
     }
@@ -1136,25 +1138,26 @@ public:
   }
 
   bool HasForbidden(int curIter) {
-    PutCurrentState();
+    LifeState workspace;
+    PutCurrentState(&workspace);
 
     for (int i = 0; i <= curIter + 1; i++) {
       for (int j = 0; j < numIters; j++) {
         for (int k = 0; k < forbiddenTargets[enu.curs[j]].size(); k++) {
-          if (Contains(GlobalState, forbiddenTargets[enu.curs[j]][k],
+          if (Contains(&workspace, forbiddenTargets[enu.curs[j]][k],
                        enu.curx[j], enu.cury[j]) == YES)
             return true;
         }
       }
-      Run(1);
+      Run(&workspace, 1);
     }
 
     return false;
   }
 
-  bool UpdateActivationCountersFail() {
+  bool UpdateActivationCountersFail(LifeState *workspace) {
     for (int j = 0; j < numIters; j++) {
-      if (Contains(GlobalState, enu.shiftedTargets[j]) == NO) {
+      if (Contains(workspace, enu.shiftedTargets[j]) == NO) {
         activated[j] = YES;
         absentCount[j] += MAIN_STEP;
 
@@ -1169,10 +1172,10 @@ public:
     return false;
   }
 
-  bool FilterForCurrentGenFail() {
+  bool FilterForCurrentGenFail(LifeState *workspace) {
     for (int j = 0; j < targetFilter.size(); j++) {
-      if (GlobalState->gen == params.filterGen[j] &&
-          Contains(GlobalState, targetFilter[j]) == NO) {
+      if (workspace->gen == params.filterGen[j] &&
+          Contains(workspace, targetFilter[j]) == NO) {
         return true;
       }
     }
@@ -1190,13 +1193,13 @@ public:
     return YES;
   }
 
-  void PutCurrentState() {
-    New();
-    PutItersState();
-    PutStateWSym(pat, params.symmetricSearch);
+  void PutCurrentState(LifeState *workspace) {
+    ClearData(workspace);
+    PutItersState(workspace);
+    PutStateWSym(workspace, pat, params.symmetricSearch);
   }
 
-  bool ValidateFilters(const int &maxFilterGen) {
+  bool ValidateFilters(LifeState *workspace, const int &maxFilterGen) {
     std::vector<bool> rangeValid(params.filterGen.size(), false);
 
     for (int k = 0; k < params.filterGen.size(); k++)
@@ -1205,18 +1208,18 @@ public:
 
     for (int j = 0; j <= maxFilterGen; j++) {
       for (int k = 0; k < params.filterGen.size(); k++) {
-        if (GlobalState->gen == params.filterGen[k] &&
-            Contains(GlobalState, targetFilter[k]) == NO)
+        if (workspace->gen == params.filterGen[k] &&
+            Contains(workspace, targetFilter[k]) == NO)
           return false;
 
         if (params.filterGen[k] == -1 &&
-            params.filterGenRange[k].first <= GlobalState->gen &&
-            params.filterGenRange[k].second >= GlobalState->gen &&
-            Contains(GlobalState, targetFilter[k]) == YES)
+            params.filterGenRange[k].first <= workspace->gen &&
+            params.filterGenRange[k].second >= workspace->gen &&
+            Contains(workspace, targetFilter[k]) == YES)
           rangeValid[k] = true;
       }
 
-      Run(1);
+      Run(workspace, 1);
     }
 
     for (int k = 0; k < params.filterGen.size(); k++)
@@ -1234,10 +1237,11 @@ public:
     //   return;
 
     // Place catalysts first and check if they collide.
-    New();
+    LifeState workspace;
+    ClearData(&workspace);
 
-    PutItersState();
-    PutState(preIterated[minIter]);
+    PutItersState(&workspace);
+    Join(&workspace, preIterated[minIter]);
 
     // Initial searcher countters for absense and activation
     InitActivationCounters();
@@ -1245,18 +1249,18 @@ public:
     int surviveCount = 0;
 
     for (int i = minIter; i < iterationMaxGen; i += MAIN_STEP) {
-      MainRun();
+      MainRun(workspace);
 
       // Fail if some catalyst is idle for too long - updates the counters for
       // them otherwise.
-      if (UpdateActivationCountersFail())
+      if (UpdateActivationCountersFail(&workspace))
         break;
 
       // const bool optimization - will skip this always.
       if (hasFilterDontReportAll) {
         // Validate filters if any of them exist. Will validate on current gen
         // of GlobalState
-        if (FilterForCurrentGenFail())
+        if (FilterForCurrentGenFail(&workspace))
           break;
       }
 
@@ -1269,15 +1273,15 @@ public:
       if (surviveCount >= surviveCountForUpdate) {
         // if reportAll - ignore filters and update fullReport
         if (reportAll) {
-          New();
-          PutItersState();
-          Copy(catalysts, GlobalState);
+          ClearData(&workspace);
+          PutItersState(&workspace);
+          Copy(catalysts, &workspace);
 
-          PutCurrentState();
-          Copy(init, GlobalState);
+          PutCurrentState(&workspace);
+          Copy(init, &workspace);
 
-          Run(i - surviveCountForUpdate + 2);
-          Copy(afterCatalyst, GlobalState);
+          Run(&workspace, i - surviveCountForUpdate + 2);
+          Copy(afterCatalyst, &workspace);
 
           fullfound++;
 
@@ -1287,8 +1291,8 @@ public:
 
         // If has fitlter validate them;
         if (hasFilter) {
-          PutCurrentState();
-          if(!ValidateFilters(filterMaxGen))
+          PutCurrentState(&workspace);
+          if(!ValidateFilters(&workspace, filterMaxGen))
             break;
         }
 
@@ -1296,15 +1300,15 @@ public:
           break;
 
         // If all filters validated update results
-        New();
-        PutItersState();
-        Copy(catalysts, GlobalState);
+        ClearData(&workspace);
+        PutItersState(&workspace);
+        Copy(catalysts, &workspace);
 
-        PutCurrentState();
-        Copy(init, GlobalState);
+        PutCurrentState(&workspace);
+        Copy(init, &workspace);
 
-        Run(i - surviveCountForUpdate + 2);
-        Copy(afterCatalyst, GlobalState);
+        Run(&workspace, i - surviveCountForUpdate + 2);
+        Copy(afterCatalyst, &workspace);
 
         categoryContainer->Add(init, afterCatalyst, catalysts, enu,
                                i - surviveCountForUpdate + 2, 0);
@@ -1414,10 +1418,6 @@ int main(int argc, char *argv[]) {
     std::cout << "Usage CatForce.exe <in file>" << std::endl;
     exit(0);
   }
-
-  // LifeAPI initialization.
-  GlobalState = NULL;
-  New();
 
   std::cout << "Input: " << argv[1] << std::endl
             << "Initializing please wait..." << std::endl;

@@ -133,7 +133,7 @@ typedef struct {
   // LifeString *emittedGliders;
 } LifeState;
 
-static LifeState *GlobalState;
+// static LifeState *GlobalState;
 // static LifeState *Captures[CAPTURE_COUNT];
 
 inline uint64_t RotateLeft(uint64_t x, unsigned int k) {
@@ -166,9 +166,9 @@ int GetCell(LifeState *state, int x, int y) {
   return Get((x + 32) % 64, (y + 32) % 64, state->state);
 }
 
-int GetCell(int x, int y) { return GetCell(GlobalState, x, y); }
+// int GetCell(int x, int y) { return GetCell(GlobalState, x, y); }
 
-void SetCell(int x, int y, int val) { SetCell(GlobalState, x, y, val); }
+// void SetCell(int x, int y, int val) { SetCell(GlobalState, x, y, val); }
 
 uint64_t GetHash(LifeState *state) {
   uint64_t result = 0;
@@ -334,7 +334,7 @@ int GetPop(LifeState *state) {
   return pop;
 }
 
-int GetPop() { return GetPop(GlobalState); }
+// int GetPop() { return GetPop(GlobalState); }
 
 // int GetPop(int captureIdx) { return GetPop(Captures[captureIdx]); }
 
@@ -378,7 +378,7 @@ int AreEqual(LifeState *pat1, LifeState *pat2) {
   return YES;
 }
 
-int AreEqual(LifeState *pat1) { return AreEqual(GlobalState, pat1); }
+// int AreEqual(LifeState *pat1) { return AreEqual(GlobalState, pat1); }
 
 // int AreEqual(int idx) { return AreEqual(GlobalState, Captures[idx]); }
 
@@ -455,9 +455,9 @@ int Contains(LifeState *main, LifeState *spark, int targetDx, int targetDy) {
   return YES;
 }
 
-int AllOn(LifeState *spark) { return Contains(GlobalState, spark); }
+// int AllOn(LifeState *spark) { return Contains(GlobalState, spark); }
 
-int AllOff(LifeState *spark) { return AreDisjoint(GlobalState, spark); }
+// int AllOff(LifeState *spark) { return AreDisjoint(GlobalState, spark); }
 
 void Reverse(uint64_t *state, int idxS, int idxE) {
   for (int i = 0; idxS + i < idxE - i; i++) {
@@ -506,7 +506,7 @@ void FlipX(LifeState *state) {
   Move(state, 1, 0);
 }
 
-void FlipX() { FlipX(GlobalState); }
+// void FlipX() { FlipX(GlobalState); }
 
 // void FlipX(int idx) { FlipX(Captures[idx]); }
 
@@ -591,7 +591,7 @@ void GetBoundary(LifeState *state, LifeState *boundary) {
 //   GetBoundary(state, Captures[captureIdx]);
 // }
 
-void GetBoundary(LifeState *boundary) { GetBoundary(GlobalState, boundary); }
+// void GetBoundary(LifeState *boundary) { GetBoundary(GlobalState, boundary); }
 
 // void GetBoundary(int captureIdx) {
 //   GetBoundary(GlobalState, Captures[captureIdx]);
@@ -750,7 +750,7 @@ int Contains(LifeState *state, LifeTarget *target) {
     return NO;
 }
 
-int Contains(LifeTarget *target) { return Contains(GlobalState, target); }
+// int Contains(LifeTarget *target) { return Contains(GlobalState, target); }
 
 void FreeTarget(LifeTarget *iter) {
   FreeState(iter->wanted);
@@ -925,9 +925,9 @@ void LocateTarget(LifeState *state, TargetLocator *targetLocator,
   LocateInRange(state, targetLocator, result, state->min, state->max);
 }
 
-void LocateTarget(TargetLocator *targetLocator, LifeState *result) {
-  LocateTarget(GlobalState, targetLocator, result);
-}
+// void LocateTarget(TargetLocator *targetLocator, LifeState *result) {
+//   LocateTarget(GlobalState, targetLocator, result);
+// }
 
 static TargetLocator *_glidersTarget[4];
 
@@ -1159,11 +1159,11 @@ void PrintRLE(LifeState *state) {
   printf("\nx = 0, y = 0, rule = B3/S23\n%s!\n\n", GetRLE(state));
 }
 
-void Print() { Print(GlobalState); }
+// void Print() { Print(GlobalState); }
 
 // void Print(int idx) { Print(Captures[idx]); }
 
-void PrintRLE() { PrintRLE(GlobalState); }
+// void PrintRLE() { PrintRLE(GlobalState); }
 
 // void PrintRLE(int idx) { PrintRLE(Captures[idx]); }
 
@@ -1205,32 +1205,32 @@ void RandomState(LifeState *state) {
   RecalculateMinMax(state);
 }
 
-void RandomState() { RandomState(GlobalState); }
+// void RandomState() { RandomState(GlobalState); }
 
-void New() {
-  if (GlobalState == NULL) {
-    GlobalState = NewState();
+// void New() {
+//   if (GlobalState == NULL) {
+//     GlobalState = NewState();
 
-    // for (int i = 0; i < CAPTURE_COUNT; i++) {
-    //   Captures[i] = NewState();
-    // }
+//     // for (int i = 0; i < CAPTURE_COUNT; i++) {
+//     //   Captures[i] = NewState();
+//     // }
 
-    _glidersTarget[0] = NewTargetLocator("2o$obo$o!");
-    _glidersTarget[1] = NewTargetLocator("o$obo$2o!");
-    _glidersTarget[2] = NewTargetLocator("b2o$obo$2bo!", -2, 0);
-    _glidersTarget[3] = NewTargetLocator("2bo$obo$b2o!", -2, 0);
+//     _glidersTarget[0] = NewTargetLocator("2o$obo$o!");
+//     _glidersTarget[1] = NewTargetLocator("o$obo$2o!");
+//     _glidersTarget[2] = NewTargetLocator("b2o$obo$2bo!", -2, 0);
+//     _glidersTarget[3] = NewTargetLocator("2bo$obo$b2o!", -2, 0);
 
-  } else {
-    ClearData(GlobalState);
-  }
-}
+//   } else {
+//     ClearData(GlobalState);
+//   }
+// }
 
 // void Capture(LifeState *cap, int idx) { Copy(Captures[idx], cap); }
 
 // void Capture(int idx) { Copy(Captures[idx], GlobalState); }
 
 void Run(LifeState *state, int numIter) { Evolve(state, numIter); }
-void Run(int numIter) { Evolve(GlobalState, numIter); }
+// void Run(int numIter) { Evolve(GlobalState, numIter); }
 
 void Join(LifeState *main, LifeState *delta) { Copy(main, delta, OR); }
 
@@ -1257,48 +1257,52 @@ inline void Join(LifeState *__restrict__ main, LifeState *__restrict__ delta, in
   main->max = N - 1;
 }
 
-void PutState(LifeState *state) { Join(GlobalState, state); }
+// void PutState(LifeState *state) { Join(GlobalState, state); }
 
-void PutState(LifeState *state, int dx, int dy) {
-  Join(GlobalState, state, dx, dy);
+// void PutState(LifeState *state, int dx, int dy) {
+//   Join(GlobalState, state, dx, dy);
+// }
+
+void PutState(LifeState *main, LifeState *state, int dx, int dy) {
+  Join(main, state, dx, dy);
 }
 
 // void PutState(int idx) { PutState(Captures[idx]); }
 
-void PutState(LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
+void PutState(LifeState *main, LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
               int dyy) {
   LifeState Temp;
   ClearData(&Temp);
   Copy(&Temp, state);
   Transform(&Temp, dx, dy, dxx, dxy, dyx, dyy);
-  PutState(&Temp);
+  Join(main, &Temp);
 }
 
-void PutState(LifeState *state, CopyType op) { Copy(GlobalState, state, op); }
+// void PutState(LifeState *state, CopyType op) { Copy(GlobalState, state, op); }
 
-int PutState(const char *rle) {
+int PutState(LifeState *main, const char *rle) {
   LifeState Temp;
   ClearData(&Temp);
   int result = Parse(&Temp, rle);
 
   if (result == SUCCESS)
-    PutState(&Temp);
+    Join(main, &Temp);
 
   return result;
 }
 
-int PutState(const char *rle, int x, int y) {
+int PutState(LifeState *main, const char *rle, int x, int y) {
   LifeState Temp;
   ClearData(&Temp);
   int result = Parse(&Temp, rle, x, y);
 
   if (result == SUCCESS)
-    PutState(&Temp);
+    Join(main, &Temp);
 
   return result;
 }
 
-int PutState(const char *rle, int dx, int dy, int dxx, int dxy, int dyx,
+int PutState(LifeState *main, const char *rle, int dx, int dy, int dxx, int dxy, int dyx,
              int dyy) {
   LifeState Temp;
   ClearData(&Temp);
@@ -1306,7 +1310,7 @@ int PutState(const char *rle, int dx, int dy, int dxx, int dxy, int dyx,
 
   if (result == SUCCESS) {
     Transform(&Temp, dx, dy, dxx, dxy, dyx, dyy);
-    PutState(&Temp);
+    Join(main, &Temp);
   }
 
   return result;
@@ -1622,7 +1626,7 @@ void Add(LifeResults *results, LifeState *state) {
   results->size++;
 }
 
-void Add(LifeResults *results) { Add(results, GlobalState); }
+// void Add(LifeResults *results) { Add(results, GlobalState); }
 
 char *ReadFile(const char *filePath) {
   char *buffer = (char *)malloc(1);
