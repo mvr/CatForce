@@ -21,6 +21,40 @@ const int rot90anti[] = {0, -1, 1, 0};
 const int symmXY[] = {0, 1, 1, 0};
 const int symmYX[] = {0, -1, -1, 0};
 
+const int MAIN_STEP = 1;
+__attribute__((flatten)) void MainRun() {
+  IterateState(GlobalState);
+}
+
+// const int MAIN_STEP = 2;
+// __attribute__((flatten)) void MainRun() {
+//   IterateState(GlobalState);
+//   IterateState(GlobalState);
+// }
+
+// const int MAIN_STEP = 4;
+// __attribute__((flatten)) void MainChunk() {
+//   IterateState(GlobalState);
+//   IterateState(GlobalState);
+// }
+// void MainRun() {
+//   MainChunk();
+//   MainChunk();
+// }
+
+// const int MAIN_STEP = 8;
+// __attribute__((flatten)) void MainChunk() {
+//   IterateState(GlobalState);
+//   IterateState(GlobalState);
+// }
+
+// void MainRun() {
+//   MainChunk();
+//   MainChunk();
+//   MainChunk();
+//   MainChunk();
+// }
+
 enum Symmetry {
   NONE,
   HORIZONTAL,
@@ -1122,7 +1156,7 @@ public:
     for (int j = 0; j < numIters; j++) {
       if (Contains(GlobalState, enu.shiftedTargets[j]) == NO) {
         activated[j] = YES;
-        absentCount[j]++;
+        absentCount[j] += MAIN_STEP;
 
         if (absentCount[j] > maxSurvive[enu.curs[j]]) {
           return true;
@@ -1210,8 +1244,8 @@ public:
 
     int surviveCount = 0;
 
-    for (int i = minIter; i < iterationMaxGen; i++) {
-      Run(1);
+    for (int i = minIter; i < iterationMaxGen; i += MAIN_STEP) {
+      MainRun();
 
       // Fail if some catalyst is idle for too long - updates the counters for
       // them otherwise.
@@ -1227,7 +1261,7 @@ public:
       }
 
       if (IsAllActivated())
-        surviveCount++;
+        surviveCount += MAIN_STEP;
       else
         surviveCount = 0;
 
