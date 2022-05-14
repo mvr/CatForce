@@ -968,11 +968,13 @@ public:
 
     std::cout << std::setprecision(1) << std::fixed << percent << "%,"
               << idx / 1000000 << "M/" << total
-              << "M, cats/find: " << categoryContainer->categories.size() << "/"
-              << found
-              << ", unfiltered: " << fullCategoryContainer->categories.size() << "/"
-              << fullfound
-              << ", now: ";
+              << "M, cats/total: " << categoryContainer->categories.size() << "/"
+              << found;
+    if (params.fullReportFile.length() != 0) {
+      std::cout << ", unfiltered: " << fullCategoryContainer->categories.size() << "/"
+                << fullfound;
+    }
+    std::cout << ", now: ";
     PrintTime(sec);
     std::cout << ", est: ";
     PrintTime(estimation);
@@ -1010,7 +1012,8 @@ public:
     int hr = sec / 3600;
     int min = (sec / 60) - hr * 60;
     int secs = sec - 3600 * hr - 60 * min;
-    std::cout << hr << ":" << min << ":" << secs;
+    std::cout << std::setfill('0');
+    std::cout << hr << ":" << std::setw(2) << min << ":" << std::setw(2) << secs;
     return;
   }
   void IncreaseIndexAndReport(bool saveFile = true) {
