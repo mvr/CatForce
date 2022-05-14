@@ -3,24 +3,19 @@ max-gen 100
 start-gen 1
 num-catalyst 2
 stable-interval 15
-symmetry diagonal
 
---search area---
-search-area -1 -15 20 30
-#fit-in-width-height 12 8
+search-area -1 -18 18 36
 
--pattern--
-pat 2b3o$bo3bo$o5bo$o5bo$o5bo$bo3bo$2b3o! -1 1
+symmetry diagonalevenx
+pat 2bo$b3o$o3bo$b3o$2bo! 1 1
+output sym.rle
 
-==Catalysts==
-cat 2o$2o 60 0 0 . 
-cat 2o$o$b3o$3bo! 12 -2 -2 *
-cat bo$obo$obo$bo! 50 -1 -2 /
-cat b2o$o2bo$bobo$2bo 35 -2 -2 +
-cat bo$obo$bo! 15 -1 -1 .
-cat 2o$obo$bo! 25 -1 -1 +
-cat 2o$obo$b2o! 35 -1 -1 |
-
-==Output===
-output sym.rle 
-
+cat 2o$2o 100 0 0 .
+cat 2o$o$b3o$3bo! 40 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6
+cat bo$obo$obo$bo 100 -1 -2 /
+cat b2o$o2bo$bobo$2bo 100 -2 -2 +
+cat bo$obo$bo 100 -1 -1 .
+cat 2o$obo$bo 100 -1 -1 +
+cat 2o$obo$b2o 100 -1 -1 |
+cat b2o$o2bo$o2bo$b2o 100 -2 -2 .
+cat 2o$obo$bobo$2bo! 100 -1 -1 +
