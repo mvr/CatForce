@@ -1812,20 +1812,20 @@ int NaiveNext(Enumerator &enu, int i) {
   if(i == enu.count)
     return FAIL;
 
-  enu.curx[i]++;
-  if (enu.curx[i] < enu.x + enu.w)
+  enu.curs[i]++;
+  if (enu.curs[i] < enu.s)
     return SUCCESS;
-  enu.curx[i] = enu.x;
+  enu.curs[i] = 0;
 
   enu.cury[i]++;
   if (enu.cury[i] < enu.y + enu.h)
     return SUCCESS;
   enu.cury[i] = enu.y;
 
-  enu.curs[i]++;
-  if (enu.curs[i] < enu.s)
+  enu.curx[i]++;
+  if (enu.curx[i] < enu.x + enu.w)
     return SUCCESS;
-  enu.curs[i] = 0;
+  enu.curx[i] = enu.x;
 
   return Next(enu, i+1);
 }
