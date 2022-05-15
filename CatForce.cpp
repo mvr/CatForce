@@ -97,6 +97,7 @@ public:
   std::vector<int> filterGen;
   std::vector<std::pair<int, int>> filterGenRange;
 
+  int maxCatSize;
   bool combineResults;
   std::vector<int> combineSurvive;
 
@@ -117,6 +118,7 @@ public:
     maxW = -1;
     maxH = -1;
     symmetricSearch = NONE;
+    maxCatSize = -1;
     fullReportFile = "";
     combineResults = false;
   }
@@ -238,6 +240,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string outputFile = "output";
   std::string filter = "filter";
   std::string maxWH = "fit-in-width-height";
+  std::string maxCatSize = "max-cat-size";
   std::string fullReport = "full-report";
   std::string combine = "combine-results";
 
@@ -328,6 +331,10 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
       if (elems[0] == maxWH) {
         params.maxW = atoi(elems[1].c_str());
         params.maxH = atoi(elems[2].c_str());
+      }
+
+      if (elems[0] == maxCatSize) {
+        params.maxCatSize = atoi(elems[1].c_str());
       }
 
       if (elems[0] == combine && elems[1] == "yes") {
@@ -701,7 +708,10 @@ public:
     hash = GetHash(tempCat);
   }
 
-  void Add(SearchResult *result) { results.push_back(result); }
+  void Add(SearchResult *result) {
+    if(results.size() < 100)
+      results.push_back(result);
+  }
 
   bool BelongsTo(LifeState *test, const uint64_t &testHash) {
     if (testHash != hash)
@@ -761,7 +771,7 @@ public:
       result->Print();
   }
 
-  std::string RLE() {
+  std::string RLE(int maxCatSize) {
     // 36 is extra margin to get 100
     const int Dist = 36 + 64;
 
@@ -779,7 +789,12 @@ public:
       vec.push_back(temp);
     }
 
-    for (int l = 0; l < results.size(); l++)
+    int howmany = results.size();
+
+    if (maxCatSize != -1)
+      howmany = std::min(howmany, maxCatSize);
+
+    for (int l = 0; l < howmany; l++)
       for (int j = 0; j < N; j++)
         for (int i = 0; i < N; i++)
           vec[Dist * l + i][j] = Get(i, j, results[l]->init->state);
@@ -856,10 +871,10 @@ public:
       category->RemoveTail();
   }
 
-  std::string CategoriesRLE() {
+  std::string CategoriesRLE(int maxCatSize) {
     std::stringstream ss;
     for (auto & category: categories) {
-      ss << category->RLE();
+      ss << category->RLE(maxCatSize);
     }
 
     return ss.str();
@@ -1063,7 +1078,7 @@ public:
 
       std::ofstream catResultsFile(params.outputFile.c_str());
       catResultsFile << "x = 0, y = 0, rule = B3/S23\n";
-      catResultsFile << categoryContainer->CategoriesRLE();
+      catResultsFile << categoryContainer->CategoriesRLE(params.maxCatSize);
       catResultsFile.close();
 
       if (params.fullReportFile.length() != 0) {
@@ -1071,7 +1086,7 @@ public:
 
         std::ofstream fullCatResultsFile(params.fullReportFile.c_str());
         fullCatResultsFile << "x = 0, y = 0, rule = B3/S23\n";
-        fullCatResultsFile << fullCategoryContainer->CategoriesRLE();
+        fullCatResultsFile << fullCategoryContainer->CategoriesRLE(params.maxCatSize);
         fullCatResultsFile.close();
       }
     }
