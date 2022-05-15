@@ -390,8 +390,7 @@ void PutStateWSym(LifeState *main, LifeState *state, int x, int y, Symmetry sym)
   if (sym == NONE)
     return;
   LifeState transformed;
-  for (unsigned long & i : transformed.state)
-    i = 0;
+  ClearData(&transformed);
 
   transformed.min = 0;
   transformed.max = N - 1;
@@ -470,12 +469,12 @@ void XYStartGenPerState(
   }
   chunkbounds.emplace_back(lowerbound, states.size());
   statexyGen.reserve(states.size());
-#pragma omp parallel for ordered schedule(static,1) default(none) shared(states, params, targets, statexyGen, pat, chunkbounds, std::cout)
+  #pragma omp parallel for ordered schedule(static,1) default(none) shared(states, params, targets, statexyGen, pat, chunkbounds, std::cout)
   for (auto & bounds : chunkbounds){
     std::vector<std::vector<std::vector<int>>> perthread_statexyGen;
     perthread_statexyGen.reserve(bounds.second-bounds.first);
+
     #pragma omp critical
-    std::cout << bounds.first << " " << bounds.second << std::endl;
     for (long i = bounds.first; i < bounds.second; i++) {
       std::vector<std::vector<int>> xyVec;
       xyVec.reserve(64);
@@ -507,8 +506,8 @@ void XYStartGenPerState(
       }
 
       perthread_statexyGen.push_back(xyVec);
-      std::cout << i << " " << perthread_statexyGen.size() << " " << xyVec.size() << std::endl;
     }
+
     #pragma omp ordered
     {
       statexyGen.insert(
@@ -516,7 +515,6 @@ void XYStartGenPerState(
           std::make_move_iterator(perthread_statexyGen.begin()),
           std::make_move_iterator(perthread_statexyGen.end())
       );
-      std::cout << statexyGen.size() << std::endl;
     };
   }
 }
@@ -935,7 +933,6 @@ public:
         }
       }
     }
-
 
     PreIteratePat(pat, preIterated, params);
     AddIterators(numIters);
