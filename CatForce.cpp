@@ -474,7 +474,7 @@ void XYStartGenPerState(const std::vector<LifeTarget *> &targets,
       xyVec.reserve(64);
 
       for (int x = 0; x < 64; x++) {
-        std::vector<int> xVec(64, 0);
+        std::vector<int> xVec(64, params.startGen);
         xyVec.push_back(xVec);
       }
       statexyGen.push_back(xyVec);
