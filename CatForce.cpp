@@ -1217,7 +1217,7 @@ public:
     return true;
   }
 
-  void UpdateResults(Configuration &conf) {
+  int TestConfiguration(Configuration &conf) {
     LifeState workspace;
     ClearData(&workspace);
     PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
@@ -1235,13 +1235,13 @@ public:
       // Fail if some catalyst is idle for too long - updates the counters for
       // them otherwise.
       if (UpdateActivationCountersFail(&workspace, conf))
-        break;
+        return -1;
 
       if (hasFilterDontReportAll) {
         // Validate filters if any of them exist. Will validate on current gen
         // of GlobalState
         if (FilterForCurrentGenFail(&workspace))
-          break;
+          return -1;
       }
 
       if (IsAllActivated()) {
@@ -1252,53 +1252,57 @@ public:
 
       // If everything was actuvated and stable for stableInterval then report.
       if (surviveCount >= surviveCountForUpdate) {
-        // if reportAll - ignore filters and update fullReport
-        if (reportAll) {
-          ClearData(&workspace);
-
-          PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
-          Copy(catalysts, &workspace);
-
-          PutStartState(&workspace, conf);
-          Copy(init, &workspace);
-
-          Run(&workspace, i - surviveCountForUpdate + 2);
-          Copy(afterCatalyst, &workspace);
-
-          fullfound++;
-
-          fullCategoryContainer->Add(init, afterCatalyst, catalysts, conf,
-                                     i - surviveCountForUpdate + 2, 0);
-        }
-
-        // If has fitlter validate them;
-        if (hasFilter) {
-          if (!ValidateFilters(conf))
-            break;
-        }
-
-        if (HasForbidden(conf, i + 3))
-          break;
-
-        // If all filters validated update results
-        ClearData(&workspace);
-        PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
-        Copy(catalysts, &workspace);
-
-        PutStartState(&workspace, conf);
-        Copy(init, &workspace);
-
-        Run(&workspace, i - surviveCountForUpdate + 2);
-        Copy(afterCatalyst, &workspace);
-
-        categoryContainer->Add(init, afterCatalyst, catalysts, conf,
-                               i - surviveCountForUpdate + 2, 0);
-        found++;
-
-        break;
+        return i;
       }
     }
+    return -1;
   }
+
+  void ReportSolution(Configuration &conf, int successtime){
+    LifeState workspace;
+    // if reportAll - ignore filters and update fullReport
+    if (reportAll) {
+      ClearData(&workspace);
+
+      PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
+      Copy(catalysts, &workspace);
+
+      PutStartState(&workspace, conf);
+      Copy(init, &workspace);
+
+      Run(&workspace, successtime - surviveCountForUpdate + 2);
+      Copy(afterCatalyst, &workspace);
+
+      fullfound++;
+
+      fullCategoryContainer->Add(init, afterCatalyst, catalysts, conf,
+                                 successtime - surviveCountForUpdate + 2, 0);
+    }
+
+    // If has fitlter validate them;
+    if (hasFilter) {
+      if (!ValidateFilters(conf))
+        return;
+    }
+
+    if (HasForbidden(conf, successtime + 3))
+      return;
+
+    // If all filters validated update results
+    ClearData(&workspace);
+    PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
+    Copy(catalysts, &workspace);
+
+    PutStartState(&workspace, conf);
+    Copy(init, &workspace);
+
+    Run(&workspace, successtime - surviveCountForUpdate + 2);
+    Copy(afterCatalyst, &workspace);
+
+    categoryContainer->Add(init, afterCatalyst, catalysts, conf,
+                           successtime - surviveCountForUpdate + 2, 0);
+    found++;
+}
 
   void SetParamsForCombine(int combineIter) {
     if (params.combineSurvive.size() - 1 < combineIter)
@@ -1420,13 +1424,15 @@ int main(int argc, char *argv[]) {
   Configuration c;
   while (!searcher.enu.done) {
     c = GetConfiguration(searcher.enu);
-    // std::cout << c.curx[0] << ", " << c.cury[0] << std::endl;
-    searcher.UpdateResults(c);
-    searcher.IncreaseIndexAndReport();
-    Next(searcher.enu);
+    int result = searcher.TestConfiguration(c);
+    if(result != -1) {
+      searcher.ReportSolution(c, result);
+    }
     for(int i = 0; i < searcher.enu.count; i++) {
       FreeTarget(c.shiftedTargets[i]);
     }
+    searcher.IncreaseIndexAndReport();
+    Next(searcher.enu);
   }
   // Print report one final time (update files with the final results).
   searcher.Report();
