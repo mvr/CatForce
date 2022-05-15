@@ -45,6 +45,7 @@ The option delimiter is `" "` - i.e. space.
 | `filter`              | `gen rle dx dy`       | Filter that must be matched for the solution to be accepted            |
 | `filter`              | `min-max rle dx dy`   | Filter in a range of generations.                                      |
 | `full-report`         | `filename`            | Output filename for solutions ignoring all pattern filters             |
+| `max-category-size`   | `n`                   | Maximum output row length before more solutions are dropped            |
 | `fit-in-width-height` | `w h`                 | Only allow solutions where all catalysts fit in a `w` by `h` rectangle |
 | `combine-results`     |                       | See below                                                              |
 | `symmetry`            |                       | See below                                                              |

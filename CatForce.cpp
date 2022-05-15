@@ -240,7 +240,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string outputFile = "output";
   std::string filter = "filter";
   std::string maxWH = "fit-in-width-height";
-  std::string maxCatSize = "max-cat-size";
+  std::string maxCatSize = "max-category-size";
   std::string fullReport = "full-report";
   std::string combine = "combine-results";
 
