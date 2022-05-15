@@ -62,8 +62,9 @@ enum Symmetry {
   HORIZONTAL,
   HORIZONTALEVEN,
   DIAGONAL,
-  DIAGONALEVENX,
-  DIAGONALEVENBOTH,
+  ROTATE180,
+  ROTATE180EVENX,
+  ROTATE180EVENBOTH
 };
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
@@ -343,13 +344,14 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
           params.symmetricSearch = HORIZONTALEVEN;
         } else if (elems[1] == "diagonal") {
           params.symmetricSearch = DIAGONAL;
-        } else if (elems[1] == "diagonalevenx") {
-          params.symmetricSearch = DIAGONALEVENX;
-        } else if (elems[1] == "diagonalevenboth") {
-          params.symmetricSearch = DIAGONALEVENBOTH;
+        } else if (elems[1] == "rotate180") {
+          params.symmetricSearch = ROTATE180;
+        } else if (elems[1] == "rotate180evenx") {
+          params.symmetricSearch = ROTATE180EVENX;
+        } else if (elems[1] == "rotate180evenboth") {
+          params.symmetricSearch = ROTATE180EVENBOTH;
         }
       }
-
 
     } catch (const std::exception &ex) {
     }
@@ -369,15 +371,17 @@ void ApplySym(LifeState *state, Symmetry sym) {
     FlipX(state);
   } else if (sym == HORIZONTALEVEN) {
     Reverse(state->state, 0, N - 1);
-  } else if (sym == DIAGONAL) {
+  } else if (sym == ROTATE180) { // before: DIAGONAL
     FlipX(state);
     FlipY(state);
-  } else if (sym == DIAGONALEVENX) {
+  } else if (sym == ROTATE180EVENX) { // before: DIAGONALEVENX
     Reverse(state->state, 0, N - 1);
     FlipY(state);
-  } else if (sym == DIAGONALEVENBOTH) {
+  } else if (sym == ROTATE180EVENBOTH) { // before: DIAGONALEVENBOTH
     Reverse(state->state, 0, N - 1);
     BitReverse(state);
+  } else if (sym == DIAGONAL) {
+    Transpose(state);
   }
 }
 
@@ -850,18 +854,15 @@ public:
 
 class CatalystSearcher {
 public:
-  // std::string result;
   clock_t begin{};
   std::vector<LifeState *> states;
   std::vector<int> maxSurvive;
   SearchParams params;
   LifeState *pat{};
   int numIters{};
-  // std::vector<LifeIterator *> iters;
   Enumerator enu;
   std::vector<LifeTarget *> targetFilter;
   std::vector<LifeTarget *> targets;
-  // std::vector<LifeTarget *> preShifted;
   std::vector<std::vector<LifeTarget *>> forbiddenTargets;
   std::vector<std::vector<std::vector<int>>> statexyGen;
   std::vector<LifeState *> preIterated;
@@ -892,7 +893,6 @@ public:
   LifeState *catalysts{};
 
   void Init(const char *inputFile, int nthreads) {
-    // result = "x = 0, y = 0, rule = B3/S23\n";
     begin = clock();
     InitCatalysts(inputFile, states, forbiddenTargets, maxSurvive, params);
     pat = NewState(params.pat.c_str(), params.xPat, params.yPat);
@@ -951,9 +951,6 @@ public:
     int fact = 1;
 
     for (int i = 0; i < numIters; i++) {
-      // total *= (iters[i]->w);
-      // total *= (iters[i]->h);
-      // total *= (iters[i]->s);
       total *= params.searchArea[2];
       total *= params.searchArea[3];
       total *= states.size();
@@ -1045,11 +1042,6 @@ public:
     std::cout << ", " << std::setprecision(1) << std::fixed << checkPerSecond
               << "K/sec" << std::endl;
 
-    // Linear report seems to be non needed for now. Don't delete might have
-    // some use in the future. std::ofstream
-    // resultsFile(params.outputFile.c_str()); resultsFile << result;
-    // resultsFile.close();
-
     // categoryContainer->Sort();
     // fullCategoryContainer->Sort();
 
@@ -1117,45 +1109,8 @@ public:
       return YES;
   }
 
-  int LastNonActiveGeneration() {
-    int minIter = statexyGen[enu.curs[0]][(enu.curx[0] + 64) % 64]
-    [(enu.cury[0] + 64) % 64];
-
-    for (int i = 1; i < numIters; i++) {
-      int startGen = statexyGen[enu.curs[i]][(enu.curx[i] + 64) % 64]
-      [(enu.cury[i] + 64) % 64];
-
-      if (startGen < minIter)
-        minIter = startGen;
-
-      if (minIter < params.startGen)
-        break;
-    }
-
-    return minIter;
-  }
-
-  // void PreShiftIters() {
-  //   for (int i = 0; i < numIters; i++) {
-  //     Copy(preShifted[i]->wanted,   targets[enu.curs[i]]->wanted, enu.curx[i], enu.cury[i]);
-  //     Copy(preShifted[i]->unwanted, targets[enu.curs[i]]->unwanted, enu.curx[i], enu.cury[i]);
-  //   }
-  // }
-
   void PutItersState(LifeState *workspace) {
     PutStateWSym(workspace, enu.cumulative[0], params.symmetricSearch);
-  }
-
-  int CatalystCollide(LifeState *workspace) {
-    Run(workspace, 1);
-
-    for (int i = 0; i < numIters; i++) {
-      if (Contains(workspace, enu.shiftedTargets[i]) == NO) {
-        return YES;
-      }
-    }
-
-    return NO;
   }
 
   void InitActivationCounters() {
@@ -1258,16 +1213,10 @@ public:
   }
 
   void UpdateResults() {
-    int minIter = enu.cumulActivation[0]; // LastNonActiveGeneration();
+    int minIter = enu.cumulActivation[0];
 
-    // Activation before first generation allowed to be activated
-    // if (minIter < params.startGen || minIter >= params.lastGen)
-    //   return;
-
-    // Place catalysts first and check if they collide.
     LifeState workspace;
     ClearData(&workspace);
-
     PutItersState(&workspace);
     Join(&workspace, preIterated[minIter]);
 
@@ -1284,7 +1233,6 @@ public:
       if (UpdateActivationCountersFail(&workspace))
         break;
 
-      // const bool optimization - will skip this always.
       if (hasFilterDontReportAll) {
         // Validate filters if any of them exist. Will validate on current gen
         // of GlobalState
@@ -1464,21 +1412,9 @@ int main(int argc, char *argv[]) {
             << "Initialization finished, searching..." << std::endl
             << std::endl;
 
-  // const bool validateWH = searcher.params.maxW > 0 && searcher.params.maxH > 0;
   // Main loop of search on iters
   do {
-    // int valid = YES;
-
-    // width-height validation enabled
-    // if (validateWH) {
-    //   valid = searcher.ValidateMinWidthHeight();
-    // }
-
     searcher.IncreaseIndexAndReport();
-
-    // Valid remains YES after width-height Validation
-    // if (valid == NO)
-    //   continue;
 
     searcher.UpdateResults();
 
