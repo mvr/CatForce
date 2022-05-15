@@ -497,7 +497,6 @@ void XYStartGenPerState(const std::vector<LifeTarget *> &targets,
     std::vector<std::vector<std::vector<int>>> perthread_statexyGen;
     perthread_statexyGen.reserve(bounds.second-bounds.first);
 
-    #pragma omp critical
     for (long i = bounds.first; i < bounds.second; i++) {
       std::vector<std::vector<int>> xyVec;
       xyVec.reserve(64);
