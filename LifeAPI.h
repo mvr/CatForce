@@ -261,7 +261,7 @@ void Print(LifeState *state) {
   printf("\n\n\n\n\n\n");
 }
 
-void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta,
+void Copy(LifeState *__restrict__ main, const LifeState *__restrict__ delta,
                  CopyType op) {
   if (op == COPY) {
     for (int i = 0; i < N; i++)
@@ -291,11 +291,11 @@ void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta,
   RecalculateMinMax(main);
 }
 
-void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta) {
+void Copy(LifeState *__restrict__ main, const LifeState *__restrict__ delta) {
   Copy(main, delta, COPY);
 }
 
-inline void Copy(LifeState *__restrict__ main, LifeState *__restrict__ delta,
+inline void Copy(LifeState *__restrict__ main, const LifeState *__restrict__ delta,
                  int x, int y) {
   uint64_t temp1[N] = {0};
 
@@ -1191,9 +1191,9 @@ void RandomState(LifeState *state) {
 
 void Run(LifeState *state, int numIter) { Evolve(state, numIter); }
 
-void Join(LifeState *main, LifeState *delta) { Copy(main, delta, OR); }
+void Join(LifeState *main, const LifeState *delta) { Copy(main, delta, OR); }
 
-inline void Join(LifeState *__restrict__ main, LifeState *__restrict__ delta, int x, int y) {
+inline void Join(LifeState *__restrict__ main, const LifeState *__restrict__ delta, int x, int y) {
   uint64_t temp1[N] = {0};
   uint64_t temp2[N];
 

@@ -1,15 +1,16 @@
 // CatForce - Catalyst search utility based on LifeAPI using brute force.
 // Written by Michael Simkin 2015
+#include <omp.h>
 #include "LifeAPI.h"
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <stdexcept>
 #include <string>
-#include <time.h>
+#include <ctime>
 #include <vector>
+
 
 const int none[] = {1, 0, 0, 1};
 const int flipX[] = {-1, 0, 0, 1};
@@ -22,6 +23,7 @@ const int symmXY[] = {0, 1, 1, 0};
 const int symmYX[] = {0, -1, -1, 0};
 
 const int MAIN_STEP = 1;
+
 __attribute__((flatten)) void MainRun(LifeState &state) {
   IterateState(&state);
 }
@@ -85,7 +87,7 @@ public:
   int lastGen;
   std::string outputFile;
   std::string fullReportFile;
-  int searchArea[4];
+  int searchArea[4]{};
   int maxW;
   int maxH;
   Symmetry symmetricSearch;
@@ -130,7 +132,7 @@ public:
   std::vector<std::string> forbiddenRLE;
   std::vector<std::pair<int, int>> forbiddenXY;
 
-  CatalystInput(std::string line) {
+  explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems;
     split(line, ' ', elems);
 
@@ -154,15 +156,15 @@ public:
     while (argi + 3 < elems.size()) {
       if (elems[argi] == "forbidden") {
         forbiddenRLE.push_back(elems[argi + 1]);
-        forbiddenXY.push_back(std::pair<int, int>(
-            atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str())));
+        forbiddenXY.emplace_back(
+            atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
 
         argi += 4;
       }
     }
   }
 
-  void Print() {
+  void Print() const {
     std::cout << rle << " " << maxDesapear << " " << centerX << " " << centerY
               << " " << symmType << std::endl;
   }
@@ -215,11 +217,11 @@ void CharToTransVec(char ch, std::vector<const int *> &trans) {
   }
 }
 
-void ReadParams(std::string fname, std::vector<CatalystInput> &catalysts,
+void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
                 SearchParams &params) {
   std::ifstream infile;
   infile.open(fname.c_str(), std::ifstream::in);
-  if(!infile.good()) {
+  if (!infile.good()) {
     std::cout << "Could not open file!" << std::endl;
     exit(0);
   }
@@ -252,7 +254,7 @@ void ReadParams(std::string fname, std::vector<CatalystInput> &catalysts,
         continue;
 
       if (elems[0] == Cat)
-        catalysts.push_back(CatalystInput(line));
+        catalysts.emplace_back(line);
 
       if (elems[0] == maxGen)
         params.maxGen = atoi(elems[1].c_str());
@@ -309,13 +311,13 @@ void ReadParams(std::string fname, std::vector<CatalystInput> &catalysts,
 
         if (rangeElems.size() == 1) {
           params.filterGen.push_back(atoi(elems[1].c_str()));
-          params.filterGenRange.push_back(std::pair<int, int>(-1, -1));
+          params.filterGenRange.emplace_back(-1, -1);
         } else {
           int minGen = atoi(rangeElems[0].c_str());
           int maxGen = atoi(rangeElems[1].c_str());
 
           params.filterGen.push_back(-1);
-          params.filterGenRange.push_back(std::pair<int, int>(minGen, maxGen));
+          params.filterGenRange.emplace_back(minGen, maxGen);
         }
 
         params.targetFilter.push_back(elems[2]);
@@ -354,11 +356,11 @@ void ReadParams(std::string fname, std::vector<CatalystInput> &catalysts,
     } catch (const std::exception &ex) {
     }
   }
-  if(params.pat.length() == 0) {
+  if (params.pat.length() == 0) {
     std::cout << "Did not read any pattern!" << std::endl;
     exit(0);
   }
-  if(catalysts.size() == 0) {
+  if (catalysts.empty()) {
     std::cout << "Did not read any catalysts!" << std::endl;
     exit(0);
   }
@@ -388,8 +390,8 @@ void PutStateWSym(LifeState *main, LifeState *state, int x, int y, Symmetry sym)
   if (sym == NONE)
     return;
   LifeState transformed;
-  for (int i = 0; i < N; i++)
-    transformed.state[i] = 0;
+  for (unsigned long & i : transformed.state)
+    i = 0;
 
   transformed.min = 0;
   transformed.max = N - 1;
@@ -400,7 +402,7 @@ void PutStateWSym(LifeState *main, LifeState *state, int x, int y, Symmetry sym)
   Join(main, &transformed);
 }
 
-void PutStateWSym(LifeState *main, LifeState *state, Symmetry sym) {
+void PutStateWSym(LifeState *main, const LifeState *state, Symmetry sym) {
   Join(main, state);
   if (sym == NONE)
     return;
@@ -415,31 +417,31 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
                     std::vector<LifeState *> &states,
                     std::vector<std::vector<LifeTarget *>> &forbidden,
                     std::vector<int> &maxSurvive) {
-  for (int i = 0; i < catalysts.size(); i++) {
+  for (const auto & catalyst : catalysts) {
     std::vector<const int *> trans;
-    CharToTransVec(catalysts[i].symmType, trans);
+    CharToTransVec(catalyst.symmType, trans);
 
-    const char *rle = catalysts[i].rle.c_str();
-    int dx = catalysts[i].centerX;
-    int dy = catalysts[i].centerY;
-    int maxDesapear = catalysts[i].maxDesapear;
+    const char *rle = catalyst.rle.c_str();
+    int dx = catalyst.centerX;
+    int dy = catalyst.centerY;
+    int maxDesapear = catalyst.maxDesapear;
 
-    for (int j = 0; j < trans.size(); j++) {
-      int dxx = trans[j][0];
-      int dxy = trans[j][1];
-      int dyx = trans[j][2];
-      int dyy = trans[j][3];
+    for (auto & tran : trans) {
+      int dxx = tran[0];
+      int dxy = tran[1];
+      int dyx = tran[2];
+      int dyy = tran[3];
 
       states.push_back(NewState(rle, dx, dy, dxx, dxy, dyx, dyy));
       maxSurvive.push_back(maxDesapear);
 
       std::vector<LifeTarget *> forbidTarg;
 
-      for (int k = 0; k < catalysts[i].forbiddenRLE.size(); k++) {
+      for (int k = 0; k < catalyst.forbiddenRLE.size(); k++) {
         forbidTarg.push_back(NewTarget(
-            NewState(catalysts[i].forbiddenRLE[k].c_str(),
-                     catalysts[i].forbiddenXY[k].first,
-                     catalysts[i].forbiddenXY[k].second, dxx, dxy, dyx, dyy)));
+            NewState(catalyst.forbiddenRLE[k].c_str(),
+                     catalyst.forbiddenXY[k].first,
+                     catalyst.forbiddenXY[k].second, dxx, dxy, dyx, dyy)));
       }
 
       forbidden.push_back(forbidTarg);
@@ -447,7 +449,7 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
   }
 }
 
-void InitCatalysts(std::string fname, std::vector<LifeState *> &states,
+void InitCatalysts(const std::string& fname, std::vector<LifeState *> &states,
                    std::vector<std::vector<LifeTarget *>> &forbidden,
                    std::vector<int> &maxSurvive, SearchParams &params) {
   std::vector<CatalystInput> catalysts;
@@ -456,40 +458,66 @@ void InitCatalysts(std::string fname, std::vector<LifeState *> &states,
 }
 
 void XYStartGenPerState(
-    const std::vector<LifeTarget *> &targets, LifeState *pat,
+    const std::vector<LifeTarget *> &targets, const LifeState *pat,
     const SearchParams &params, const std::vector<LifeState *> &states,
-    std::vector<std::vector<std::vector<int>>> &statexyGen) {
+    std::vector<std::vector<std::vector<int>>> &statexyGen, int const nthreads) {
+  const int chunksize = states.size()/((unsigned long)nthreads);
+  std::vector<std::pair<long, long>> chunkbounds;
+  long lowerbound = 0;
+  for (int chunki = 0; chunki < nthreads-1; chunki++){
+      chunkbounds.emplace_back(lowerbound, lowerbound + chunksize);
+      lowerbound += chunksize;
+  }
+  chunkbounds.emplace_back(lowerbound, states.size());
+  statexyGen.reserve(states.size());
+#pragma omp parallel for ordered schedule(static,1) default(none) shared(states, params, targets, statexyGen, pat, chunkbounds, std::cout)
+  for (auto & bounds : chunkbounds){
+    std::vector<std::vector<std::vector<int>>> perthread_statexyGen;
+    perthread_statexyGen.reserve(bounds.second-bounds.first);
+    #pragma omp critical
+    std::cout << bounds.first << " " << bounds.second << std::endl;
+    for (long i = bounds.first; i < bounds.second; i++) {
+      std::vector<std::vector<int>> xyVec;
+      xyVec.reserve(64);
 
-  for (int i = 0; i < states.size(); i++) {
-    std::vector<std::vector<int>> xyVec;
+      for (int x = 0; x < 64; x++) {
+        std::vector<int> xVec;
+        xVec.reserve(64);
 
-    for (int x = 0; x < 64; x++) {
-      std::vector<int> xVec;
+        for (int y = 0; y < 64; y++) {
+          LifeState state;
+          ClearData(&state);
+          PutStateWSym(&state, states[i], x, y, params.symmetricSearch);
+          PutStateWSym(&state, pat, params.symmetricSearch);
+          int j;
 
-      for (int y = 0; y < 64; y++) {
-        LifeState state;
-        ClearData(&state);
-        PutStateWSym(&state, states[i], x, y, params.symmetricSearch);
-        PutStateWSym(&state, pat, params.symmetricSearch);
-        int j;
-
-        for (j = 0; j < params.maxGen + 5; j++) {
-          if (Contains(&state, targets[i], x, y) == NO) {
-            break;
+          for (j = 0; j < params.maxGen + 5; j++) {
+            if (Contains(&state, targets[i], x, y) == NO) {
+              break;
+            }
+            Run(&state, 1);
           }
-          Run(&state, 1);
+
+          if (j == params.maxGen + 4)
+            j = -1;
+
+          xVec.push_back(j - 1);
         }
-
-        if (j == params.maxGen + 4)
-          j = -1;
-
-        xVec.push_back(j - 1);
+        xyVec.push_back(xVec);
       }
 
-      xyVec.push_back(xVec);
+      perthread_statexyGen.push_back(xyVec);
+      std::cout << i << " " << perthread_statexyGen.size() << " " << xyVec.size() << std::endl;
     }
-
-    statexyGen.push_back(xyVec);
+    #pragma omp ordered
+    {
+      statexyGen.insert(
+          statexyGen.end(),
+          std::make_move_iterator(perthread_statexyGen.begin()),
+          std::make_move_iterator(perthread_statexyGen.end())
+      );
+      std::cout << statexyGen.size() << std::endl;
+    };
   }
 }
 
@@ -508,10 +536,10 @@ void PreIteratePat(LifeState *pat, std::vector<LifeState *> &preIterated,
 }
 
 std::string GetRLE(const std::vector<std::vector<int>> &life2d) {
-  if (life2d.size() == 0)
+  if (life2d.empty())
     return "";
 
-  if (life2d[0].size() == 0)
+  if (life2d[0].empty())
     return "";
 
   int h = life2d[0].size();
@@ -524,8 +552,8 @@ std::string GetRLE(const std::vector<std::vector<int>> &life2d) {
     int last_val = -1;
     int run_count = 0;
 
-    for (int i = 0; i < life2d.size(); i++) {
-      int val = life2d[i][j];
+    for (const auto & i : life2d) {
+      int val = i[j];
 
       // Flush linefeeds if we find a live cell
       if (val == 1 && eol_count > 0) {
@@ -622,13 +650,13 @@ public:
     std::cout << "start:" << firstGenSurvive;
     std::cout << ", finish:" << maxGenSurvive << ", params: ";
 
-    for (int i = 0; i < params.size(); i++)
-      std::cout << params[i] << ",";
+    for (int param : params)
+      std::cout << param << ",";
 
     std::cout << std::endl;
   }
 
-  ~SearchResult(void) { FreeState(init); }
+  ~SearchResult() { FreeState(init); }
 };
 
 class Category {
@@ -710,13 +738,13 @@ public:
     FreeState(tempCat);
     FreeState(tempTest);
 
-    for (int i = 0; i < results.size(); i++)
-      delete results[i];
+    for (auto & result : results)
+      delete result;
   }
 
   void Print() {
-    for (int i = 0; i < results.size(); i++)
-      results[i]->Print();
+    for (auto & result : results)
+      result->Print();
   }
 
   std::string RLE() {
@@ -753,7 +781,7 @@ public:
   int catDelta;
   int maxgen;
 
-  CategoryContainer(int maxGen) {
+  explicit CategoryContainer(int maxGen) {
     catDelta = 14;
     tempState = NewState();
     maxgen = maxGen + catDelta;
@@ -781,10 +809,10 @@ public:
     Copy(result, afterCatalyst);
     Copy(result, catalysts, XOR);
 
-    for (int i = 0; i < categories.size(); i++) {
-      if (categories[i]->BelongsTo(result, hash)) {
-        if (categories[i]->results[0]->params.size() == 3 * enu.count)
-          categories[i]->Add(
+    for (auto & category: categories) {
+      if (category->BelongsTo(result, hash)) {
+        if (category->results[0]->params.size() == 3 * enu.count)
+          category->Add(
               new SearchResult(init, enu, firstGenSurvive, genSurvive));
         return;
       }
@@ -800,24 +828,24 @@ public:
   }
 
   void Sort() {
-    for (int i = 0; i < categories.size(); i++)
-      categories[i]->Sort();
+    for (auto & category: categories)
+      category->Sort();
   }
 
   void Print() {
-    for (int i = 0; i < categories.size(); i++)
-      categories[i]->Print();
+    for (auto & category: categories)
+      category->Print();
   }
 
   void RemoveTail() {
-    for (int i = 0; i < categories.size(); i++)
-      categories[i]->RemoveTail();
+    for (auto & category: categories)
+      category->RemoveTail();
   }
 
   std::string CategoriesRLE() {
     std::stringstream ss;
-    for (int i = 0; i < categories.size(); i++) {
-      ss << categories[i]->RLE();
+    for (auto & category: categories) {
+      ss << category->RLE();
     }
 
     return ss.str();
@@ -826,12 +854,12 @@ public:
 
 class CatalystSearcher {
 public:
-  clock_t begin;
+  clock_t begin{};
   std::vector<LifeState *> states;
   std::vector<int> maxSurvive;
   SearchParams params;
-  LifeState *pat;
-  int numIters;
+  LifeState *pat{};
+  int numIters{};
   Enumerator enu;
   std::vector<LifeTarget *> targetFilter;
   std::vector<LifeTarget *> targets;
@@ -840,31 +868,31 @@ public:
   std::vector<LifeState *> preIterated;
   std::vector<int> activated;
   std::vector<int> absentCount;
-  clock_t current;
-  long long idx;
-  int found;
-  int fullfound;
-  long long total;
-  unsigned short int counter;
-  CategoryContainer *categoryContainer;
-  CategoryContainer *fullCategoryContainer;
+  clock_t current{};
+  long long idx{};
+  int found{};
+  int fullfound{};
+  long long total{};
+  unsigned short int counter{};
+  CategoryContainer *categoryContainer{};
+  CategoryContainer *fullCategoryContainer{};
 
   // flags and memeber for the search
 
-  bool hasFilter;
-  bool reportAll;
-  bool hasFilterDontReportAll;
+  bool hasFilter{};
+  bool reportAll{};
+  bool hasFilterDontReportAll{};
 
-  int filterMaxGen;
-  int iterationMaxGen;
+  int filterMaxGen{};
+  int iterationMaxGen{};
 
-  int surviveCountForUpdate;
+  int surviveCountForUpdate{};
 
-  LifeState *init;
-  LifeState *afterCatalyst;
-  LifeState *catalysts;
+  LifeState *init{};
+  LifeState *afterCatalyst{};
+  LifeState *catalysts{};
 
-  void Init(char *inputFile) {
+  void Init(const char *inputFile, int nthreads) {
     begin = clock();
     InitCatalysts(inputFile, states, forbiddenTargets, maxSurvive, params);
     pat = NewState(params.pat.c_str(), params.xPat, params.yPat);
@@ -892,10 +920,10 @@ public:
       targetFilter.push_back(NewTarget(params.targetFilter[i].c_str(),
                                        params.filterdx[i], params.filterdy[i]));
 
-    for (int i = 0; i < states.size(); i++)
-      targets.push_back(NewTarget(states[i]));
+    for (auto & state : states)
+      targets.push_back(NewTarget(state));
 
-    XYStartGenPerState(targets, pat, params, states, statexyGen);
+    XYStartGenPerState(targets, pat, params, states, statexyGen, nthreads);
     enu.activations = statexyGen;
     enu.cumulActivation = std::vector<int>(enu.count, enu.activations[0][(enu.x + 64) % 64][(enu.y + 64) % 64]);
     for (int i = 0; i < enu.s; i++) {
@@ -937,7 +965,7 @@ public:
     if (total == 0)
       total++;
 
-    hasFilter = params.targetFilter.size() > 0;
+    hasFilter = !params.targetFilter.empty();
     reportAll = params.fullReportFile.length() != 0;
     hasFilterDontReportAll = hasFilter && !reportAll;
 
@@ -951,7 +979,7 @@ public:
     surviveCountForUpdate = params.stableInterval;
 
     if (params.combineResults) {
-      if (params.combineSurvive.size() == 0)
+      if (params.combineSurvive.empty())
         params.combineSurvive.push_back(1);
 
       surviveCountForUpdate = params.combineSurvive[0];
@@ -983,14 +1011,14 @@ public:
     return maxGen;
   }
 
-  void Report(std::string suffix) {
+  void Report(const std::string& suffix) {
     std::string temp = params.outputFile;
     params.outputFile = params.outputFile + suffix + std::string(".rle");
     Report();
     params.outputFile = temp;
   }
 
-  void Report(bool saveFile = true) {
+  void Report(bool saveFile = true) const {
     float percent = (idx / 10000) / (total * 1.0);
     int sec = (clock() - begin) / CLOCKS_PER_SEC + 1;
     int estimation = 0;
@@ -1036,14 +1064,14 @@ public:
     }
   }
 
-  void PrintTime(int sec) {
+  static void PrintTime(int sec) {
     int hr = sec / 3600;
     int min = (sec / 60) - hr * 60;
     int secs = sec - 3600 * hr - 60 * min;
     std::cout << std::setfill('0');
     std::cout << hr << ":" << std::setw(2) << min << ":" << std::setw(2) << secs;
-    return;
-  }
+ }
+
   void IncreaseIndexAndReport(bool saveFile = true) {
     counter++;
 
@@ -1051,7 +1079,7 @@ public:
       idx += 65536;
 
       if (idx % (1048576) == 0) {
-        if ((double)(clock() - current) / CLOCKS_PER_SEC > 10) {
+        if ((double) (clock() - current) / CLOCKS_PER_SEC > 10) {
           current = clock();
           Report(saveFile);
         }
@@ -1061,7 +1089,7 @@ public:
 
   int ValidateMinWidthHeight() {
     // Fast path: we know that the iterators are ordered by x.
-    if(enu.curx[0] - enu.curx[numIters-1] >= params.maxW)
+    if (enu.curx[0] - enu.curx[numIters - 1] >= params.maxW)
       return NO;
 
     int minY = enu.cury[0];
@@ -1234,13 +1262,13 @@ public:
           fullfound++;
 
           fullCategoryContainer->Add(init, afterCatalyst, catalysts, enu,
-                                 i - surviveCountForUpdate + 2, 0);
+                                     i - surviveCountForUpdate + 2, 0);
         }
 
         // If has fitlter validate them;
         if (hasFilter) {
           PutCurrentState(&workspace);
-          if(!ValidateFilters(&workspace, filterMaxGen))
+          if (!ValidateFilters(&workspace, filterMaxGen))
             break;
         }
 
@@ -1283,14 +1311,14 @@ public:
   CatalystSearcher *searcher;
   int iter;
 
-  CategoryMultiplicator(CatalystSearcher *bruteSearch) {
+  explicit CategoryMultiplicator(CatalystSearcher *bruteSearch) {
     searcher = bruteSearch;
     // searcher->categoryContainer->Sort();
     searcher->categoryContainer->RemoveTail();
 
-    for (int i = 0; i < searcher->categoryContainer->categories.size(); i++) {
-      base.push_back(searcher->categoryContainer->categories[i]->results[0]);
-      cur.push_back(searcher->categoryContainer->categories[i]->results[0]);
+    for (auto & category: searcher->categoryContainer->categories) {
+      base.push_back(category->results[0]);
+      cur.push_back(category->results[0]);
     }
 
     searcher->AddIterators(searcher->numIters);
@@ -1304,21 +1332,21 @@ public:
     searcher->idx = 0;
     searcher->counter = 0;
 
-    for (int i = 0; i < base.size(); i++) {
-      int idx = base[i]->SetIters(searcher->enu, 0);
-      int baselast = base[i]->maxGenSurvive;
-      int basefirst = base[i]->firstGenSurvive;
+    for (auto & i : base) {
+      int idx = i->SetIters(searcher->enu, 0);
+      int baselast = i->maxGenSurvive;
+      int basefirst = i->firstGenSurvive;
 
-      for (int j = 0; j < cur.size(); j++) {
+      for (auto & j : cur) {
         searcher->IncreaseIndexAndReport(false);
 
-        int curlast = cur[j]->maxGenSurvive;
-        int curfirst = cur[j]->firstGenSurvive;
+        int curlast = j->maxGenSurvive;
+        int curfirst = j->firstGenSurvive;
 
         if (curlast < basefirst || baselast < curfirst)
           continue;
 
-        cur[j]->SetIters(searcher->enu, idx);
+        j->SetIters(searcher->enu, idx);
         searcher->UpdateResults();
       }
     }
@@ -1330,11 +1358,11 @@ public:
   void ReinitializeCurrent(int size, int iters) {
     cur.clear();
 
-    for (int i = 0; i < searcher->categoryContainer->categories.size(); i++) {
-      if (searcher->categoryContainer->categories[i]
+    for (auto & category: searcher->categoryContainer->categories) {
+      if (category
               ->results[0]
               ->params.size() == 3 * size)
-        cur.push_back(searcher->categoryContainer->categories[i]->results[0]);
+        cur.push_back(category->results[0]);
     }
 
     searcher->AddIterators(iters);
@@ -1342,9 +1370,9 @@ public:
     searcher->SetParamsForCombine(iter);
   }
 
-  void RunWithInputParams() {
+  void RunWithInputParams() const {
     searcher->surviveCountForUpdate = searcher->params.stableInterval;
-    searcher->hasFilter = searcher->params.targetFilter.size() > 0;
+    searcher->hasFilter = !searcher->params.targetFilter.empty();
     searcher->reportAll = searcher->params.fullReportFile.length() != 0;
     searcher->hasFilterDontReportAll =
         searcher->hasFilter && !(searcher->reportAll);
@@ -1353,9 +1381,9 @@ public:
     searcher->categoryContainer =
         new CategoryContainer(searcher->params.maxGen);
 
-    for (int i = 0; i < found->categories.size(); i++) {
+    for (auto & category: found->categories) {
       searcher->numIters =
-          found->categories[i]->results[0]->SetIters(searcher->enu, 0);
+          category->results[0]->SetIters(searcher->enu, 0);
       searcher->UpdateResults();
     }
   }
@@ -1363,16 +1391,23 @@ public:
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cout << "Usage CatForce.exe <in file>" << std::endl;
+    std::cout << "Usage CatForce.exe <in file> <nthreads>" << std::endl;
     exit(0);
   }
-
+  int nthreads = 1;
+  if (argc > 2) {
+    nthreads = atoi(argv[2]);
+  }
+  omp_set_num_threads(nthreads);
   std::cout << "Input: " << argv[1] << std::endl
             << "Initializing please wait..." << std::endl;
 
   CatalystSearcher searcher;
-  searcher.Init(argv[1]);
+  searcher.Init(argv[1], nthreads);
 
+  clock_t initialized = clock();
+  printf("Total elapsed CPU time (not wallclock if nthreads>1): %f seconds\n",
+         (double) (initialized - searcher.begin) / CLOCKS_PER_SEC);
   std::cout << std::endl
             << "Initialization finished, searching..." << std::endl
             << std::endl;
@@ -1392,7 +1427,7 @@ int main(int argc, char *argv[]) {
     int startCatalysts = searcher.numIters;
     CategoryMultiplicator combined(&searcher);
     int i = 1;
-    while (combined.cur.size() > 0) {
+    while (!combined.cur.empty()) {
       std::cout << "Combining iteration = " << i << std::endl;
       combined.CartesianMultiplication();
 
@@ -1412,6 +1447,6 @@ int main(int argc, char *argv[]) {
 
   printf("\n\nFINISH\n");
   clock_t end = clock();
-  printf("Total elapsed time: %f seconds\n",
-         (double)(end - searcher.begin) / CLOCKS_PER_SEC);
+  printf("Total elapsed CPU time (not wallclock if nthreads>1): %f seconds\n",
+         (double) (end - searcher.begin) / CLOCKS_PER_SEC);
 }
