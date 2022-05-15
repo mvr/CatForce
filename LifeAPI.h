@@ -1620,6 +1620,7 @@ LifeResults *LoadResults(const char *filePath) {
   return results;
 }
 typedef struct {
+  int done;
   int count;
 
   int x;
@@ -1648,7 +1649,30 @@ typedef struct {
   std::vector<bool> cumulTimely;
 } Enumerator;
 
+typedef struct {
+  std::vector<int> curx;
+  std::vector<int> cury;
+  std::vector<int> curs;
+  int minIter;
+  LifeState state;
+  std::vector<LifeTarget *> shiftedTargets;
+} Configuration;
+
+Configuration GetConfiguration(Enumerator &enu) {
+  Configuration c;
+  c.curx = enu.curx;
+  c.cury = enu.cury;
+  c.curs = enu.curs;
+  c.minIter = enu.cumulActivation[0];
+  Copy(&c.state, enu.cumulative[0]);
+  for(int i = 0; i < enu.count; i++) {
+    c.shiftedTargets.push_back(NewTarget(enu.shiftedTargets[i]->wanted, enu.shiftedTargets[i]->unwanted));
+  }
+  return c;
+}
+
 void Reset(Enumerator &enu) {
+  enu.done = false;
   enu.curx = std::vector<int>(enu.count, enu.x);
   enu.cury = std::vector<int>(enu.count, enu.y);
   enu.curs = std::vector<int>(enu.count, 0);
@@ -1691,8 +1715,11 @@ int NaiveNext(Enumerator &enu, int i);
 int Next(Enumerator &enu, int i) {
   while (true) {
     int n = NaiveNext(enu, i);
-    if(n == FAIL)
+    if(n == FAIL) {
+      if(i == 0)
+        enu.done = true;
       return FAIL;
+    }
 
     if (i == enu.count - 1) {
       // Check collision too early (only relevant condition)

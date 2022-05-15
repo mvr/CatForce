@@ -639,33 +639,33 @@ public:
   int maxGenSurvive;
   int firstGenSurvive;
 
-  SearchResult(LifeState *initState, const Enumerator &enu,
+  SearchResult(LifeState *initState, const Configuration &conf,
                int firstGenSurviveIn, int genSurvive) {
     init = NewState();
     Copy(init, initState);
 
-    for (int i = 0; i < enu.count; i++) {
-      params.push_back(enu.curs[i]);
-      params.push_back(enu.curx[i]);
-      params.push_back(enu.cury[i]);
+    for (int i = 0; i < conf.curs.size(); i++) {
+      params.push_back(conf.curs[i]);
+      params.push_back(conf.curx[i]);
+      params.push_back(conf.cury[i]);
     }
 
     maxGenSurvive = genSurvive;
     firstGenSurvive = firstGenSurviveIn;
   }
 
-  int SetIters(Enumerator &enu, const int &startIdx) {
-    int idx = startIdx;
+  // int SetIters(Enumerator &enu, const int &startIdx) {
+  //   int idx = startIdx;
 
-    for (int i = 0; i < params.size(); i += 3) {
-      enu.curs[idx] = params[i];
-      enu.curx[idx] = params[i + 1];
-      enu.cury[idx] = params[i + 2];
-      idx++;
-    }
+  //   for (int i = 0; i < params.size(); i += 3) {
+  //     enu.curs[idx] = params[i];
+  //     enu.curx[idx] = params[i + 1];
+  //     enu.cury[idx] = params[i + 2];
+  //     idx++;
+  //   }
 
-    return idx;
-  }
+  //   return idx;
+  // }
 
   void Print() {
     std::cout << "start:" << firstGenSurvive;
@@ -823,7 +823,7 @@ public:
   }
 
   void Add(LifeState *init, LifeState *afterCatalyst, LifeState *catalysts,
-           const Enumerator &enu, int firstGenSurvive,
+           const Configuration &conf, int firstGenSurvive,
            int genSurvive) {
     LifeState *result = NewState();
 
@@ -840,9 +840,9 @@ public:
 
     for (auto & category: categories) {
       if (category->BelongsTo(result, hash)) {
-        if (category->results[0]->params.size() == 3 * enu.count)
+        if (category->results[0]->params.size() == 3 * conf.curs.size())
           category->Add(
-              new SearchResult(init, enu, firstGenSurvive, genSurvive));
+              new SearchResult(init, conf, firstGenSurvive, genSurvive));
         return;
       }
     }
@@ -852,7 +852,7 @@ public:
     Copy(categoryKey, catalysts, XOR);
 
     categories.push_back(new Category(
-        categoryKey, new SearchResult(init, enu, firstGenSurvive, genSurvive),
+        categoryKey, new SearchResult(init, conf, firstGenSurvive, genSurvive),
         catDelta, maxgen));
   }
 
@@ -1115,32 +1115,6 @@ public:
     }
   }
 
-  int ValidateMinWidthHeight() {
-    // Fast path: we know that the iterators are ordered by x.
-    if (enu.curx[0] - enu.curx[numIters - 1] >= params.maxW)
-      return NO;
-
-    int minY = enu.cury[0];
-    int maxY = enu.cury[0];
-
-    for (int i = 1; i < numIters; i++) {
-      if (enu.cury[i] > maxY)
-        maxY = enu.cury[i];
-
-      if (enu.cury[i] < minY)
-        minY = enu.cury[i];
-    }
-
-    if (maxY - minY >= params.maxH)
-      return NO;
-    else
-      return YES;
-  }
-
-  void PutItersState(LifeState *workspace) {
-    PutStateWSym(workspace, enu.cumulative[0], params.symmetricSearch);
-  }
-
   void InitActivationCounters() {
     for (int i = 0; i < numIters; i++) {
       activated[i] = NO;
@@ -1148,15 +1122,15 @@ public:
     }
   }
 
-  bool HasForbidden(int curIter) {
+  bool HasForbidden(Configuration &c, int curIter) {
     LifeState workspace;
-    PutCurrentState(&workspace);
+    PutStartState(&workspace, c);
 
     for (int i = 0; i <= curIter + 1; i++) {
       for (int j = 0; j < numIters; j++) {
-        for (int k = 0; k < forbiddenTargets[enu.curs[j]].size(); k++) {
-          if (Contains(&workspace, forbiddenTargets[enu.curs[j]][k],
-                       enu.curx[j], enu.cury[j]) == YES)
+        for (int k = 0; k < forbiddenTargets[c.curs[j]].size(); k++) {
+          if (Contains(&workspace, forbiddenTargets[c.curs[j]][k],
+                       c.curx[j], c.cury[j]) == YES)
             return true;
         }
       }
@@ -1166,13 +1140,13 @@ public:
     return false;
   }
 
-  bool UpdateActivationCountersFail(LifeState *workspace) {
+  bool UpdateActivationCountersFail(LifeState *workspace, Configuration &conf) {
     for (int j = 0; j < numIters; j++) {
-      if (Contains(workspace, enu.shiftedTargets[j]) == NO) {
+      if (Contains(workspace, conf.shiftedTargets[j]) == NO) {
         activated[j] = YES;
         absentCount[j] += MAIN_STEP;
 
-        if (absentCount[j] > maxSurvive[enu.curs[j]]) {
+        if (absentCount[j] > maxSurvive[conf.curs[j]]) {
           return true;
         }
       } else {
@@ -1204,33 +1178,36 @@ public:
     return YES;
   }
 
-  void PutCurrentState(LifeState *workspace) {
+  void PutStartState(LifeState *workspace, Configuration &conf) {
     ClearData(workspace);
-    PutItersState(workspace);
+    PutStateWSym(workspace, &conf.state, params.symmetricSearch);
     PutStateWSym(workspace, pat, params.symmetricSearch);
   }
 
-  bool ValidateFilters(LifeState *workspace, const int &maxFilterGen) {
+  bool ValidateFilters(Configuration &conf) {
+    LifeState workspace;
+    PutStartState(&workspace, conf);
+
     std::vector<bool> rangeValid(params.filterGen.size(), false);
 
     for (int k = 0; k < params.filterGen.size(); k++)
       if (params.filterGen[k] >= 0)
         rangeValid[k] = true;
 
-    for (int j = 0; j <= maxFilterGen; j++) {
+    for (int j = 0; j <= filterMaxGen; j++) {
       for (int k = 0; k < params.filterGen.size(); k++) {
-        if (workspace->gen == params.filterGen[k] &&
-            Contains(workspace, targetFilter[k]) == NO)
+        if (workspace.gen == params.filterGen[k] &&
+            Contains(&workspace, targetFilter[k]) == NO)
           return false;
 
         if (params.filterGen[k] == -1 &&
-            params.filterGenRange[k].first <= workspace->gen &&
-            params.filterGenRange[k].second >= workspace->gen &&
-            Contains(workspace, targetFilter[k]) == YES)
+            params.filterGenRange[k].first <= workspace.gen &&
+            params.filterGenRange[k].second >= workspace.gen &&
+            Contains(&workspace, targetFilter[k]) == YES)
           rangeValid[k] = true;
       }
 
-      Run(workspace, 1);
+      Run(&workspace, 1);
     }
 
     for (int k = 0; k < params.filterGen.size(); k++)
@@ -1240,25 +1217,24 @@ public:
     return true;
   }
 
-  void UpdateResults() {
-    int minIter = enu.cumulActivation[0];
-
+  void UpdateResults(Configuration &conf) {
     LifeState workspace;
     ClearData(&workspace);
-    PutItersState(&workspace);
-    Join(&workspace, preIterated[minIter]);
+    PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
+    Join(&workspace, preIterated[conf.minIter]);
+    workspace.gen = conf.minIter;
 
     // Initial searcher countters for absense and activation
     InitActivationCounters();
 
     int surviveCount = 0;
 
-    for (int i = minIter; i < iterationMaxGen; i += MAIN_STEP) {
+    for (int i = conf.minIter; i < iterationMaxGen; i += MAIN_STEP) {
       MainRun(workspace);
 
       // Fail if some catalyst is idle for too long - updates the counters for
       // them otherwise.
-      if (UpdateActivationCountersFail(&workspace))
+      if (UpdateActivationCountersFail(&workspace, conf))
         break;
 
       if (hasFilterDontReportAll) {
@@ -1268,8 +1244,9 @@ public:
           break;
       }
 
-      if (IsAllActivated())
+      if (IsAllActivated()) {
         surviveCount += MAIN_STEP;
+      }
       else
         surviveCount = 0;
 
@@ -1278,10 +1255,11 @@ public:
         // if reportAll - ignore filters and update fullReport
         if (reportAll) {
           ClearData(&workspace);
-          PutItersState(&workspace);
+
+          PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
           Copy(catalysts, &workspace);
 
-          PutCurrentState(&workspace);
+          PutStartState(&workspace, conf);
           Copy(init, &workspace);
 
           Run(&workspace, i - surviveCountForUpdate + 2);
@@ -1289,32 +1267,31 @@ public:
 
           fullfound++;
 
-          fullCategoryContainer->Add(init, afterCatalyst, catalysts, enu,
+          fullCategoryContainer->Add(init, afterCatalyst, catalysts, conf,
                                      i - surviveCountForUpdate + 2, 0);
         }
 
         // If has fitlter validate them;
         if (hasFilter) {
-          PutCurrentState(&workspace);
-          if (!ValidateFilters(&workspace, filterMaxGen))
+          if (!ValidateFilters(conf))
             break;
         }
 
-        if (HasForbidden(i + 3))
+        if (HasForbidden(conf, i + 3))
           break;
 
         // If all filters validated update results
         ClearData(&workspace);
-        PutItersState(&workspace);
+        PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
         Copy(catalysts, &workspace);
 
-        PutCurrentState(&workspace);
+        PutStartState(&workspace, conf);
         Copy(init, &workspace);
 
         Run(&workspace, i - surviveCountForUpdate + 2);
         Copy(afterCatalyst, &workspace);
 
-        categoryContainer->Add(init, afterCatalyst, catalysts, enu,
+        categoryContainer->Add(init, afterCatalyst, catalysts, conf,
                                i - surviveCountForUpdate + 2, 0);
         found++;
 
@@ -1332,90 +1309,90 @@ public:
   }
 };
 
-class CategoryMultiplicator {
-public:
-  std::vector<SearchResult *> base;
-  std::vector<SearchResult *> cur;
-  CatalystSearcher *searcher;
-  int iter;
+// class CategoryMultiplicator {
+// public:
+//   std::vector<SearchResult *> base;
+//   std::vector<SearchResult *> cur;
+//   CatalystSearcher *searcher;
+//   int iter;
 
-  explicit CategoryMultiplicator(CatalystSearcher *bruteSearch) {
-    searcher = bruteSearch;
-    // searcher->categoryContainer->Sort();
-    searcher->categoryContainer->RemoveTail();
+//   explicit CategoryMultiplicator(CatalystSearcher *bruteSearch) {
+//     searcher = bruteSearch;
+//     // searcher->categoryContainer->Sort();
+//     searcher->categoryContainer->RemoveTail();
 
-    for (auto & category: searcher->categoryContainer->categories) {
-      base.push_back(category->results[0]);
-      cur.push_back(category->results[0]);
-    }
+//     for (auto & category: searcher->categoryContainer->categories) {
+//       base.push_back(category->results[0]);
+//       cur.push_back(category->results[0]);
+//     }
 
-    searcher->AddIterators(searcher->numIters);
-    iter = 1;
-    searcher->SetParamsForCombine(iter);
-  }
+//     searcher->AddIterators(searcher->numIters);
+//     iter = 1;
+//     searcher->SetParamsForCombine(iter);
+//   }
 
-  void CartesianMultiplication() {
-    searcher->total = base.size() * cur.size();
-    searcher->total /= 1000000;
-    searcher->idx = 0;
-    searcher->counter = 0;
+//   void CartesianMultiplication() {
+//     searcher->total = base.size() * cur.size();
+//     searcher->total /= 1000000;
+//     searcher->idx = 0;
+//     searcher->counter = 0;
 
-    for (auto & i : base) {
-      int idx = i->SetIters(searcher->enu, 0);
-      int baselast = i->maxGenSurvive;
-      int basefirst = i->firstGenSurvive;
+//     for (auto & i : base) {
+//       int idx = i->SetIters(searcher->enu, 0);
+//       int baselast = i->maxGenSurvive;
+//       int basefirst = i->firstGenSurvive;
 
-      for (auto & j : cur) {
-        searcher->IncreaseIndexAndReport(false);
+//       for (auto & j : cur) {
+//         searcher->IncreaseIndexAndReport(false);
 
-        int curlast = j->maxGenSurvive;
-        int curfirst = j->firstGenSurvive;
+//         int curlast = j->maxGenSurvive;
+//         int curfirst = j->firstGenSurvive;
 
-        if (curlast < basefirst || baselast < curfirst)
-          continue;
+//         if (curlast < basefirst || baselast < curfirst)
+//           continue;
 
-        j->SetIters(searcher->enu, idx);
-        searcher->UpdateResults();
-      }
-    }
+//         j->SetIters(searcher->enu, idx);
+//         searcher->UpdateResults();
+//       }
+//     }
 
-    // searcher->categoryContainer->Sort();
-    searcher->categoryContainer->RemoveTail();
-  }
+//     // searcher->categoryContainer->Sort();
+//     searcher->categoryContainer->RemoveTail();
+//   }
 
-  void ReinitializeCurrent(int size, int iters) {
-    cur.clear();
+//   void ReinitializeCurrent(int size, int iters) {
+//     cur.clear();
 
-    for (auto & category: searcher->categoryContainer->categories) {
-      if (category
-              ->results[0]
-              ->params.size() == 3 * size)
-        cur.push_back(category->results[0]);
-    }
+//     for (auto & category: searcher->categoryContainer->categories) {
+//       if (category
+//               ->results[0]
+//               ->params.size() == 3 * size)
+//         cur.push_back(category->results[0]);
+//     }
 
-    searcher->AddIterators(iters);
-    iter++;
-    searcher->SetParamsForCombine(iter);
-  }
+//     searcher->AddIterators(iters);
+//     iter++;
+//     searcher->SetParamsForCombine(iter);
+//   }
 
-  void RunWithInputParams() const {
-    searcher->surviveCountForUpdate = searcher->params.stableInterval;
-    searcher->hasFilter = !searcher->params.targetFilter.empty();
-    searcher->reportAll = searcher->params.fullReportFile.length() != 0;
-    searcher->hasFilterDontReportAll =
-        searcher->hasFilter && !(searcher->reportAll);
+//   void RunWithInputParams() const {
+//     searcher->surviveCountForUpdate = searcher->params.stableInterval;
+//     searcher->hasFilter = !searcher->params.targetFilter.empty();
+//     searcher->reportAll = searcher->params.fullReportFile.length() != 0;
+//     searcher->hasFilterDontReportAll =
+//         searcher->hasFilter && !(searcher->reportAll);
 
-    CategoryContainer *found = searcher->categoryContainer;
-    searcher->categoryContainer =
-        new CategoryContainer(searcher->params.maxGen);
+//     CategoryContainer *found = searcher->categoryContainer;
+//     searcher->categoryContainer =
+//         new CategoryContainer(searcher->params.maxGen);
 
-    for (auto & category: found->categories) {
-      searcher->numIters =
-          category->results[0]->SetIters(searcher->enu, 0);
-      searcher->UpdateResults();
-    }
-  }
-};
+//     for (auto & category: found->categories) {
+//       searcher->numIters =
+//           category->results[0]->SetIters(searcher->enu, 0);
+//       searcher->UpdateResults();
+//     }
+//   }
+// };
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
@@ -1440,41 +1417,44 @@ int main(int argc, char *argv[]) {
             << "Initialization finished, searching..." << std::endl
             << std::endl;
 
-  // Main loop of search on iters
-  do {
+  Configuration c;
+  while (!searcher.enu.done) {
+    c = GetConfiguration(searcher.enu);
+    // std::cout << c.curx[0] << ", " << c.cury[0] << std::endl;
+    searcher.UpdateResults(c);
     searcher.IncreaseIndexAndReport();
-
-    searcher.UpdateResults();
-
-  } while (Next(searcher.enu));
-
+    Next(searcher.enu);
+    for(int i = 0; i < searcher.enu.count; i++) {
+      FreeTarget(c.shiftedTargets[i]);
+    }
+  }
   // Print report one final time (update files with the final results).
   searcher.Report();
 
-  if (searcher.params.combineResults) {
-    int startCatalysts = searcher.numIters;
-    CategoryMultiplicator combined(&searcher);
-    int i = 1;
-    while (!combined.cur.empty()) {
-      std::cout << "Combining iteration = " << i << std::endl;
-      combined.CartesianMultiplication();
+  // if (searcher.params.combineResults) {
+  //   int startCatalysts = searcher.numIters;
+  //   CategoryMultiplicator combined(&searcher);
+  //   int i = 1;
+  //   while (!combined.cur.empty()) {
+  //     std::cout << "Combining iteration = " << i << std::endl;
+  //     combined.CartesianMultiplication();
 
-      std::stringstream ss;
-      ss << "_Combined_" << ++i;
+  //     std::stringstream ss;
+  //     ss << "_Combined_" << ++i;
 
-      searcher.Report(ss.str());
-      combined.ReinitializeCurrent(i, startCatalysts);
-    }
+  //     searcher.Report(ss.str());
+  //     combined.ReinitializeCurrent(i, startCatalysts);
+  //   }
 
-    std::cout << "Final result" << std::endl;
+  //   std::cout << "Final result" << std::endl;
 
-    combined.RunWithInputParams();
+  //   combined.RunWithInputParams();
 
-    searcher.Report(std::string("_Final"));
-  }
+  //   searcher.Report(std::string("_Final"));
+  // }
 
   printf("\n\nFINISH\n");
   clock_t end = clock();
   printf("Total elapsed CPU time (not wallclock if nthreads>1): %f seconds\n",
-         (double) (end - searcher.begin) / CLOCKS_PER_SEC);
+         (double)(end - searcher.begin) / CLOCKS_PER_SEC);
 }

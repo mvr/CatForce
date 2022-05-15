@@ -11,4 +11,4 @@ OMPFLAGS = -Xclang -fopenmp -lomp
 
 all: CatForce
 CatForce: CatForce.cpp LifeAPI.h
-	$(CC) $(CFLAGS) $(OMPFLAGS) -fprofile-use=instrumenting/profile.profdata  -o CatForce CatForce.cpp $(LDFLAGS)
+	$(CC) $(CFLAGS) $(OMPFLAGS) -o CatForce CatForce.cpp $(LDFLAGS)
