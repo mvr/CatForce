@@ -456,11 +456,27 @@ void InitCatalysts(const std::string& fname, std::vector<LifeState *> &states,
   GenerateStates(catalysts, states, forbidden, maxSurvive);
 }
 
-void XYStartGenPerState(
-    const std::vector<LifeTarget *> &targets, const LifeState *pat,
-    const SearchParams &params, const std::vector<LifeState *> &states,
-    std::vector<std::vector<std::vector<int>>> &statexyGen, int const nthreads) {
-  const int chunksize = states.size()/((unsigned long)nthreads);
+void XYStartGenPerState(const std::vector<LifeTarget *> &targets,
+                        const LifeState *pat, const SearchParams &params,
+                        const std::vector<LifeState *> &states,
+                        std::vector<std::vector<std::vector<int>>> &statexyGen,
+                        int const nthreads) {
+  if (params.numCatalysts == 1) {
+    for (long i = 0; i < states.size(); i++) {
+      std::vector<std::vector<int>> xyVec;
+      xyVec.reserve(64);
+
+      for (int x = 0; x < 64; x++) {
+        std::vector<int> xVec(64, params.startGen);
+        xyVec.push_back(xVec);
+      }
+      statexyGen.push_back(xyVec);
+    }
+    return;
+  }
+
+
+  const int chunksize = states.size() / ((unsigned long)nthreads);
   std::vector<std::pair<long, long>> chunkbounds;
   long lowerbound = 0;
   for (int chunki = 0; chunki < nthreads-1; chunki++){
