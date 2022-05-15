@@ -708,10 +708,7 @@ public:
     hash = GetHash(tempCat);
   }
 
-  void Add(SearchResult *result) {
-    if(results.size() < 100)
-      results.push_back(result);
-  }
+  void Add(SearchResult *result) { results.push_back(result); }
 
   bool BelongsTo(LifeState *test, const uint64_t &testHash) {
     if (testHash != hash)
