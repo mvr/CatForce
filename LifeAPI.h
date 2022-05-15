@@ -1265,360 +1265,361 @@ int PutState(LifeState *main, const char *rle, int dx, int dy, int dxx, int dxy,
   return result;
 }
 
-typedef struct {
-  int x;
-  int y;
-  int w;
-  int h;
-  int s;
+// typedef struct {
+//   int x;
+//   int y;
+//   int w;
+//   int h;
+//   int s;
 
-  LifeState *States[MAX_ITERATIONS];
+//   LifeState *States[MAX_ITERATIONS];
 
-  int curx;
-  int cury;
-  int curs;
+//   int curx;
+//   int cury;
+//   int curs;
 
-} LifeIterator;
+// } LifeIterator;
 
-LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h, int s,
-                          EvolveType op) {
-  LifeIterator *result = (LifeIterator *)(malloc(sizeof(LifeIterator)));
+// LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h, int s,
+//                           EvolveType op) {
+//   LifeIterator *result = (LifeIterator *)(malloc(sizeof(LifeIterator)));
 
-  result->x = x;
-  result->y = y;
-  result->w = w;
-  result->h = h;
-  result->s = s;
+//   result->x = x;
+//   result->y = y;
+//   result->w = w;
+//   result->h = h;
+//   result->s = s;
 
-  result->curx = x;
-  result->cury = y;
-  result->curs = 0;
+//   result->curx = x;
+//   result->cury = y;
+//   result->curs = 0;
 
-  RecalculateMinMax(state);
+//   RecalculateMinMax(state);
 
-  LifeState Temp;
-  ClearData(&Temp);
-  Copy(&Temp, state);
-
-  for (int i = 0; i < s; i++) {
-    result->States[i] = NewState();
-    Copy(result->States[i], &Temp);
-
-    if (op == EVOLVE)
-      Evolve(&Temp, 1);
-  }
-
-  return result;
-}
-
-LifeIterator *NewIterator(LifeState *states[], int x, int y, int w, int h,
-                          int s) {
-  LifeIterator *result = NewIterator(states[0], x, y, w, h, s, LEAVE);
-
-  for (int i = 0; i < s; i++) {
-    result->States[i] = NewState();
-    Copy(result->States[i], states[i]);
-  }
-
-  return result;
-}
-
-LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h, int s) {
-  return NewIterator(state, x, y, w, h, s, EVOLVE);
-}
-
-LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h) {
-  return NewIterator(state, x, y, w, h, 1, LEAVE);
-}
-
-// This cannot be good
-// LifeIterator *NewIterator(int x, int y, int w, int h) {
 //   LifeState Temp;
 //   ClearData(&Temp);
-//   return NewIterator(&Temp, x, y, w, h, 1);
+//   Copy(&Temp, state);
+
+//   for (int i = 0; i < s; i++) {
+//     result->States[i] = NewState();
+//     Copy(result->States[i], &Temp);
+
+//     if (op == EVOLVE)
+//       Evolve(&Temp, 1);
+//   }
+
+//   return result;
 // }
 
-void Print(LifeIterator *iter) {
-  printf("\n(%d, %d, %d)", iter->curx, iter->cury, iter->curs);
-}
+// LifeIterator *NewIterator(LifeState *states[], int x, int y, int w, int h,
+//                           int s) {
+//   LifeIterator *result = NewIterator(states[0], x, y, w, h, s, LEAVE);
 
-void Print(LifeIterator *iter[], int numIters) {
-  for (int i = 0; i < numIters; i++)
-    Print(iter[i]);
-}
+//   for (int i = 0; i < s; i++) {
+//     result->States[i] = NewState();
+//     Copy(result->States[i], states[i]);
+//   }
 
-void Print(LifeIterator *iter, const char *name) {
-  printf("\nSetCurrent(%s, %d, %d, %d);", name, iter->curx, iter->cury,
-         iter->curs);
-}
-
-void Reset(LifeIterator *iter) {
-  iter->curx = iter->x;
-  iter->cury = iter->y;
-  iter->curs = 0;
-}
-
-int Next(LifeIterator *iter) {
-  (iter->curs)++;
-
-  if ((iter->curs) < (iter->s))
-    return SUCCESS;
-
-  (iter->curs) = 0;
-  (iter->curx)++;
-
-  if ((iter->curx) < (iter->x) + (iter->w))
-    return SUCCESS;
-
-  iter->curx = iter->x;
-  (iter->cury)++;
-
-  if ((iter->cury) < (iter->y) + (iter->h))
-    return SUCCESS;
-
-  Reset(iter);
-
-  return FAIL;
-}
-
-int Next(LifeIterator *iter[], int numIters, int toPrint) {
-  int i = 0;
-  for (i = 0; i < numIters; i++) {
-    (iter[i]->curs)++;
-    if ((iter[i]->curs) < (iter[i]->s))
-      break;
-    iter[i]->curs = 0;
-
-    (iter[i]->curx)++;
-    if ((iter[i]->curx) < (iter[i]->x) + (iter[i]->w))
-      break;
-    iter[i]->curx = iter[i]->x;
-
-    (iter[i]->cury)++;
-    if ((iter[i]->cury) < (iter[i]->y) + (iter[i]->h))
-      break;
-    iter[i]->cury = iter[i]->y;
-  }
-
-  if (toPrint == YES && i == numIters - 1)
-    Print(iter[numIters - 1]);
-
-  if (i == numIters)
-    return FAIL;
-  if (i == numIters-1)
-    i--;
-
-  // Otherwise, count back down and reset everything we passed.
-  for (int j = i; j >= 0; j--) {
-    if (iter[j]->curx < iter[j + 1]->curx) {
-      iter[j]->curx = iter[j + 1]->curx;
-      if (iter[j]->cury < iter[j + 1]->cury) {
-        iter[j]->cury = iter[j + 1]->cury;
-        if (iter[j]->curs <= iter[j + 1]->curs) {
-          iter[j]->curs = iter[j + 1]->curs;
-        }
-      }
-    }
-  }
-
-  return SUCCESS;
-}
-
-int Next(LifeIterator *iter1, LifeIterator *iter2, int toPrint) {
-  LifeIterator *iters[] = {iter1, iter2};
-  return Next(iters, 2, toPrint);
-}
-
-int Next(LifeIterator *iter1, LifeIterator *iter2) {
-  return Next(iter1, iter2, YES);
-}
-
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
-         int toPrint) {
-  LifeIterator *iters[] = {iter1, iter2, iter3};
-  return Next(iters, 3, toPrint);
-}
-
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3) {
-  return Next(iter1, iter2, iter3, YES);
-}
-
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
-         LifeIterator *iter4, int toPrint) {
-  LifeIterator *iters[] = {iter1, iter2, iter3, iter4};
-  return Next(iters, 4, toPrint);
-}
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
-         LifeIterator *iter4) {
-  return Next(iter1, iter2, iter3, iter4, YES);
-}
-
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
-         LifeIterator *iter4, LifeIterator *iter5, int toPrint) {
-  LifeIterator *iters[] = {iter1, iter2, iter3, iter4, iter5};
-  return Next(iters, 5, toPrint);
-}
-
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
-         LifeIterator *iter4, LifeIterator *iter5) {
-  return Next(iter1, iter2, iter3, iter4, iter5, YES);
-}
-
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
-         LifeIterator *iter4, LifeIterator *iter5, LifeIterator *iter6,
-         int toPrint) {
-  LifeIterator *iters[] = {iter1, iter2, iter3, iter4, iter5, iter6};
-  return Next(iters, 6, toPrint);
-}
-
-int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
-         LifeIterator *iter4, LifeIterator *iter5, LifeIterator *iter6) {
-  return Next(iter1, iter2, iter3, iter4, iter5, iter6, YES);
-}
-
-int Next(LifeIterator *iter1[], int numIters) {
-  return Next(iter1, numIters, YES);
-}
-
-void FreeIterator(LifeIterator *iter) {
-  for (int i = 0; i < iter->s; i++)
-    FreeState(iter->States[i]);
-
-  free(iter);
-}
-
-// void Join(LifeState *state, LifeIterator *iter) {
-//   Join(state, iter->States[iter->curs], iter->curx, iter->cury);
+//   return result;
 // }
 
-void SetCurrent(LifeIterator *iter, int curx, int cury, int curs) {
-  iter->curx = curx;
-  iter->cury = cury;
-  iter->curs = curs;
-}
+// LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h, int s) {
+//   return NewIterator(state, x, y, w, h, s, EVOLVE);
+// }
 
-int Validate(LifeIterator *iter1, LifeIterator *iter2) {
-  if (iter1->curx > iter2->curx)
-    return SUCCESS;
+// LifeIterator *NewIterator(LifeState *state, int x, int y, int w, int h) {
+//   return NewIterator(state, x, y, w, h, 1, LEAVE);
+// }
 
-  if (iter1->curx < iter2->curx)
-    return FAIL;
+// // This cannot be good
+// // LifeIterator *NewIterator(int x, int y, int w, int h) {
+// //   LifeState Temp;
+// //   ClearData(&Temp);
+// //   return NewIterator(&Temp, x, y, w, h, 1);
+// // }
 
-  if (iter1->cury > iter2->cury)
-    return SUCCESS;
+// void Print(LifeIterator *iter) {
+//   printf("\n(%d, %d, %d)", iter->curx, iter->cury, iter->curs);
+// }
 
-  if (iter1->cury < iter2->cury)
-    return FAIL;
+// void Print(LifeIterator *iter[], int numIters) {
+//   for (int i = 0; i < numIters; i++)
+//     Print(iter[i]);
+// }
 
-  if (iter1->curs > iter2->curs)
-    return SUCCESS;
+// void Print(LifeIterator *iter, const char *name) {
+//   printf("\nSetCurrent(%s, %d, %d, %d);", name, iter->curx, iter->cury,
+//          iter->curs);
+// }
 
-  return FAIL;
-}
+// void Reset(LifeIterator *iter) {
+//   iter->curx = iter->x;
+//   iter->cury = iter->y;
+//   iter->curs = 0;
+// }
 
-int Validate(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3) {
-  if (Validate(iter1, iter2) == FAIL)
-    return FAIL;
+// int Next(LifeIterator *iter) {
+//   (iter->curs)++;
 
-  if (Validate(iter2, iter3) == FAIL)
-    return FAIL;
+//   if ((iter->curs) < (iter->s))
+//     return SUCCESS;
 
-  return SUCCESS;
-}
+//   (iter->curs) = 0;
+//   (iter->curx)++;
 
-int Validate(LifeIterator *iters[], int iterCount) {
-  for (int i = 0; i < iterCount - 1; i++)
-    if (Validate(iters[i], iters[i + 1]) == FAIL)
-      return FAIL;
+//   if ((iter->curx) < (iter->x) + (iter->w))
+//     return SUCCESS;
 
-  return SUCCESS;
-}
+//   iter->curx = iter->x;
+//   (iter->cury)++;
 
-typedef struct {
-  LifeState **results;
-  int size;
-  int allocated;
+//   if ((iter->cury) < (iter->y) + (iter->h))
+//     return SUCCESS;
 
-} LifeResults;
+//   Reset(iter);
 
-LifeResults *NewResults() {
-  LifeResults *result = (LifeResults *)(malloc(sizeof(LifeResults)));
+//   return FAIL;
+// }
 
-  result->results = (LifeState **)(malloc(10 * sizeof(LifeState *)));
+// int Next(LifeIterator *iter[], int numIters, int toPrint) {
+//   int i = 0;
+//   for (i = 0; i < numIters; i++) {
+//     (iter[i]->curs)++;
+//     if ((iter[i]->curs) < (iter[i]->s))
+//       break;
+//     iter[i]->curs = 0;
 
-  for (int i = 0; i < 10; i++) {
-    (result->results)[i] = NewState();
-  }
+//     (iter[i]->curx)++;
+//     if ((iter[i]->curx) < (iter[i]->x) + (iter[i]->w))
+//       break;
+//     iter[i]->curx = iter[i]->x;
 
-  result->allocated = 10;
-  result->size = 0;
+//     (iter[i]->cury)++;
+//     if ((iter[i]->cury) < (iter[i]->y) + (iter[i]->h))
+//       break;
+//     iter[i]->cury = iter[i]->y;
+//   }
 
-  return result;
-}
+//   if (toPrint == YES && i == numIters - 1)
+//     Print(iter[numIters - 1]);
 
-void Add(LifeResults *results, LifeState *state) {
-  if (results->size == results->allocated) {
-    results->results = (LifeState **)(realloc(
-        results->results, results->allocated * 2 * sizeof(LifeState *)));
-    results->allocated *= 2;
+//   if (i == numIters)
+//     return FAIL;
+//   if (i == numIters-1)
+//     i--;
 
-    for (int i = results->size; i < 2 * (results->size); i++) {
-      (results->results)[i] = NewState();
-    }
-  }
+//   // Otherwise, count back down and reset everything we passed.
+//   for (int j = i; j >= 0; j--) {
+//     if (iter[j]->curx < iter[j + 1]->curx) {
+//       iter[j]->curx = iter[j + 1]->curx;
+//       if (iter[j]->cury < iter[j + 1]->cury) {
+//         iter[j]->cury = iter[j + 1]->cury;
+//         if (iter[j]->curs <= iter[j + 1]->curs) {
+//           iter[j]->curs = iter[j + 1]->curs;
+//         }
+//       }
+//     }
+//   }
 
-  Copy((results->results)[results->size], state);
-  results->size++;
-}
+//   return SUCCESS;
+// }
 
-char *ReadFile(const char *filePath) {
-  char *buffer = (char *)malloc(1);
-  buffer[0] = '\0';
-  long length;
-  FILE *f = fopen(filePath, "r");
+// int Next(LifeIterator *iter1, LifeIterator *iter2, int toPrint) {
+//   LifeIterator *iters[] = {iter1, iter2};
+//   return Next(iters, 2, toPrint);
+// }
 
-  if (f) {
-    fseek(f, 0, SEEK_END);
-    length = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    buffer = (char *)realloc(buffer, length);
-    if (buffer) {
-      fread(buffer, 1, length, f);
-    }
-    fclose(f);
-  }
+// int Next(LifeIterator *iter1, LifeIterator *iter2) {
+//   return Next(iter1, iter2, YES);
+// }
 
-  return buffer;
-}
+// int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+//          int toPrint) {
+//   LifeIterator *iters[] = {iter1, iter2, iter3};
+//   return Next(iters, 3, toPrint);
+// }
 
-void SaveResults(LifeResults *results, const char *filePath) {
-  FILE *f;
-  f = fopen(filePath, "wb");
+// int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3) {
+//   return Next(iter1, iter2, iter3, YES);
+// }
 
-  for (int i = 0; i < results->size; i++) {
-    fputs(GetRLE((results->results)[i]), f);
-    fprintf(f, "129$");
-  }
+// int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+//          LifeIterator *iter4, int toPrint) {
+//   LifeIterator *iters[] = {iter1, iter2, iter3, iter4};
+//   return Next(iters, 4, toPrint);
+// }
+// int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+//          LifeIterator *iter4) {
+//   return Next(iter1, iter2, iter3, iter4, YES);
+// }
 
-  fclose(f);
-}
+// int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+//          LifeIterator *iter4, LifeIterator *iter5, int toPrint) {
+//   LifeIterator *iters[] = {iter1, iter2, iter3, iter4, iter5};
+//   return Next(iters, 5, toPrint);
+// }
 
-LifeResults *LoadResults(const char *filePath) {
-  LifeResults *results = NewResults();
+// int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+//          LifeIterator *iter4, LifeIterator *iter5) {
+//   return Next(iter1, iter2, iter3, iter4, iter5, YES);
+// }
 
-  char *rle = ReadFile(filePath);
-  int idx = 0;
+// int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+//          LifeIterator *iter4, LifeIterator *iter5, LifeIterator *iter6,
+//          int toPrint) {
+//   LifeIterator *iters[] = {iter1, iter2, iter3, iter4, iter5, iter6};
+//   return Next(iters, 6, toPrint);
+// }
 
-  while (rle[idx] != '\0') {
-    LifeState Temp;
-    ClearData(&Temp);
-    idx = Parse(&Temp, rle, idx);
-    Move(&Temp, -32, -32);
-    Add(results, &Temp);
-  }
+// int Next(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3,
+//          LifeIterator *iter4, LifeIterator *iter5, LifeIterator *iter6) {
+//   return Next(iter1, iter2, iter3, iter4, iter5, iter6, YES);
+// }
 
-  return results;
-}
+// int Next(LifeIterator *iter1[], int numIters) {
+//   return Next(iter1, numIters, YES);
+// }
+
+// void FreeIterator(LifeIterator *iter) {
+//   for (int i = 0; i < iter->s; i++)
+//     FreeState(iter->States[i]);
+
+//   free(iter);
+// }
+
+// // void Join(LifeState *state, LifeIterator *iter) {
+// //   Join(state, iter->States[iter->curs], iter->curx, iter->cury);
+// // }
+
+// void SetCurrent(LifeIterator *iter, int curx, int cury, int curs) {
+//   iter->curx = curx;
+//   iter->cury = cury;
+//   iter->curs = curs;
+// }
+
+// int Validate(LifeIterator *iter1, LifeIterator *iter2) {
+//   if (iter1->curx > iter2->curx)
+//     return SUCCESS;
+
+//   if (iter1->curx < iter2->curx)
+//     return FAIL;
+
+//   if (iter1->cury > iter2->cury)
+//     return SUCCESS;
+
+//   if (iter1->cury < iter2->cury)
+//     return FAIL;
+
+//   if (iter1->curs > iter2->curs)
+//     return SUCCESS;
+
+//   return FAIL;
+// }
+
+// int Validate(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3) {
+//   if (Validate(iter1, iter2) == FAIL)
+//     return FAIL;
+
+//   if (Validate(iter2, iter3) == FAIL)
+//     return FAIL;
+
+//   return SUCCESS;
+// }
+
+// int Validate(LifeIterator *iters[], int iterCount) {
+//   for (int i = 0; i < iterCount - 1; i++)
+//     if (Validate(iters[i], iters[i + 1]) == FAIL)
+//       return FAIL;
+
+//   return SUCCESS;
+// }
+
+// typedef struct {
+//   LifeState **results;
+//   int size;
+//   int allocated;
+
+// } LifeResults;
+
+// LifeResults *NewResults() {
+//   LifeResults *result = (LifeResults *)(malloc(sizeof(LifeResults)));
+
+//   result->results = (LifeState **)(malloc(10 * sizeof(LifeState *)));
+
+//   for (int i = 0; i < 10; i++) {
+//     (result->results)[i] = NewState();
+//   }
+
+//   result->allocated = 10;
+//   result->size = 0;
+
+//   return result;
+// }
+
+// void Add(LifeResults *results, LifeState *state) {
+//   if (results->size == results->allocated) {
+//     results->results = (LifeState **)(realloc(
+//         results->results, results->allocated * 2 * sizeof(LifeState *)));
+//     results->allocated *= 2;
+
+//     for (int i = results->size; i < 2 * (results->size); i++) {
+//       (results->results)[i] = NewState();
+//     }
+//   }
+
+//   Copy((results->results)[results->size], state);
+//   results->size++;
+// }
+
+// char *ReadFile(const char *filePath) {
+//   char *buffer = (char *)malloc(1);
+//   buffer[0] = '\0';
+//   long length;
+//   FILE *f = fopen(filePath, "r");
+
+//   if (f) {
+//     fseek(f, 0, SEEK_END);
+//     length = ftell(f);
+//     fseek(f, 0, SEEK_SET);
+//     buffer = (char *)realloc(buffer, length);
+//     if (buffer) {
+//       fread(buffer, 1, length, f);
+//     }
+//     fclose(f);
+//   }
+
+//   return buffer;
+// }
+
+// void SaveResults(LifeResults *results, const char *filePath) {
+//   FILE *f;
+//   f = fopen(filePath, "wb");
+
+//   for (int i = 0; i < results->size; i++) {
+//     fputs(GetRLE((results->results)[i]), f);
+//     fprintf(f, "129$");
+//   }
+
+//   fclose(f);
+// }
+
+// LifeResults *LoadResults(const char *filePath) {
+//   LifeResults *results = NewResults();
+
+//   char *rle = ReadFile(filePath);
+//   int idx = 0;
+
+//   while (rle[idx] != '\0') {
+//     LifeState Temp;
+//     ClearData(&Temp);
+//     idx = Parse(&Temp, rle, idx);
+//     Move(&Temp, -32, -32);
+//     Add(results, &Temp);
+//   }
+
+//   return results;
+// }
+
 typedef struct {
   int done;
   int count;
