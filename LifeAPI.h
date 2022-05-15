@@ -510,6 +510,19 @@ void FlipX(LifeState *state) {
 
 // void FlipX(int idx) { FlipX(Captures[idx]); }
 
+void Transpose(LifeState *state) {
+  int j, k;
+  uint64_t m, t;
+
+  for (j = 32, m = 0x00000000FFFFFFFF; j; j >>= 1, m ^= m << j) {
+    for (k = 0; k < 64; k = ((k | j) + 1) & ~j) {
+      t = (state->state[k] ^ (state->state[k | j] >> j)) & m;
+      state->state[k] ^= t;
+      state->state[k | j] ^= (t << j);
+    }
+  }
+}
+
 uint64_t BitReverse (uint64_t x) {
   const uint64_t h1 = 0x5555555555555555ULL;
   const uint64_t h2 = 0x3333333333333333ULL;

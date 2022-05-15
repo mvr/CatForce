@@ -60,8 +60,9 @@ enum Symmetry {
   HORIZONTAL,
   HORIZONTALEVEN,
   DIAGONAL,
-  DIAGONALEVENX,
-  DIAGONALEVENBOTH,
+  ROTATE180,
+  ROTATE180EVENX,
+  ROTATE180EVENBOTH
 };
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
@@ -335,19 +336,20 @@ void ReadParams(std::string fname, std::vector<CatalystInput> &catalysts,
       }
 
       if (elems[0] == symmetry) {
-        if(elems[1] == "horizontal") {
+        if (elems[1] == "horizontal") {
           params.symmetricSearch = HORIZONTAL;
         } else if (elems[1] == "horizontaleven") {
           params.symmetricSearch = HORIZONTALEVEN;
         } else if (elems[1] == "diagonal") {
           params.symmetricSearch = DIAGONAL;
-        } else if (elems[1] == "diagonalevenx") {
-          params.symmetricSearch = DIAGONALEVENX;
-        } else if (elems[1] == "diagonalevenboth") {
-          params.symmetricSearch = DIAGONALEVENBOTH;
+        } else if (elems[1] == "rotate180") {
+          params.symmetricSearch = ROTATE180;
+        } else if (elems[1] == "rotate180evenx") {
+          params.symmetricSearch = ROTATE180EVENX;
+        } else if (elems[1] == "rotate180evenboth") {
+          params.symmetricSearch = ROTATE180EVENBOTH;
         }
       }
-
 
     } catch (const std::exception &ex) {
     }
@@ -367,15 +369,17 @@ void ApplySym(LifeState *state, Symmetry sym) {
     FlipX(state);
   } else if (sym == HORIZONTALEVEN) {
     Reverse(state->state, 0, N - 1);
-  } else if (sym == DIAGONAL) {
+  } else if (sym == ROTATE180) { // before: DIAGONAL
     FlipX(state);
     FlipY(state);
-  } else if (sym == DIAGONALEVENX) {
+  } else if (sym == ROTATE180EVENX) { // before: DIAGONALEVENX
     Reverse(state->state, 0, N - 1);
     FlipY(state);
-  } else if (sym == DIAGONALEVENBOTH) {
+  } else if (sym == ROTATE180EVENBOTH) { // before: DIAGONALEVENBOTH
     Reverse(state->state, 0, N - 1);
     BitReverse(state);
+  } else if (sym == DIAGONAL) {
+    Transpose(state);
   }
 }
 
