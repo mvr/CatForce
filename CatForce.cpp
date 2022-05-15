@@ -456,40 +456,65 @@ void InitCatalysts(const std::string& fname, std::vector<LifeState *> &states,
 void XYStartGenPerState(
     const std::vector<LifeTarget *> &targets, const LifeState *pat,
     const SearchParams &params, const std::vector<LifeState *> &states,
-    std::vector<std::vector<std::vector<int>>> &statexyGen) {
-#pragma omp parallel for ordered schedule(dynamic) default(none) shared(states, params, targets, statexyGen, pat, std::cout)
-  for (int i = 0; i < states.size(); i++) {
-    std::vector<std::vector<int>> xyVec;
-
-    for (int x = 0; x < 64; x++) {
-      std::vector<int> xVec;
-
-      for (int y = 0; y < 64; y++) {
-        LifeState state;
-        ClearData(&state);
-        PutStateWSym(&state, states[i], x, y, params.symmetricSearch);
-        PutStateWSym(&state, pat, params.symmetricSearch);
-        int j;
-
-        for (j = 0; j < params.maxGen + 5; j++) {
-          if (Contains(&state, targets[i], x, y) == NO) {
-            break;
-          }
-          Run(&state, 1);
-        }
-
-        if (j == params.maxGen + 4)
-          j = -1;
-
-        xVec.push_back(j - 1);
-      }
-      xyVec.push_back(xVec);
-    }
-#pragma omp ordered
-    statexyGen.push_back(xyVec);
-    std::cout << i << " " << statexyGen.size() << " " << xyVec.size() << std::endl;
+    std::vector<std::vector<std::vector<int>>> &statexyGen, int const nthreads) {
+  const int chunksize = states.size()/((unsigned long)nthreads);
+  std::vector<std::pair<long, long>> chunkbounds;
+  long lowerbound = 0;
+  for (int chunki = 0; chunki < nthreads-1; chunki++){
+      chunkbounds.emplace_back(lowerbound, lowerbound + chunksize);
+      lowerbound += chunksize;
   }
+  chunkbounds.emplace_back(lowerbound, states.size());
+  statexyGen.reserve(states.size());
+#pragma omp parallel for ordered schedule(static,1) default(none) shared(states, params, targets, statexyGen, pat, chunkbounds, std::cout)
+  for (auto & bounds : chunkbounds){
+    std::vector<std::vector<std::vector<int>>> perthread_statexyGen;
+    perthread_statexyGen.reserve(bounds.second-bounds.first);
+    #pragma omp critical
+    std::cout << bounds.first << " " << bounds.second << std::endl;
+    for (long i = bounds.first; i < bounds.second; i++) {
+      std::vector<std::vector<int>> xyVec;
+      xyVec.reserve(64);
 
+      for (int x = 0; x < 64; x++) {
+        std::vector<int> xVec;
+        xVec.reserve(64);
+
+        for (int y = 0; y < 64; y++) {
+          LifeState state;
+          ClearData(&state);
+          PutStateWSym(&state, states[i], x, y, params.symmetricSearch);
+          PutStateWSym(&state, pat, params.symmetricSearch);
+          int j;
+
+          for (j = 0; j < params.maxGen + 5; j++) {
+            if (Contains(&state, targets[i], x, y) == NO) {
+              break;
+            }
+            Run(&state, 1);
+          }
+
+          if (j == params.maxGen + 4)
+            j = -1;
+
+          xVec.push_back(j - 1);
+        }
+        xyVec.push_back(xVec);
+      }
+
+      perthread_statexyGen.push_back(xyVec);
+      std::cout << i << " " << perthread_statexyGen.size() << " " << xyVec.size() << std::endl;
+    }
+    #pragma omp ordered
+    {
+      statexyGen.insert(
+          statexyGen.end(),
+          std::make_move_iterator(perthread_statexyGen.begin()),
+          std::make_move_iterator(perthread_statexyGen.end())
+      );
+      std::cout << statexyGen.size() << std::endl;
+    };
+  }
 }
 
 void PreIteratePat(LifeState *pat, std::vector<LifeState *> &preIterated,
@@ -866,7 +891,7 @@ public:
   LifeState *afterCatalyst{};
   LifeState *catalysts{};
 
-  void Init(const char *inputFile) {
+  void Init(const char *inputFile, int nthreads) {
     // result = "x = 0, y = 0, rule = B3/S23\n";
     begin = clock();
     InitCatalysts(inputFile, states, forbiddenTargets, maxSurvive, params);
@@ -898,7 +923,7 @@ public:
     for (auto & state : states)
       targets.push_back(NewTarget(state));
 
-    XYStartGenPerState(targets, pat, params, states, statexyGen);
+    XYStartGenPerState(targets, pat, params, states, statexyGen, nthreads);
     enu.activations = statexyGen;
     enu.cumulActivation = std::vector<int>(enu.count, enu.activations[0][(enu.x + 64) % 64][(enu.y + 64) % 64]);
     for (int i = 0; i < enu.s; i++) {
@@ -1430,7 +1455,7 @@ int main(int argc, char *argv[]) {
             << "Initializing please wait..." << std::endl;
 
   CatalystSearcher searcher;
-  searcher.Init(argv[1]);
+  searcher.Init(argv[1], nthreads);
 
   clock_t initialized = clock();
   printf("Total elapsed CPU time (not wallclock if nthreads>1): %f seconds\n",
