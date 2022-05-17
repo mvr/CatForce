@@ -144,7 +144,7 @@ public:
                    "<symm Type | + / x *>"
                 << std::endl;
       getchar();
-      exit(0);
+      exit(1);
     }
 
     rle = elems[1];
@@ -225,7 +225,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   infile.open(fname.c_str(), std::ifstream::in);
   if (!infile.good()) {
     std::cout << "Could not open file!" << std::endl;
-    exit(0);
+    exit(1);
   }
 
   std::string Cat = "cat";
@@ -359,7 +359,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
           params.symmetricSearch = ROTATE180EVENBOTH;
         } else {
           std::cout << "Unknown symmetry: " << elems[1] << std::endl;
-          exit(0);
+          exit(1);
         }
       }
 
@@ -368,11 +368,11 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   }
   if (params.pat.length() == 0) {
     std::cout << "Did not read any pattern!" << std::endl;
-    exit(0);
+    exit(1);
   }
   if (catalysts.empty()) {
     std::cout << "Did not read any catalysts!" << std::endl;
-    exit(0);
+    exit(1);
   }
 }
 
