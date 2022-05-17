@@ -395,7 +395,7 @@ void ApplySym(LifeState *state, Symmetry sym) {
   }
 }
 
-void PutStateWSym(LifeState *main, LifeState *state, int x, int y, Symmetry sym) {
+void JoinWSym(LifeState *main, LifeState *state, int x, int y, Symmetry sym) {
   Join(main, state, x, y);
   if (sym == NONE)
     return;
@@ -411,7 +411,7 @@ void PutStateWSym(LifeState *main, LifeState *state, int x, int y, Symmetry sym)
   Join(main, &transformed);
 }
 
-void PutStateWSym(LifeState *main, const LifeState *state, Symmetry sym) {
+void JoinWSym(LifeState *main, const LifeState *state, Symmetry sym) {
   Join(main, state);
   if (sym == NONE)
     return;
@@ -511,8 +511,8 @@ void XYStartGenPerState(const std::vector<LifeTarget *> &targets,
         for (int y = 0; y < 64; y++) {
           LifeState state;
           ClearData(&state);
-          PutStateWSym(&state, states[i], x, y, params.symmetricSearch);
-          PutStateWSym(&state, pat, params.symmetricSearch);
+          JoinWSym(&state, states[i], x, y, params.symmetricSearch);
+          JoinWSym(&state, pat, params.symmetricSearch);
           int j;
 
           for (j = 0; j < params.maxGen + 5; j++) {
@@ -548,7 +548,7 @@ void PreIteratePat(LifeState *pat, std::vector<LifeState *> &preIterated,
                    const SearchParams &params) {
   LifeState workspace;
   ClearData(&workspace);
-  PutStateWSym(&workspace, pat, params.symmetricSearch);
+  JoinWSym(&workspace, pat, params.symmetricSearch);
 
   for (int i = 0; i < params.maxGen + 5; i++) {
     LifeState *t = NewState();
@@ -1179,8 +1179,8 @@ public:
 
   void PutStartState(LifeState *workspace, Configuration &conf) {
     ClearData(workspace);
-    PutStateWSym(workspace, &conf.state, params.symmetricSearch);
-    PutStateWSym(workspace, pat, params.symmetricSearch);
+    JoinWSym(workspace, &conf.state, params.symmetricSearch);
+    JoinWSym(workspace, pat, params.symmetricSearch);
   }
 
   bool ValidateFilters(Configuration &conf) {
@@ -1219,7 +1219,7 @@ public:
   int TestConfiguration(Configuration &conf) {
     LifeState workspace;
     ClearData(&workspace);
-    PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
+    JoinWSym(&workspace, &conf.state, params.symmetricSearch);
     Join(&workspace, preIterated[conf.minIter]);
     workspace.gen = conf.minIter;
 
@@ -1263,7 +1263,7 @@ public:
     if (reportAll) {
       ClearData(&workspace);
 
-      PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
+      JoinWSym(&workspace, &conf.state, params.symmetricSearch);
       Copy(catalysts, &workspace);
 
       PutStartState(&workspace, conf);
@@ -1289,7 +1289,7 @@ public:
 
     // If all filters validated update results
     ClearData(&workspace);
-    PutStateWSym(&workspace, &conf.state, params.symmetricSearch);
+    JoinWSym(&workspace, &conf.state, params.symmetricSearch);
     Copy(catalysts, &workspace);
 
     PutStartState(&workspace, conf);
