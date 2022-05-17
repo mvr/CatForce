@@ -357,6 +357,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
           params.symmetricSearch = ROTATE180EVENX;
         } else if (elems[1] == "rotate180evenboth") {
           params.symmetricSearch = ROTATE180EVENBOTH;
+        } else {
+          std::cout << "Unknown symmetry: " << elems[1] << std::endl;
+          exit(0);
         }
       }
 
