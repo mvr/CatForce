@@ -422,6 +422,224 @@ void JoinWSym(LifeState *main, const LifeState *state, Symmetry sym) {
   Join(main, &transformed);
 }
 
+struct Configuration {
+  std::vector<int> curx;
+  std::vector<int> cury;
+  std::vector<int> curs;
+  int minIter;
+  LifeState state;
+  std::vector<LifeTarget *> shiftedTargets;
+};
+
+struct Enumerator {
+  int done;
+  const int count;
+
+  const int x;
+  const int y;
+  const int w;
+  const int h;
+  const int s;
+
+  const int maxW;
+  const int maxH;
+
+  const int startGen;
+  const int lastGen;
+  const int maxGen;
+
+  const std::vector<LifeState *> states;
+  const std::vector<LifeTarget *> targets;
+  const std::vector<std::vector<std::vector<int> > >  activations;
+
+  std::vector<int> curx;
+  std::vector<int> cury;
+  std::vector<int> curs;
+  std::vector<int> cumulMinX;
+  std::vector<int> cumulMaxX;
+  std::vector<int> cumulMinY;
+  std::vector<int> cumulMaxY;
+  std::vector<LifeTarget *> shiftedTargets;
+  std::vector<LifeState *> cumulative; // backwards! e.g. 1|2|3, 2|3, 3
+  std::vector<int> cumulActivation;
+
+  Enumerator(SearchParams &params, std::vector<LifeState *> &states, std::vector<LifeTarget *> &targets, std::vector<std::vector<std::vector<int> > >  activations) :
+      count(params.numCatalysts),
+      x(params.searchArea[0]),
+      y(params.searchArea[1]),
+      w(params.searchArea[2]),
+      h(params.searchArea[3]),
+      s(states.size()),
+      maxW(params.maxW),
+      maxH(params.maxH),
+      startGen(params.startGen),
+      lastGen(params.lastGen),
+      maxGen(params.maxGen),
+      states(states),
+      targets(targets),
+      activations(activations)
+  {
+    done = false;
+    curx = std::vector<int>(count, x);
+    cury = std::vector<int>(count, y);
+    curs = std::vector<int>(count, 0);
+    cumulMinX = std::vector<int>(count, x);
+    cumulMaxX = std::vector<int>(count, x);
+    cumulMinY = std::vector<int>(count, y);
+    cumulMaxY = std::vector<int>(count, y);
+    cumulActivation = std::vector<int>(count, activations[0][(x + 64) % 64][(y + 64) % 64]);
+
+    for (int i = 0; i < count; i++) {
+      shiftedTargets.push_back(NewTarget(NewState(), NewState()));
+      cumulative.push_back(NewState());
+    }
+    for (int i = count - 1; i >= 0; i--) {
+      Copy(shiftedTargets[i]->wanted,   targets[curs[i]]->wanted, curx[i], cury[i]);
+      Copy(shiftedTargets[i]->unwanted, targets[curs[i]]->unwanted, curx[i], cury[i]);
+      Copy(cumulative[i], shiftedTargets[i]->wanted);
+      if(i < count-1)
+        Join(cumulative[i], cumulative[i + 1]);
+    }
+  }
+
+  int Next(const int i) {
+    while (true) {
+      int n = NaiveNext(i);
+      if(n == FAIL) {
+        if(i == 0)
+          done = true;
+        return FAIL;
+      }
+
+      const int thisactivation = activations[curs[i]][(curx[i] + 64) % 64][(cury[i] + 64) % 64];
+
+      if (i == count - 1) {
+        // Check collision time (only relevant condition)
+        if (thisactivation < startGen || thisactivation > lastGen){
+          continue;
+        }
+
+        Copy(shiftedTargets[i]->wanted, targets[curs[i]]->wanted, curx[i], cury[i]);
+
+        break;
+      }
+
+      const int lastactivation = cumulActivation[i+1];
+
+      if(thisactivation < lastactivation)
+        continue;
+
+      if(thisactivation == lastactivation) { // Then break the tie
+        if (curx[i] < curx[i + 1])
+          continue;
+        if (curx[i] == curx[i + 1]) {
+          if (cury[i] < cury[i + 1])
+            continue;
+          if (cury[i] == cury[i + 1]) {
+            if (curs[i] <= curs[i + 1]) {
+              continue;
+            }
+          }
+        }
+      }
+
+      // Check bounds
+      if (maxW != -1)
+        if( curx[i] - cumulMinX[i+1] > maxW ||
+            cumulMaxX[i+1] - curx[i] > maxW ) {
+          continue;
+        }
+
+      if (maxH != -1) {
+        if( cury[i] - cumulMinY[i+1] > maxH ||
+            cumulMaxY[i+1] - cury[i] > maxH ) {
+          continue;
+        }
+      }
+
+      Copy(shiftedTargets[i]->wanted, targets[curs[i]]->wanted, curx[i], cury[i]);
+
+      // Check overlap
+      LifeState temp;
+      Copy(&temp, cumulative[i + 1]);
+      Join(&temp, shiftedTargets[i]->wanted);
+      Run(&temp, 1);
+      if (Contains(&temp, shiftedTargets[i]->wanted) == NO)
+        continue;
+
+      break;
+    }
+    // Not needed in the loop
+    Copy(shiftedTargets[i]->unwanted, targets[curs[i]]->unwanted, curx[i], cury[i]);
+
+    cumulActivation[i] = activations[curs[i]][(curx[i] + 64) % 64][(cury[i] + 64) % 64];
+
+    if(i == count-1) {
+      cumulMinX[i] = curx[i];
+      cumulMaxX[i] = curx[i];
+      cumulMinY[i] = cury[i];
+      cumulMaxY[i] = cury[i];
+
+      Copy(cumulative[i], shiftedTargets[i]->wanted);
+    }
+
+
+    if(i < count-1) {
+      // Update bounds
+      cumulMinX[i] = std::min(cumulMinX[i + 1], curx[i]);
+      cumulMaxX[i] = std::max(cumulMaxX[i + 1], curx[i]);
+      cumulMinY[i] = std::min(cumulMinY[i + 1], cury[i]);
+      cumulMaxY[i] = std::max(cumulMaxY[i + 1], cury[i]);
+
+      // Update cumulative
+      Copy(cumulative[i], shiftedTargets[i]->wanted);
+      Join(cumulative[i], cumulative[i + 1]);
+    }
+
+    return SUCCESS;
+  }
+
+  int NaiveNext(const int i) {
+    if(i == count)
+      return FAIL;
+
+    curs[i]++;
+    if (curs[i] < s)
+      return SUCCESS;
+    curs[i] = 0;
+
+    cury[i]++;
+    if (cury[i] < y + h)
+      return SUCCESS;
+    cury[i] = y;
+
+    curx[i]++;
+    if (curx[i] < x + w)
+      return SUCCESS;
+    curx[i] = x;
+
+    return Next(i+1);
+  }
+
+  int Next() {
+    return Next(0);
+  }
+
+  Configuration GetConfiguration() {
+    Configuration c;
+    c.curx = curx;
+    c.cury = cury;
+    c.curs = curs;
+    c.minIter = cumulActivation[count-1];
+    Copy(&c.state, cumulative[0]);
+    c.shiftedTargets = shiftedTargets;
+    // for(int i = 0; i < enu.count; i++) {
+    //   c.shiftedTargets.push_back(NewTarget(enu.shiftedTargets[i]->wanted, enu.shiftedTargets[i]->unwanted));
+    // }
+    return c;
+  }
+};
+
 void GenerateStates(const std::vector<CatalystInput> &catalysts,
                     std::vector<LifeState *> &states,
                     std::vector<std::vector<LifeTarget *>> &forbidden,
@@ -888,7 +1106,7 @@ public:
   SearchParams params;
   LifeState *pat{};
   int numIters{};
-  Enumerator enu;
+  Enumerator *enu;
   std::vector<LifeTarget *> targetFilter;
   std::vector<LifeTarget *> targets;
   std::vector<std::vector<LifeTarget *>> forbiddenTargets;
@@ -928,41 +1146,16 @@ public:
     categoryContainer = new CategoryContainer(params.maxGen);
     fullCategoryContainer = new CategoryContainer(params.maxGen);
 
-    enu.count = params.numCatalysts;
-    enu.x = params.searchArea[0];
-    enu.y = params.searchArea[1];
-    enu.w = params.searchArea[2];
-    enu.h = params.searchArea[3];
-    enu.maxW = params.maxW;
-    enu.maxH = params.maxH;
-    enu.s = states.size();
-    enu.states = std::vector<LifeState *>();
-    for (int i = 0; i < enu.s; i++) {
-      LifeState *state = NewState();
-      Copy(state, states[i]);
-      enu.states.push_back(state);
-    }
-    Reset(enu);
+    for (auto & state : states)
+      targets.push_back(NewTarget(state));
 
     for (int i = 0; i < params.targetFilter.size(); i++)
       targetFilter.push_back(NewTarget(params.targetFilter[i].c_str(),
                                        params.filterdx[i], params.filterdy[i]));
 
-    for (auto & state : states)
-      targets.push_back(NewTarget(state));
-
     XYStartGenPerState(targets, pat, params, states, statexyGen, nthreads);
-    enu.activations = statexyGen;
-    enu.cumulActivation = std::vector<int>(enu.count, enu.activations[0][(enu.x + 64) % 64][(enu.y + 64) % 64]);
-    for (int i = 0; i < enu.s; i++) {
-      for (int x = 0; x < 64; x++) {
-        for (int y = 0; y < 64; y++) {
-          int minIter = statexyGen[i][x][y];
-          enu.quickEnough[i][x][y] = minIter < params.lastGen;
-          enu.slowEnough[i][x][y] = params.startGen <= minIter;
-        }
-      }
-    }
+
+    enu = new Enumerator(params, states, targets, statexyGen);
 
     PreIteratePat(pat, preIterated, params);
     AddIterators(numIters);
@@ -1301,7 +1494,20 @@ public:
     categoryContainer->Add(init, afterCatalyst, catalysts, conf,
                            successtime - surviveCountForUpdate + 2, 0);
     found++;
-}
+  }
+
+  void Search() {
+    Configuration c;
+    while (!enu->done) {
+      c = enu->GetConfiguration();
+      int result = TestConfiguration(c);
+      if(result != -1) {
+        ReportSolution(c, result);
+      }
+      IncreaseIndexAndReport();
+      enu->Next();
+    }
+  }
 
   void SetParamsForCombine(int combineIter) {
     if (params.combineSurvive.size() - 1 < combineIter)
@@ -1420,19 +1626,7 @@ int main(int argc, char *argv[]) {
             << "Initialization finished, searching..." << std::endl
             << std::endl;
 
-  Configuration c;
-  while (!searcher.enu.done) {
-    c = GetConfiguration(searcher.enu);
-    int result = searcher.TestConfiguration(c);
-    if(result != -1) {
-      searcher.ReportSolution(c, result);
-    }
-    for(int i = 0; i < searcher.enu.count; i++) {
-      FreeTarget(c.shiftedTargets[i]);
-    }
-    searcher.IncreaseIndexAndReport();
-    Next(searcher.enu);
-  }
+  searcher.Search();
   // Print report one final time (update files with the final results).
   searcher.Report();
 
