@@ -402,20 +402,38 @@ void Move(LifeState *state, int x, int y) {
   }
 }
 
-void FlipX(LifeState *state) {
+enum SymmetryTransform {
+  Identity, // only used for catalyst initialization. The identity is omitted for symmetry of the pattern.
+  ReflectXEven, ReflectX,
+  ReflectYEven, ReflectY,
+  Rotate90Even, Rotate90,
+  Rotate270Even, Rotate270,
+  Rotate180OddBoth, Rotate180EvenX, Rotate180EvenY, Rotate180EvenBoth,
+  ReflectYeqX,
+  ReflectYeqNegX,
+  ReflectYeqNegXP1 // reflect across y = -x+3/2, fixing (0,0), instead of y=-x+1/2, sending (0,0) to (-1,-1). Needed for D4x_1 symmetry.
+};
+
+void FlipY(LifeState *state) { // even reflection across y-axis, ie (0,0) maps to (0, -1)
   Reverse(state->state, 0, N - 1);
-  Move(state, 1, 0);
+  //Move(state, 1, 0);
 }
 
-void Transpose(LifeState *state) {
+void Transpose(LifeState *state, bool whichDiagonal) {
   int j, k;
   uint64_t m, t;
 
   for (j = 32, m = 0x00000000FFFFFFFF; j; j >>= 1, m ^= m << j) {
     for (k = 0; k < 64; k = ((k | j) + 1) & ~j) {
-      t = (state->state[k] ^ (state->state[k | j] >> j)) & m;
-      state->state[k] ^= t;
-      state->state[k | j] ^= (t << j);
+      if(whichDiagonal){
+        t = (state->state[k] ^ (state->state[k | j] >> j)) & m;
+        state->state[k] ^= t;
+        state->state[k | j] ^= (t << j);
+      } else {
+        t = (state->state[k] >> j ^ (state->state[k | j] )) & m;
+        state->state[k] ^= (t << j);
+        state->state[k | j] ^= t;
+      }
     }
   }
 }
@@ -467,12 +485,85 @@ void Transform(LifeState *state, int dx, int dy, int dxx, int dxy, int dyx,
   RecalculateMinMax(state);
 }
 
-void FlipY(LifeState *state) {
+void FlipX(LifeState *state) { // even reflection across x-axis, ie (0,0) maps to (0, -1)
   BitReverse(state);
-  Move(state, 0, 1);
+  //Move(state, 0, 1);
 }
 
-void Transform(LifeState *state, int dx, int dy) { Move(state, dx, dy); }
+void Transform(LifeState *state, SymmetryTransform transf) {
+  switch ( transf ) {
+    case Identity:
+      break;
+    case ReflectXEven:
+      FlipX(state);
+      break;
+    case ReflectX:
+      FlipX(state);
+      Move(state,0,1);
+      break;
+    case ReflectYEven:
+      FlipY(state);
+      break;
+    case ReflectY:
+      FlipY(state);
+      Move(state,1,0);
+      break;
+    case Rotate180EvenBoth:
+      FlipX(state);
+      FlipY(state);
+      break;
+    case Rotate180EvenX:
+      FlipX(state);
+      FlipY(state);
+      Move(state,1,0);
+      break;
+    case Rotate180EvenY:
+      FlipX(state);
+      FlipY(state);
+      Move(state,0,1);
+      break;
+    case Rotate180OddBoth:
+      FlipX(state);
+      FlipY(state);
+      Move(state,1,1);
+      break;
+    case ReflectYeqX:
+      Transpose(state, false);
+      break;
+    case ReflectYeqNegX:
+      Transpose(state, true);
+      break;
+    case ReflectYeqNegXP1:
+      Transpose(state, true);
+      Move(state, 1, 1);
+      break;
+    case Rotate90Even:
+      FlipX(state);
+      Transpose(state, false);
+      break;
+    case Rotate90:
+      FlipX(state);
+      Transpose(state, false);
+      Move(state,1,0);
+      break;
+    case Rotate270Even:
+      FlipY(state);
+      Transpose(state, false);
+      break;
+    case Rotate270:
+      FlipY(state);
+      Transpose(state, false);
+      Move(state,0,1);
+      break;
+  }
+}
+
+void Transform(LifeState *state, int dx, int dy, SymmetryTransform transf) {
+
+  Transform(state, transf);
+  Move(state, dx, dy);
+  RecalculateMinMax(state);
+}
 
 void GetBoundary(LifeState *state, LifeState *boundary) {
   LifeState Temp;
@@ -569,12 +660,11 @@ int Parse(LifeState *state, const char *rle, int dx, int dy) {
 
 int Parse(LifeState *state, const char *rle) { return Parse(state, rle, 0, 0); }
 
-int Parse(LifeState *state, const char *rle, int dx, int dy, int dxx, int dxy,
-          int dyx, int dyy) {
+int Parse(LifeState *state, const char *rle, int dx, int dy, SymmetryTransform transf) {
   int result = Parse(state, rle);
 
   if (result == SUCCESS)
-    Transform(state, dx, dy, dxx, dxy, dyx, dyy);
+    Transform(state, dx, dy, transf);
 
   return result;
 }
@@ -607,11 +697,10 @@ LifeTarget *NewTarget(LifeState *wanted) {
   return NewTarget(wanted, &Temp);
 }
 
-LifeTarget *NewTarget(const char *rle, int x, int y, int dxx, int dxy, int dyx,
-                      int dyy) {
+LifeTarget *NewTarget(const char *rle, int x, int y, SymmetryTransform transf) {
   LifeState Temp;
   ClearData(&Temp);
-  int result = Parse(&Temp, rle, x, y, dxx, dxy, dyx, dyy);
+  int result = Parse(&Temp, rle, x, y, transf);
 
   if (result == SUCCESS) {
     return NewTarget(&Temp);
@@ -969,11 +1058,10 @@ void IterateState(LifeState *lifstate) {
   lifstate->gen++;
 }
 
-LifeState *NewState(const char *rle, int dx, int dy, int dxx, int dxy, int dyx,
-                    int dyy) {
+LifeState *NewState(const char *rle, int dx, int dy, SymmetryTransform trans) {
   LifeState *result = NewState();
   Parse(result, rle);
-  Transform(result, dx, dy, dxx, dxy, dyx, dyy);
+  Transform(result, dx, dy, trans);
 
   return result;
 }

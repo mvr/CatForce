@@ -11,17 +11,6 @@
 #include <ctime>
 #include <vector>
 
-
-const int none[] = {1, 0, 0, 1};
-const int flipX[] = {-1, 0, 0, 1};
-const int flipY[] = {1, 0, 0, -1};
-const int flipXY[] = {-1, 0, 0, -1};
-
-const int rot90clock[] = {0, 1, -1, 0};
-const int rot90anti[] = {0, -1, 1, 0};
-const int symmXY[] = {0, 1, 1, 0};
-const int symmYX[] = {0, -1, -1, 0};
-
 const int MAIN_STEP = 1;
 
 __attribute__((flatten)) void MainRun(LifeState &state) {
@@ -57,16 +46,6 @@ __attribute__((flatten)) void MainRun(LifeState &state) {
 //   MainChunk();
 // }
 
-enum Symmetry {
-  NONE,
-  HORIZONTAL,
-  HORIZONTALEVEN,
-  DIAGONAL,
-  ROTATE180,
-  ROTATE180EVENX,
-  ROTATE180EVENBOTH
-};
-
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
   std::string item;
@@ -90,7 +69,7 @@ public:
   int searchArea[4]{};
   int maxW;
   int maxH;
-  Symmetry symmetricSearch;
+  std::vector<SymmetryTransform> symmetryChain;
   std::vector<std::string> targetFilter;
   std::vector<int> filterdx;
   std::vector<int> filterdy;
@@ -117,7 +96,7 @@ public:
     outputFile = "results.rle";
     maxW = -1;
     maxH = -1;
-    symmetricSearch = NONE;
+    symmetryChain = {};
     maxCatSize = -1;
     fullReportFile = "";
     combineResults = false;
@@ -143,7 +122,6 @@ public:
       std::cout << "Format: cat <rle> <absense interval> <centerX> <centerY> "
                    "<symm Type | + / x *>"
                 << std::endl;
-      getchar();
       exit(1);
     }
 
@@ -172,49 +150,49 @@ public:
   }
 };
 
-void CharToTransVec(char ch, std::vector<const int *> &trans) {
-  trans.push_back(none);
+void CharToTransVec(char ch, std::vector<SymmetryTransform> &trans) {
+  trans.push_back(Identity);
 
   if (ch == '.')
     return;
 
   if (ch == '|') {
-    trans.push_back(flipY);
+    trans.push_back(ReflectYEven);
     return;
   }
 
   if (ch == '-') {
-    trans.push_back(flipX);
+    trans.push_back(ReflectXEven);
     return;
   }
 
   if (ch == '+') {
-    trans.push_back(flipX);
-    trans.push_back(flipY);
-    trans.push_back(flipXY);
+    trans.push_back(ReflectXEven);
+    trans.push_back(ReflectYEven);
+    trans.push_back(Rotate180EvenBoth);
     return;
   }
 
   if (ch == '/' || ch == '\\') {
-    trans.push_back(symmXY);
+    trans.push_back(ReflectYeqX);
     return;
   }
   // For 180 degree symetrical
   if (ch == 'x') {
-    trans.push_back(rot90clock);
-    trans.push_back(flipX);
-    trans.push_back(symmXY);
+    trans.push_back(Rotate90Even);
+    trans.push_back(ReflectXEven);
+    trans.push_back(ReflectYeqX);
     return;
   }
 
   if (ch == '*') {
-    trans.push_back(flipX);
-    trans.push_back(flipY);
-    trans.push_back(flipXY);
-    trans.push_back(symmYX);
-    trans.push_back(symmXY);
-    trans.push_back(rot90anti);
-    trans.push_back(rot90clock);
+    trans.push_back(ReflectXEven);
+    trans.push_back(ReflectYEven);
+    trans.push_back(Rotate90Even);
+    trans.push_back(Rotate180EvenBoth);
+    trans.push_back(Rotate270Even);
+    trans.push_back(ReflectYeqX);
+    trans.push_back(ReflectYeqNegX);
     return;
   }
 }
@@ -247,6 +225,8 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string symmetry = "symmetry";
 
   std::string line;
+
+  bool badSymmetry = false;
 
   while (std::getline(infile, line)) {
     try {
@@ -344,22 +324,101 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
           params.combineSurvive.push_back(atoi(elems[i].c_str()));
       }
 
+     std::string symmetryString = "";
       if (elems[0] == symmetry) {
+        // reverse-compatibility reasons.
         if (elems[1] == "horizontal") {
-          params.symmetricSearch = HORIZONTAL;
+          symmetryString = "D2|odd";
         } else if (elems[1] == "horizontaleven") {
-          params.symmetricSearch = HORIZONTALEVEN;
+          symmetryString = "D2|even";
         } else if (elems[1] == "diagonal") {
-          params.symmetricSearch = DIAGONAL;
+          symmetryString = "D2/"; // I think this was the way that it worked before?
         } else if (elems[1] == "rotate180") {
-          params.symmetricSearch = ROTATE180;
+          symmetryString = "C2";
         } else if (elems[1] == "rotate180evenx") {
-          params.symmetricSearch = ROTATE180EVENX;
+          symmetryString = "C2horizontaleven";
         } else if (elems[1] == "rotate180evenboth") {
-          params.symmetricSearch = ROTATE180EVENBOTH;
+          symmetryString = "C2evenboth";
         } else {
-          std::cout << "Unknown symmetry: " << elems[1] << std::endl;
-          exit(1);
+          symmetryString = elems[1];
+        }
+
+        std::string start = symmetryString.substr(0,2);
+        std::string rest = symmetryString.substr(2);
+        if (start == "D2"){
+          if (rest == "-" or rest == "vertical" or rest == "verticalodd" or rest == "-odd"){
+            params.symmetryChain = {ReflectX};
+          } else if (rest == "-even" or rest == "verticaleven"){
+            params.symmetryChain = {ReflectXEven};
+          } else if (rest == "|" or rest == "horizontal" or rest == "horizontalodd" or rest == "|odd"){
+            params.symmetryChain = {ReflectY};
+          } else if (rest == "|even" or rest == "horizontaleven"){
+            params.symmetryChain = {ReflectYEven};
+          } else if ( rest == "/" or rest == "/odd") {
+            params.symmetryChain = {ReflectYeqNegX};
+          } else if ( rest == "\\" or rest == "\\odd") {
+            params.symmetryChain = {ReflectYeqX};
+          } else {
+            badSymmetry = true;
+          }
+        } else if (start == "C2") {
+          if (rest == "odd" or rest == "oddboth" or rest == "bothodd" or rest == ""){
+            params.symmetryChain = { Rotate180OddBoth};
+          } else if (rest == "even" or rest == "botheven" or rest == "evenboth"){
+            params.symmetryChain = { Rotate180EvenBoth};
+          } else if (rest == "horizontaleven" or rest == "|even"){
+            params.symmetryChain = { Rotate180EvenX};
+          } else if (rest == "verticaleven" or rest == "-even"){
+            params.symmetryChain = {Rotate180EvenY};
+          } else {
+            badSymmetry = true;
+          }
+        } else if (start == "C4"){
+          if (rest == "" or rest == "odd" or rest == "oddboth" or rest == "bothodd"){
+            params.symmetryChain = {Rotate90, Rotate90, Rotate90}; //{Rotate90, Rotate180OddBoth, Rotate270};
+          } else if (rest == "even" or rest =="evenboth" or rest == "botheven") {
+            params.symmetryChain = { Rotate90Even, Rotate90Even, Rotate90Even};//{ Rotate90Even, Rotate180EvenBoth, Rotate270Even};
+          } else {
+            badSymmetry = true;
+          }
+        } else if (start == "D4"){
+          std::string evenOddInfo = rest.substr(1);
+          if (rest[0] == '+'){
+            if(evenOddInfo == "" or evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == "bothodd"){
+              params.symmetryChain = { ReflectX, ReflectY, ReflectX};//{ ReflectX, ReflectY, Rotate180OddBoth};
+            } else if (evenOddInfo == "even" or evenOddInfo =="evenboth" or evenOddInfo == "botheven"){
+              params.symmetryChain = { ReflectXEven, ReflectYEven, ReflectXEven}; //{ ReflectXEven, ReflectYEven, Rotate180EvenBoth};
+            } else if ( evenOddInfo == "verticaleven" or evenOddInfo == "-even") {
+              params.symmetryChain = { ReflectXEven, ReflectY, ReflectXEven};//{ ReflectXEven, ReflectY, Rotate180EvenX};
+            } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even") {
+              params.symmetryChain = { ReflectX, ReflectYEven, ReflectX};//{ ReflectX, ReflectYEven, Rotate180EvenY};
+            } else {
+              badSymmetry = true;
+            }
+          } else if (rest[0] == 'x') {
+            if (evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == ""){
+              params.symmetryChain = {ReflectYeqX, ReflectYeqNegXP1, ReflectYeqX};//{ ReflectYeqX, ReflectYeqNegXP1, Rotate180OddBoth};
+            } else if (evenOddInfo == "even" or evenOddInfo == "evenboth"){
+              params.symmetryChain = { ReflectYeqX, ReflectYeqNegX,ReflectYeqX};//{ ReflectYeqX, ReflectYeqNegX, Rotate180EvenBoth};
+            } else {
+              badSymmetry = true;
+            }
+          } else {
+              badSymmetry = true;
+          }
+        } else if (start == "D8") {
+          if (rest == "odd" or rest == "oddboth" or rest == ""){
+            params.symmetryChain = {ReflectY, ReflectYeqNegXP1, ReflectX, ReflectYeqX, ReflectY, ReflectYeqNegXP1, ReflectX};
+            // reflections are faster than 90 degree rotations, so we reflect around in a circle.
+            //{ ReflectX, ReflectY, Rotate90, Rotate270, Rotate180OddBoth, ReflectYeqX, ReflectYeqNegXP1};
+          } else if (rest == "even" or rest == "evenboth"){
+            params.symmetryChain = {ReflectYEven, ReflectYeqNegX, ReflectXEven, ReflectYeqX, ReflectYEven, ReflectYeqNegX, ReflectXEven};
+            //{ ReflectXEven, ReflectYEven, Rotate90Even, Rotate270Even, Rotate180EvenBoth, ReflectYeqX, ReflectYeqNegX};
+          } else {
+            badSymmetry = true;
+          }
+        } else {
+          badSymmetry = true;
         }
       }
 
@@ -374,52 +433,41 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     std::cout << "Did not read any catalysts!" << std::endl;
     exit(1);
   }
-}
-
-void ApplySym(LifeState *state, Symmetry sym) {
-  if (sym == HORIZONTAL) {
-    FlipX(state);
-  } else if (sym == HORIZONTALEVEN) {
-    Reverse(state->state, 0, N - 1);
-  } else if (sym == ROTATE180) { // before: DIAGONAL
-    FlipX(state);
-    FlipY(state);
-  } else if (sym == ROTATE180EVENX) { // before: DIAGONALEVENX
-    Reverse(state->state, 0, N - 1);
-    FlipY(state);
-  } else if (sym == ROTATE180EVENBOTH) { // before: DIAGONALEVENBOTH
-    Reverse(state->state, 0, N - 1);
-    BitReverse(state);
-  } else if (sym == DIAGONAL) {
-    Transpose(state);
+  if (badSymmetry) {
+    std::cout << "Couldn\'t parse symmetry option" << std::endl;
+    exit(1);
   }
 }
 
-void JoinWSym(LifeState *main, LifeState *state, int x, int y, Symmetry sym) {
-  Join(main, state, x, y);
-  if (sym == NONE)
-    return;
-  LifeState transformed;
-  ClearData(&transformed);
+void JoinWSymChain(LifeState *main, LifeState *state, int x, int y, const std::vector<SymmetryTransform> symChain) {
+  // instead of passing in the symmetry group {id, g_1, g_2,...g_n} and applying each to default orientation
+  // we pass in a "chain" of symmetries {h_1, ...h_n-1} that give the group when "chained together": g_j = product of h_1 thru h_j
+  // that way, we don't need to initialize a new LifeState for each symmetry.
 
-  transformed.min = 0;
-  transformed.max = N - 1;
-  transformed.gen = 0;
+  Join(main, state, x, y);// identity transformation
+  if(symChain.size() == 0)
+    return;
+
+  LifeState transformed;
 
   Join(&transformed, state, x, y);
-  ApplySym(&transformed, sym);
-  Join(main, &transformed);
+  for(int i = 0; i < symChain.size(); ++i){
+    Transform(&transformed, symChain[i]);
+    Join(main, &transformed);
+  }
 }
 
-void JoinWSym(LifeState *main, const LifeState *state, Symmetry sym) {
-  Join(main, state);
-  if (sym == NONE)
+void JoinWSymChain(LifeState *main, const LifeState *state, const std::vector<SymmetryTransform> symChain) {
+  Join(main, state); // identity transformation
+  if(symChain.size() == 0)
     return;
 
   LifeState transformed;
   Copy(&transformed, state);
-  ApplySym(&transformed, sym);
-  Join(main, &transformed);
+  for(int i = 0; i < symChain.size(); ++i){
+    Transform(&transformed, symChain[i]);
+    Join(main, &transformed);
+  }
 }
 
 struct Configuration {
@@ -645,7 +693,7 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
                     std::vector<std::vector<LifeTarget *>> &forbidden,
                     std::vector<int> &maxSurvive) {
   for (const auto & catalyst : catalysts) {
-    std::vector<const int *> trans;
+    std::vector<SymmetryTransform> trans;
     CharToTransVec(catalyst.symmType, trans);
 
     const char *rle = catalyst.rle.c_str();
@@ -654,12 +702,7 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
     int maxDesapear = catalyst.maxDesapear;
 
     for (auto & tran : trans) {
-      int dxx = tran[0];
-      int dxy = tran[1];
-      int dyx = tran[2];
-      int dyy = tran[3];
-
-      states.push_back(NewState(rle, dx, dy, dxx, dxy, dyx, dyy));
+      states.push_back(NewState(rle, dx, dy, tran));
       maxSurvive.push_back(maxDesapear);
 
       std::vector<LifeTarget *> forbidTarg;
@@ -668,7 +711,7 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
         forbidTarg.push_back(NewTarget(
             NewState(catalyst.forbiddenRLE[k].c_str(),
                      catalyst.forbiddenXY[k].first,
-                     catalyst.forbiddenXY[k].second, dxx, dxy, dyx, dyy)));
+                     catalyst.forbiddenXY[k].second, tran)));
       }
 
       forbidden.push_back(forbidTarg);
@@ -729,8 +772,8 @@ void XYStartGenPerState(const std::vector<LifeTarget *> &targets,
         for (int y = 0; y < 64; y++) {
           LifeState state;
           ClearData(&state);
-          JoinWSym(&state, states[i], x, y, params.symmetricSearch);
-          JoinWSym(&state, pat, params.symmetricSearch);
+          JoinWSymChain(&state, states[i], x, y, params.symmetryChain);
+          JoinWSymChain(&state, pat, params.symmetryChain);
           int j;
 
           for (j = 0; j < params.maxGen + 5; j++) {
@@ -766,7 +809,7 @@ void PreIteratePat(LifeState *pat, std::vector<LifeState *> &preIterated,
                    const SearchParams &params) {
   LifeState workspace;
   ClearData(&workspace);
-  JoinWSym(&workspace, pat, params.symmetricSearch);
+  JoinWSymChain(&workspace, pat, params.symmetryChain);
 
   for (int i = 0; i < params.maxGen + 5; i++) {
     LifeState *t = NewState();
@@ -1372,8 +1415,8 @@ public:
 
   void PutStartState(LifeState *workspace, Configuration &conf) {
     ClearData(workspace);
-    JoinWSym(workspace, &conf.state, params.symmetricSearch);
-    JoinWSym(workspace, pat, params.symmetricSearch);
+    JoinWSymChain(workspace, &conf.state, params.symmetryChain);
+    JoinWSymChain(workspace, pat, params.symmetryChain);
   }
 
   bool ValidateFilters(Configuration &conf) {
@@ -1412,7 +1455,7 @@ public:
   int TestConfiguration(Configuration &conf) {
     LifeState workspace;
     ClearData(&workspace);
-    JoinWSym(&workspace, &conf.state, params.symmetricSearch);
+    JoinWSymChain(&workspace, &conf.state, params.symmetryChain);
     Join(&workspace, preIterated[conf.minIter]);
     workspace.gen = conf.minIter;
 
@@ -1456,7 +1499,7 @@ public:
     if (reportAll) {
       ClearData(&workspace);
 
-      JoinWSym(&workspace, &conf.state, params.symmetricSearch);
+      JoinWSymChain(&workspace, &conf.state, params.symmetryChain);
       Copy(catalysts, &workspace);
 
       PutStartState(&workspace, conf);
@@ -1482,7 +1525,7 @@ public:
 
     // If all filters validated update results
     ClearData(&workspace);
-    JoinWSym(&workspace, &conf.state, params.symmetricSearch);
+    JoinWSymChain(&workspace, &conf.state, params.symmetryChain);
     Copy(catalysts, &workspace);
 
     PutStartState(&workspace, conf);
