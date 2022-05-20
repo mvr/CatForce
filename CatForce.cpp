@@ -1415,6 +1415,9 @@ public:
   }
 
   int TestConfiguration(Configuration &conf) {
+    if(conf.minIter == -1)
+      return -1; // Temporary fix
+
     LifeState workspace;
     ClearData(&workspace);
     JoinWSymChain(&workspace, &conf.state, params.symmetryChain);
