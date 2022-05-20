@@ -47,7 +47,6 @@ The option delimiter is `" "` - i.e. space.
 | `full-report`         | `filename`            | Output filename for solutions ignoring all pattern filters             |
 | `max-category-size`   | `n`                   | Maximum output row length before more solutions are dropped            |
 | `fit-in-width-height` | `w h`                 | Only allow solutions where all catalysts fit in a `w` by `h` rectangle |
-| `combine-results`     |                       | See below                                                              |
 | `symmetry`            |                       | See below                                                              |
 
 
@@ -77,43 +76,43 @@ checked if successful catalyst was found. Each filter will assume live
 cells in `rle` and dead cell in close proximity neighbourhood to the
 pattern in `rle`.
 
-Combining Results
----
+<!-- Combining Results -->
+<!-- --- -->
 
-`combine-results yes [<survive-0> <survive-1> ...]`
+<!-- `combine-results yes [<survive-0> <survive-1> ...]` -->
 
-If this feature is enabled the search will at first ignore all filters
-and survival inputs, and will search all the possible catalysts. Then
-it will try to combine all the found catalysts in all possible
-combinations, and only then will filter by `survive-i` and apply the
-filters to exclude them from the final report.
+<!-- If this feature is enabled the search will at first ignore all filters -->
+<!-- and survival inputs, and will search all the possible catalysts. Then -->
+<!-- it will try to combine all the found catalysts in all possible -->
+<!-- combinations, and only then will filter by `survive-i` and apply the -->
+<!-- filters to exclude them from the final report. -->
  
-This feature will generate report as follows:
+<!-- This feature will generate report as follows: -->
  
-- `output.rle` - all the possible catalysts.
-- `output.rle_Combined*.rle` - will generate all combined reports.
-- `output.rle_Final.rle` - the final report. **This is the main output.**
+<!-- - `output.rle` - all the possible catalysts. -->
+<!-- - `output.rle_Combined*.rle` - will generate all combined reports. -->
+<!-- - `output.rle_Final.rle` - the final report. **This is the main output.** -->
  
-Optional survival filter per "iteration" are added. Combine works as
-follows: each time it start from the initial search results (combine
-by default uses survive count = 1), and tries to add catalyst from
-those results. Sometimes one could get explosion, if the interaction
-is very potent. So filter is added to limit the combine, by surviving
-count (if something doesn't survive with two catalyst for 5
-iterations, it's probably junk - so CatForce will filter it on the
-second combine iteration and not in the end).
+<!-- Optional survival filter per "iteration" are added. Combine works as -->
+<!-- follows: each time it start from the initial search results (combine -->
+<!-- by default uses survive count = 1), and tries to add catalyst from -->
+<!-- those results. Sometimes one could get explosion, if the interaction -->
+<!-- is very potent. So filter is added to limit the combine, by surviving -->
+<!-- count (if something doesn't survive with two catalyst for 5 -->
+<!-- iterations, it's probably junk - so CatForce will filter it on the -->
+<!-- second combine iteration and not in the end). -->
  
-This allows faster and more efficient combine operation with very
-potent conduits which otherwise would overflow the system, with many
-useless catalysts.
+<!-- This allows faster and more efficient combine operation with very -->
+<!-- potent conduits which otherwise would overflow the system, with many -->
+<!-- useless catalysts. -->
  
-**NOTE** Recommended for use only for `num-catalyst` = 1 or 2
+<!-- **NOTE** Recommended for use only for `num-catalyst` = 1 or 2 -->
 
-**NOTE** See 4.in file for example. 
+<!-- **NOTE** See 4.in file for example.  -->
  
-**NOTE** CatForce will use the last `survive-i` as the default from
-that point on. If you don't enter any numbers it will use survival
-count 1, and will filter only when finish all possible combinations.
+<!-- **NOTE** CatForce will use the last `survive-i` as the default from -->
+<!-- that point on. If you don't enter any numbers it will use survival -->
+<!-- count 1, and will filter only when finish all possible combinations. -->
 
 Symmetric Searches
 ---

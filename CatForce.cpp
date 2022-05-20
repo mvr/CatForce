@@ -77,8 +77,6 @@ public:
   std::vector<std::pair<int, int>> filterGenRange;
 
   int maxCatSize;
-  bool combineResults;
-  std::vector<int> combineSurvive;
 
   SearchParams() {
     maxGen = 250;
@@ -99,7 +97,6 @@ public:
     symmetryChain = {};
     maxCatSize = -1;
     fullReportFile = "";
-    combineResults = false;
   }
 };
 
@@ -220,7 +217,6 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string maxWH = "fit-in-width-height";
   std::string maxCatSize = "max-category-size";
   std::string fullReport = "full-report";
-  std::string combine = "combine-results";
 
   std::string symmetry = "symmetry";
 
@@ -315,13 +311,6 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
       if (elems[0] == maxCatSize) {
         params.maxCatSize = atoi(elems[1].c_str());
-      }
-
-      if (elems[0] == combine && elems[1] == "yes") {
-        params.combineResults = true;
-
-        for (int i = 2; i < elems.size(); i++)
-          params.combineSurvive.push_back(atoi(elems[i].c_str()));
       }
 
      std::string symmetryString = "";
@@ -783,9 +772,6 @@ void XYStartGenPerState(const std::vector<LifeTarget *> &targets,
             Run(&state, 1);
           }
 
-          if (j == params.maxGen + 4)
-            j = -1;
-
           xVec.push_back(j - 1);
         }
         xyVec.push_back(xVec);
@@ -1173,13 +1159,6 @@ public:
   bool hasFilterDontReportAll{};
 
   int filterMaxGen{};
-  int iterationMaxGen{};
-
-  int surviveCountForUpdate{};
-
-  LifeState *init{};
-  LifeState *afterCatalyst{};
-  LifeState *catalysts{};
 
   void Init(const char *inputFile, int nthreads) {
     begin = clock();
@@ -1230,25 +1209,8 @@ public:
 
     hasFilter = !params.targetFilter.empty();
     reportAll = params.fullReportFile.length() != 0;
-    hasFilterDontReportAll = hasFilter && !reportAll;
 
     filterMaxGen = FilterMaxGen();
-    iterationMaxGen = params.maxGen;
-
-    init = NewState();
-    afterCatalyst = NewState();
-    catalysts = NewState();
-
-    surviveCountForUpdate = params.stableInterval;
-
-    if (params.combineResults) {
-      if (params.combineSurvive.empty())
-        params.combineSurvive.push_back(1);
-
-      surviveCountForUpdate = params.combineSurvive[0];
-      hasFilter = false;
-      hasFilterDontReportAll = false;
-    }
   }
 
   void AddIterators(int num) {
@@ -1464,7 +1426,7 @@ public:
 
     int surviveCount = 0;
 
-    for (int i = conf.minIter; i < iterationMaxGen; i += MAIN_STEP) {
+    for (int i = conf.minIter; i < params.maxGen; i += MAIN_STEP) {
       MainRun(workspace);
 
       // Fail if some catalyst is idle for too long - updates the counters for
@@ -1472,7 +1434,7 @@ public:
       if (UpdateActivationCountersFail(&workspace, conf))
         return -1;
 
-      if (hasFilterDontReportAll) {
+      if (hasFilter && !reportAll) {
         // Validate filters if any of them exist. Will validate on current gen
         // of GlobalState
         if (FilterForCurrentGenFail(&workspace))
@@ -1486,7 +1448,7 @@ public:
         surviveCount = 0;
 
       // If everything was actuvated and stable for stableInterval then report.
-      if (surviveCount >= surviveCountForUpdate) {
+      if (surviveCount >= params.stableInterval) {
         return i;
       }
     }
@@ -1494,24 +1456,28 @@ public:
   }
 
   void ReportSolution(Configuration &conf, int successtime){
+    LifeState init;
+    LifeState afterCatalyst;
+    LifeState catalysts;
+
     LifeState workspace;
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
       ClearData(&workspace);
 
       JoinWSymChain(&workspace, &conf.state, params.symmetryChain);
-      Copy(catalysts, &workspace);
+      Copy(&catalysts, &workspace);
 
       PutStartState(&workspace, conf);
-      Copy(init, &workspace);
+      Copy(&init, &workspace);
 
-      Run(&workspace, successtime - surviveCountForUpdate + 2);
-      Copy(afterCatalyst, &workspace);
+      Run(&workspace, successtime - params.stableInterval + 2);
+      Copy(&afterCatalyst, &workspace);
 
       fullfound++;
 
-      fullCategoryContainer->Add(init, afterCatalyst, catalysts, conf,
-                                 successtime - surviveCountForUpdate + 2, 0);
+      fullCategoryContainer->Add(&init, &afterCatalyst, &catalysts, conf,
+                                 successtime - params.stableInterval + 2, 0);
     }
 
     // If has fitlter validate them;
@@ -1526,16 +1492,16 @@ public:
     // If all filters validated update results
     ClearData(&workspace);
     JoinWSymChain(&workspace, &conf.state, params.symmetryChain);
-    Copy(catalysts, &workspace);
+    Copy(&catalysts, &workspace);
 
     PutStartState(&workspace, conf);
-    Copy(init, &workspace);
+    Copy(&init, &workspace);
 
-    Run(&workspace, successtime - surviveCountForUpdate + 2);
-    Copy(afterCatalyst, &workspace);
+    Run(&workspace, successtime - params.stableInterval + 2);
+    Copy(&afterCatalyst, &workspace);
 
-    categoryContainer->Add(init, afterCatalyst, catalysts, conf,
-                           successtime - surviveCountForUpdate + 2, 0);
+    categoryContainer->Add(&init, &afterCatalyst, &catalysts, conf,
+                           successtime - params.stableInterval + 2, 0);
     found++;
   }
 
@@ -1551,100 +1517,7 @@ public:
       enu->Next();
     }
   }
-
-  void SetParamsForCombine(int combineIter) {
-    if (params.combineSurvive.size() - 1 < combineIter)
-      surviveCountForUpdate =
-          params.combineSurvive[params.combineSurvive.size() - 1];
-    else
-      surviveCountForUpdate = params.combineSurvive[combineIter];
-  }
 };
-
-// class CategoryMultiplicator {
-// public:
-//   std::vector<SearchResult *> base;
-//   std::vector<SearchResult *> cur;
-//   CatalystSearcher *searcher;
-//   int iter;
-
-//   explicit CategoryMultiplicator(CatalystSearcher *bruteSearch) {
-//     searcher = bruteSearch;
-//     // searcher->categoryContainer->Sort();
-//     searcher->categoryContainer->RemoveTail();
-
-//     for (auto & category: searcher->categoryContainer->categories) {
-//       base.push_back(category->results[0]);
-//       cur.push_back(category->results[0]);
-//     }
-
-//     searcher->AddIterators(searcher->numIters);
-//     iter = 1;
-//     searcher->SetParamsForCombine(iter);
-//   }
-
-//   void CartesianMultiplication() {
-//     searcher->total = base.size() * cur.size();
-//     searcher->total /= 1000000;
-//     searcher->idx = 0;
-//     searcher->counter = 0;
-
-//     for (auto & i : base) {
-//       int idx = i->SetIters(searcher->enu, 0);
-//       int baselast = i->maxGenSurvive;
-//       int basefirst = i->firstGenSurvive;
-
-//       for (auto & j : cur) {
-//         searcher->IncreaseIndexAndReport(false);
-
-//         int curlast = j->maxGenSurvive;
-//         int curfirst = j->firstGenSurvive;
-
-//         if (curlast < basefirst || baselast < curfirst)
-//           continue;
-
-//         j->SetIters(searcher->enu, idx);
-//         searcher->UpdateResults();
-//       }
-//     }
-
-//     // searcher->categoryContainer->Sort();
-//     searcher->categoryContainer->RemoveTail();
-//   }
-
-//   void ReinitializeCurrent(int size, int iters) {
-//     cur.clear();
-
-//     for (auto & category: searcher->categoryContainer->categories) {
-//       if (category
-//               ->results[0]
-//               ->params.size() == 3 * size)
-//         cur.push_back(category->results[0]);
-//     }
-
-//     searcher->AddIterators(iters);
-//     iter++;
-//     searcher->SetParamsForCombine(iter);
-//   }
-
-//   void RunWithInputParams() const {
-//     searcher->surviveCountForUpdate = searcher->params.stableInterval;
-//     searcher->hasFilter = !searcher->params.targetFilter.empty();
-//     searcher->reportAll = searcher->params.fullReportFile.length() != 0;
-//     searcher->hasFilterDontReportAll =
-//         searcher->hasFilter && !(searcher->reportAll);
-
-//     CategoryContainer *found = searcher->categoryContainer;
-//     searcher->categoryContainer =
-//         new CategoryContainer(searcher->params.maxGen);
-
-//     for (auto & category: found->categories) {
-//       searcher->numIters =
-//           category->results[0]->SetIters(searcher->enu, 0);
-//       searcher->UpdateResults();
-//     }
-//   }
-// };
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
@@ -1672,28 +1545,6 @@ int main(int argc, char *argv[]) {
   searcher.Search();
   // Print report one final time (update files with the final results).
   searcher.Report();
-
-  // if (searcher.params.combineResults) {
-  //   int startCatalysts = searcher.numIters;
-  //   CategoryMultiplicator combined(&searcher);
-  //   int i = 1;
-  //   while (!combined.cur.empty()) {
-  //     std::cout << "Combining iteration = " << i << std::endl;
-  //     combined.CartesianMultiplication();
-
-  //     std::stringstream ss;
-  //     ss << "_Combined_" << ++i;
-
-  //     searcher.Report(ss.str());
-  //     combined.ReinitializeCurrent(i, startCatalysts);
-  //   }
-
-  //   std::cout << "Final result" << std::endl;
-
-  //   combined.RunWithInputParams();
-
-  //   searcher.Report(std::string("_Final"));
-  // }
 
   printf("\n\nFINISH\n");
   clock_t end = clock();
