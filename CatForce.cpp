@@ -721,19 +721,19 @@ void XYStartGenPerState(const std::vector<LifeTarget *> &targets,
                         const std::vector<LifeState *> &states,
                         std::vector<std::vector<std::vector<int>>> &statexyGen,
                         int const nthreads) {
-  if (params.numCatalysts == 1) {
-    for (long i = 0; i < states.size(); i++) {
-      std::vector<std::vector<int>> xyVec;
-      xyVec.reserve(64);
+  // if (params.numCatalysts == 1) {
+  //   for (long i = 0; i < states.size(); i++) {
+  //     std::vector<std::vector<int>> xyVec;
+  //     xyVec.reserve(64);
 
-      for (int x = 0; x < 64; x++) {
-        std::vector<int> xVec(64, params.startGen);
-        xyVec.push_back(xVec);
-      }
-      statexyGen.push_back(xyVec);
-    }
-    return;
-  }
+  //     for (int x = 0; x < 64; x++) {
+  //       std::vector<int> xVec(64, params.startGen);
+  //       xyVec.push_back(xVec);
+  //     }
+  //     statexyGen.push_back(xyVec);
+  //   }
+  //   return;
+  // }
 
 
   const int chunksize = states.size() / ((unsigned long)nthreads);
