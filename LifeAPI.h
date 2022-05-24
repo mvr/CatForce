@@ -468,8 +468,8 @@ public:
   void Transform(SymmetryTransform transf);
 
   void Transform(int dx, int dy, SymmetryTransform transf) {
-    Transform(transf);
     Move(dx, dy);
+    Transform(transf);
     RecalculateMinMax();
   }
 

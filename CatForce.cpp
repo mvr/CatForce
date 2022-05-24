@@ -156,19 +156,19 @@ void CharToTransVec(char ch, std::vector<SymmetryTransform> &trans) {
     return;
 
   if (ch == '|') {
-    trans.push_back(ReflectYEven);
+    trans.push_back(ReflectY);
     return;
   }
 
   if (ch == '-') {
-    trans.push_back(ReflectXEven);
+    trans.push_back(ReflectX);
     return;
   }
 
   if (ch == '+') {
-    trans.push_back(ReflectXEven);
-    trans.push_back(ReflectYEven);
-    trans.push_back(Rotate180EvenBoth);
+    trans.push_back(ReflectX);
+    trans.push_back(ReflectY);
+    trans.push_back(Rotate180OddBoth);
     return;
   }
 
@@ -178,20 +178,20 @@ void CharToTransVec(char ch, std::vector<SymmetryTransform> &trans) {
   }
   // For 180 degree symetrical
   if (ch == 'x') {
-    trans.push_back(Rotate90Even);
-    trans.push_back(ReflectXEven);
+    trans.push_back(Rotate90);
+    trans.push_back(ReflectX);
     trans.push_back(ReflectYeqX);
     return;
   }
 
   if (ch == '*') {
-    trans.push_back(ReflectXEven);
-    trans.push_back(ReflectYEven);
-    trans.push_back(Rotate90Even);
-    trans.push_back(Rotate180EvenBoth);
-    trans.push_back(Rotate270Even);
+    trans.push_back(ReflectX);
+    trans.push_back(ReflectY);
+    trans.push_back(Rotate90);
+    trans.push_back(Rotate180OddBoth);
+    trans.push_back(Rotate270);
     trans.push_back(ReflectYeqX);
-    trans.push_back(ReflectYeqNegX);
+    trans.push_back(ReflectYeqNegXP1);
     return;
   }
 }
