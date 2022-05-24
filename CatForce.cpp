@@ -12,31 +12,33 @@
 #include <vector>
 
 const int MAIN_STEP = 1;
-
 __attribute__((flatten)) void MainRun(LifeState &state) {
-  IterateState(&state);
+  state.Step();
 }
 
 // const int MAIN_STEP = 2;
-// __attribute__((flatten)) void MainRun() {
-//   IterateState(GlobalState);
-//   IterateState(GlobalState);
+// __attribute__((flatten)) void MainChunk(LifeState &state) {
+//   state.Step();
+// }
+// void MainRun(LifeState &state) {
+//   MainChunk(state);
+//   MainChunk(state);
 // }
 
 // const int MAIN_STEP = 4;
-// __attribute__((flatten)) void MainChunk() {
-//   IterateState(GlobalState);
-//   IterateState(GlobalState);
+// __attribute__((flatten)) void MainChunk(LifeState &state) {
+//   state.Step();
+//   state.Step();
 // }
-// void MainRun() {
-//   MainChunk();
-//   MainChunk();
+// void MainRun(LifeState &state) {
+//   MainChunk(state);
+//   MainChunk(state);
 // }
 
 // const int MAIN_STEP = 8;
 // __attribute__((flatten)) void MainChunk() {
-//   IterateState(GlobalState);
-//   IterateState(GlobalState);
+//   state.Step();
+//   state.Step();
 // }
 
 // void MainRun() {
@@ -90,7 +92,7 @@ public:
     xPat = 0;
     yPat = 0;
     startGen = 1;
-    lastGen = 100000;
+    lastGen = -1;
     outputFile = "results.rle";
     maxW = -1;
     maxH = -1;
@@ -414,6 +416,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     } catch (const std::exception &ex) {
     }
   }
+  if(params.lastGen == -1)
+    params.lastGen = params.maxGen - 1;
+
   if (params.pat.length() == 0) {
     std::cout << "Did not read any pattern!" << std::endl;
     exit(1);
@@ -428,44 +433,13 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   }
 }
 
-void JoinWSymChain(LifeState *main, LifeState *state, int x, int y, const std::vector<SymmetryTransform> symChain) {
-  // instead of passing in the symmetry group {id, g_1, g_2,...g_n} and applying each to default orientation
-  // we pass in a "chain" of symmetries {h_1, ...h_n-1} that give the group when "chained together": g_j = product of h_1 thru h_j
-  // that way, we don't need to initialize a new LifeState for each symmetry.
-
-  Join(main, state, x, y);// identity transformation
-  if(symChain.size() == 0)
-    return;
-
-  LifeState transformed;
-
-  Join(&transformed, state, x, y);
-  for(int i = 0; i < symChain.size(); ++i){
-    Transform(&transformed, symChain[i]);
-    Join(main, &transformed);
-  }
-}
-
-void JoinWSymChain(LifeState *main, const LifeState *state, const std::vector<SymmetryTransform> symChain) {
-  Join(main, state); // identity transformation
-  if(symChain.size() == 0)
-    return;
-
-  LifeState transformed;
-  Copy(&transformed, state);
-  for(int i = 0; i < symChain.size(); ++i){
-    Transform(&transformed, symChain[i]);
-    Join(main, &transformed);
-  }
-}
-
 struct Configuration {
   std::vector<int> curx;
   std::vector<int> cury;
   std::vector<int> curs;
   int minIter;
   LifeState state;
-  std::vector<LifeTarget *> shiftedTargets;
+  std::vector<LifeTarget> shiftedTargets;
 };
 
 struct Enumerator {
@@ -485,8 +459,8 @@ struct Enumerator {
   const int lastGen;
   const int maxGen;
 
-  const std::vector<LifeState *> states;
-  const std::vector<LifeTarget *> targets;
+  const std::vector<LifeState> states;
+  const std::vector<LifeTarget> targets;
   const std::vector<std::vector<std::vector<int> > >  activations;
 
   std::vector<int> curx;
@@ -496,11 +470,11 @@ struct Enumerator {
   std::vector<int> cumulMaxX;
   std::vector<int> cumulMinY;
   std::vector<int> cumulMaxY;
-  std::vector<LifeTarget *> shiftedTargets;
-  std::vector<LifeState *> cumulative; // backwards! e.g. 1|2|3, 2|3, 3
+  std::vector<LifeTarget> shiftedTargets;
+  std::vector<LifeState> cumulative; // backwards! e.g. 1|2|3, 2|3, 3
   std::vector<int> cumulActivation;
 
-  Enumerator(SearchParams &params, std::vector<LifeState *> &states, std::vector<LifeTarget *> &targets, std::vector<std::vector<std::vector<int> > >  activations) :
+  Enumerator(SearchParams &params, std::vector<LifeState> &states, std::vector<LifeTarget> &targets, std::vector<std::vector<std::vector<int> > > &activations) :
       count(params.numCatalysts),
       x(params.searchArea[0]),
       y(params.searchArea[1]),
@@ -527,15 +501,15 @@ struct Enumerator {
     cumulActivation = std::vector<int>(count, activations[0][(x + 64) % 64][(y + 64) % 64]);
 
     for (int i = 0; i < count; i++) {
-      shiftedTargets.push_back(NewTarget(NewState(), NewState()));
-      cumulative.push_back(NewState());
+      shiftedTargets.push_back(LifeTarget());
+      cumulative.push_back(LifeState());
     }
     for (int i = count - 1; i >= 0; i--) {
-      Copy(shiftedTargets[i]->wanted,   targets[curs[i]]->wanted, curx[i], cury[i]);
-      Copy(shiftedTargets[i]->unwanted, targets[curs[i]]->unwanted, curx[i], cury[i]);
-      Copy(cumulative[i], shiftedTargets[i]->wanted);
+      shiftedTargets[i].wanted.Copy(targets[curs[i]].wanted, curx[i], cury[i]);
+      shiftedTargets[i].unwanted.Copy(targets[curs[i]].unwanted, curx[i], cury[i]);
+      cumulative[i].Copy(shiftedTargets[i].wanted);
       if(i < count-1)
-        Join(cumulative[i], cumulative[i + 1]);
+        cumulative[i].Join(cumulative[i + 1]);
     }
   }
 
@@ -556,7 +530,7 @@ struct Enumerator {
           continue;
         }
 
-        Copy(shiftedTargets[i]->wanted, targets[curs[i]]->wanted, curx[i], cury[i]);
+        shiftedTargets[i].wanted.Copy(targets[curs[i]].wanted, curx[i], cury[i]);
 
         break;
       }
@@ -594,20 +568,20 @@ struct Enumerator {
         }
       }
 
-      Copy(shiftedTargets[i]->wanted, targets[curs[i]]->wanted, curx[i], cury[i]);
+      shiftedTargets[i].wanted.Copy(targets[curs[i]].wanted, curx[i], cury[i]);
 
       // Check overlap
       LifeState temp;
-      Copy(&temp, cumulative[i + 1]);
-      Join(&temp, shiftedTargets[i]->wanted);
-      Run(&temp, 1);
-      if (Contains(&temp, shiftedTargets[i]->wanted) == NO)
+      temp.Copy(cumulative[i + 1]);
+      temp.Join(shiftedTargets[i].wanted);
+      temp.Step();
+      if (!temp.Contains(shiftedTargets[i].wanted))
         continue;
 
       break;
     }
     // Not needed in the loop
-    Copy(shiftedTargets[i]->unwanted, targets[curs[i]]->unwanted, curx[i], cury[i]);
+    shiftedTargets[i].unwanted.Copy(targets[curs[i]].unwanted, curx[i], cury[i]);
 
     cumulActivation[i] = activations[curs[i]][(curx[i] + 64) % 64][(cury[i] + 64) % 64];
 
@@ -617,7 +591,7 @@ struct Enumerator {
       cumulMinY[i] = cury[i];
       cumulMaxY[i] = cury[i];
 
-      Copy(cumulative[i], shiftedTargets[i]->wanted);
+      cumulative[i].Copy(shiftedTargets[i].wanted);
     }
 
 
@@ -629,8 +603,8 @@ struct Enumerator {
       cumulMaxY[i] = std::max(cumulMaxY[i + 1], cury[i]);
 
       // Update cumulative
-      Copy(cumulative[i], shiftedTargets[i]->wanted);
-      Join(cumulative[i], cumulative[i + 1]);
+      cumulative[i].Copy(shiftedTargets[i].wanted);
+      cumulative[i].Join(cumulative[i + 1]);
     }
 
     return SUCCESS;
@@ -668,18 +642,18 @@ struct Enumerator {
     c.cury = cury;
     c.curs = curs;
     c.minIter = cumulActivation[count-1];
-    Copy(&c.state, cumulative[0]);
+    c.state.Copy(cumulative[0]);
     c.shiftedTargets = shiftedTargets;
     // for(int i = 0; i < enu.count; i++) {
-    //   c.shiftedTargets.push_back(NewTarget(enu.shiftedTargets[i]->wanted, enu.shiftedTargets[i]->unwanted));
+    //   c.shiftedTargets.push_back(NewTarget(enu.shiftedTargets[i].wanted, enu.shiftedTargets[i].unwanted));
     // }
     return c;
   }
 };
 
 void GenerateStates(const std::vector<CatalystInput> &catalysts,
-                    std::vector<LifeState *> &states,
-                    std::vector<std::vector<LifeTarget *>> &forbidden,
+                    std::vector<LifeState> &states,
+                    std::vector<std::vector<LifeTarget>> &forbidden,
                     std::vector<int> &maxSurvive) {
   for (const auto & catalyst : catalysts) {
     std::vector<SymmetryTransform> trans;
@@ -691,16 +665,15 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
     int maxDesapear = catalyst.maxDesapear;
 
     for (auto & tran : trans) {
-      states.push_back(NewState(rle, dx, dy, tran));
+      states.push_back(LifeState::Parse(rle, dx, dy, tran));
       maxSurvive.push_back(maxDesapear);
 
-      std::vector<LifeTarget *> forbidTarg;
+      std::vector<LifeTarget> forbidTarg;
 
       for (int k = 0; k < catalyst.forbiddenRLE.size(); k++) {
-        forbidTarg.push_back(NewTarget(
-            NewState(catalyst.forbiddenRLE[k].c_str(),
-                     catalyst.forbiddenXY[k].first,
-                     catalyst.forbiddenXY[k].second, tran)));
+        forbidTarg.push_back(LifeTarget::Parse(catalyst.forbiddenRLE[k].c_str(),
+                                               catalyst.forbiddenXY[k].first,
+                                               catalyst.forbiddenXY[k].second, tran));
       }
 
       forbidden.push_back(forbidTarg);
@@ -708,17 +681,17 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
   }
 }
 
-void InitCatalysts(const std::string& fname, std::vector<LifeState *> &states,
-                   std::vector<std::vector<LifeTarget *>> &forbidden,
+void InitCatalysts(const std::string& fname, std::vector<LifeState> &states,
+                   std::vector<std::vector<LifeTarget>> &forbidden,
                    std::vector<int> &maxSurvive, SearchParams &params) {
   std::vector<CatalystInput> catalysts;
   ReadParams(fname, catalysts, params);
   GenerateStates(catalysts, states, forbidden, maxSurvive);
 }
 
-void XYStartGenPerState(const std::vector<LifeTarget *> &targets,
-                        const LifeState *pat, const SearchParams &params,
-                        const std::vector<LifeState *> &states,
+void XYStartGenPerState(const std::vector<LifeTarget> &targets,
+                        const LifeState &pat, const SearchParams &params,
+                        const std::vector<LifeState> &states,
                         std::vector<std::vector<std::vector<int>>> &statexyGen,
                         int const nthreads) {
   // if (params.numCatalysts == 1) {
@@ -760,16 +733,13 @@ void XYStartGenPerState(const std::vector<LifeTarget *> &targets,
 
         for (int y = 0; y < 64; y++) {
           LifeState state;
-          ClearData(&state);
-          JoinWSymChain(&state, states[i], x, y, params.symmetryChain);
-          JoinWSymChain(&state, pat, params.symmetryChain);
+          state.JoinWSymChain(states[i], x, y, params.symmetryChain);
+          state.JoinWSymChain(pat, params.symmetryChain);
           int j;
-
-          for (j = 0; j < params.maxGen + 5; j++) {
-            if (Contains(&state, targets[i], x, y) == NO) {
+          for (j = 0; j < params.maxGen + 1; j++) {
+            if (!state.Contains(targets[i], x, y))
               break;
-            }
-            Run(&state, 1);
+            state.Step();
           }
 
           xVec.push_back(j - 1);
@@ -791,17 +761,16 @@ void XYStartGenPerState(const std::vector<LifeTarget *> &targets,
   }
 }
 
-void PreIteratePat(LifeState *pat, std::vector<LifeState *> &preIterated,
+void PreIteratePat(LifeState &pat, std::vector<LifeState> &preIterated,
                    const SearchParams &params) {
   LifeState workspace;
-  ClearData(&workspace);
-  JoinWSymChain(&workspace, pat, params.symmetryChain);
+  workspace.JoinWSymChain(pat, params.symmetryChain);
 
   for (int i = 0; i < params.maxGen + 5; i++) {
-    LifeState *t = NewState();
-    Copy(t, &workspace);
+    LifeState t;
+    t.Copy(workspace);
     preIterated.push_back(t);
-    Run(&workspace, 1);
+    workspace.Step();
   }
 }
 
@@ -881,17 +850,16 @@ std::string GetRLE(const std::vector<std::vector<int>> &life2d) {
 class SearchResult {
 public:
   // Saved for the report
-  LifeState *init;
+  LifeState init;
 
   // iters state in form of integers
   std::vector<int> params;
   int maxGenSurvive;
   int firstGenSurvive;
 
-  SearchResult(LifeState *initState, const Configuration &conf,
+  SearchResult(LifeState &initState, const Configuration &conf,
                int firstGenSurviveIn, int genSurvive) {
-    init = NewState();
-    Copy(init, initState);
+    init.Copy(initState);
 
     for (int i = 0; i < conf.curs.size(); i++) {
       params.push_back(conf.curs[i]);
@@ -925,96 +893,72 @@ public:
 
     std::cout << std::endl;
   }
-
-  ~SearchResult() { FreeState(init); }
 };
 
 class Category {
 private:
-  LifeState *tempCat;
-  LifeState *tempTest;
   int catDelta;
   int maxgen;
   uint64_t hash;
 
 public:
-  LifeState *categoryKey;
-  std::vector<SearchResult *> results;
+  LifeState categoryKey;
+  std::vector<SearchResult> results;
 
-  Category(LifeState *catalystRemoved, SearchResult *firstResult,
+  Category(LifeState &catalystRemoved, SearchResult &firstResult,
            int catDeltaIn, int maxGen) {
-    categoryKey = NewState();
-    Copy(categoryKey, catalystRemoved);
+    categoryKey.Copy(catalystRemoved);
     results.push_back(firstResult);
     catDelta = catDeltaIn;
-    tempCat = NewState();
-    tempTest = NewState();
     maxgen = maxGen;
 
-    ClearData(tempCat);
-    Copy(tempCat, categoryKey);
-    Evolve(tempCat, maxgen - tempCat->gen);
-    hash = GetHash(tempCat);
+    LifeState temp;
+    temp.Clear();
+    temp.Copy(categoryKey);
+    temp.Step(maxgen - temp.gen);
+    hash = temp.GetHash();
   }
 
-  void Add(SearchResult *result) { results.push_back(result); }
+  void Add(SearchResult &result) { results.push_back(result); }
 
-  bool BelongsTo(LifeState *test, const uint64_t &testHash) {
+  bool BelongsTo(LifeState &test, const uint64_t &testHash) {
     if (testHash != hash)
       return false;
 
-    ClearData(tempCat);
-    Copy(tempCat, categoryKey);
+    LifeState tempCat;
+    LifeState tempTest;
 
-    ClearData(tempTest);
-    Copy(tempTest, test);
+    tempCat.Copy(categoryKey);
+    tempTest.Copy(test);
 
-    if (tempTest->gen > tempCat->gen)
-      Evolve(tempCat, tempTest->gen - tempCat->gen);
-    else if (tempTest->gen < tempCat->gen)
-      Evolve(tempTest, tempCat->gen - tempTest->gen);
+    if (tempTest.gen > tempCat.gen)
+      tempCat.Step(tempTest.gen - tempCat.gen);
+    else if (tempTest.gen < tempCat.gen)
+      tempTest.Step(tempCat.gen - tempTest.gen);
 
     for (int i = 0; i < catDelta; i++) {
-      if (AreEqual(tempTest, tempCat) == YES)
+      if (tempTest == tempCat)
         return true;
 
-      Evolve(tempTest, 1);
-      Evolve(tempCat, 1);
+      tempCat.Step();
+      tempTest.Step();
     }
 
     return false;
   }
 
-  static bool CompareSearchResult(SearchResult *a, SearchResult *b) {
-    return (a->maxGenSurvive - a->firstGenSurvive) >
-           (b->maxGenSurvive - b->firstGenSurvive);
+  static bool CompareSearchResult(SearchResult &a, SearchResult &b) {
+    return (a.maxGenSurvive - a.firstGenSurvive) >
+           (b.maxGenSurvive - b.firstGenSurvive);
   }
 
   void Sort() {
     std::sort(results.begin(), results.end(), Category::CompareSearchResult);
   }
 
-  void RemoveTail() {
-    if (results.size() <= 1)
-      return;
-
-    for (int i = 1; i < results.size(); i++)
-      delete results[i];
-
-    results.erase(results.begin() + 1, results.end());
-  }
-
-  ~Category() {
-    FreeState(tempCat);
-    FreeState(tempTest);
-
-    for (auto & result : results)
-      delete result;
-  }
-
   void Print() {
     for (auto & result : results)
-      result->Print();
+      result.Print();
   }
 
   std::string RLE(int maxCatSize) {
@@ -1043,7 +987,7 @@ public:
     for (int l = 0; l < howmany; l++)
       for (int j = 0; j < N; j++)
         for (int i = 0; i < N; i++)
-          vec[Dist * l + i][j] = Get(i, j, results[l]->init->state);
+          vec[Dist * l + i][j] = results[l].init.Get(i, j);
 
     return GetRLE(vec);
   }
@@ -1052,54 +996,50 @@ public:
 class CategoryContainer {
 public:
   std::vector<Category *> categories;
-  LifeState *tempState;
   int catDelta;
   int maxgen;
 
   explicit CategoryContainer(int maxGen) {
     catDelta = 14;
-    tempState = NewState();
     maxgen = maxGen + catDelta;
   }
 
   CategoryContainer(int cats, int maxGen) {
     catDelta = cats;
-    tempState = NewState();
     maxgen = maxGen + catDelta;
   }
 
-  void Add(LifeState *init, LifeState *afterCatalyst, LifeState *catalysts,
+  void Add(LifeState &init, LifeState &afterCatalyst, LifeState &catalysts,
            const Configuration &conf, int firstGenSurvive,
            int genSurvive) {
-    LifeState *result = NewState();
+    LifeState result;
 
-    ClearData(result);
-    Copy(result, afterCatalyst);
-    Copy(result, catalysts, XOR);
+    result.Copy(afterCatalyst);
+    result.Copy(catalysts, XOR);
 
-    Evolve(result, maxgen - result->gen);
-    uint64_t hash = GetHash(result);
+    result.Step(maxgen - result.gen);
+    uint64_t hash = result.GetHash();
 
-    ClearData(result);
-    Copy(result, afterCatalyst);
-    Copy(result, catalysts, XOR);
+    result.Clear();
+    result.Copy(afterCatalyst);
+    result.Copy(catalysts, XOR);
 
     for (auto & category: categories) {
       if (category->BelongsTo(result, hash)) {
-        if (category->results[0]->params.size() == 3 * conf.curs.size())
-          category->Add(
-              new SearchResult(init, conf, firstGenSurvive, genSurvive));
-        return;
+        if (category->results[0].params.size() == 3 * conf.curs.size()) {
+          SearchResult r(init, conf, firstGenSurvive, genSurvive);
+          category->Add(r);
+          return;
+        }
       }
     }
 
-    LifeState *categoryKey = NewState();
-    Copy(categoryKey, afterCatalyst);
-    Copy(categoryKey, catalysts, XOR);
+    LifeState categoryKey;
+    categoryKey.Copy(afterCatalyst);
+    categoryKey.Copy(catalysts, XOR);
 
-    categories.push_back(new Category(
-        categoryKey, new SearchResult(init, conf, firstGenSurvive, genSurvive),
-        catDelta, maxgen));
+    SearchResult r(init, conf, firstGenSurvive, genSurvive);
+    categories.push_back(new Category(categoryKey, r, catDelta, maxgen));
   }
 
   void Sort() {
@@ -1112,11 +1052,6 @@ public:
       category->Print();
   }
 
-  void RemoveTail() {
-    for (auto & category: categories)
-      category->RemoveTail();
-  }
-
   std::string CategoriesRLE(int maxCatSize) {
     std::stringstream ss;
     for (auto & category: categories) {
@@ -1127,20 +1062,21 @@ public:
   }
 };
 
+
 class CatalystSearcher {
 public:
   clock_t begin{};
-  std::vector<LifeState *> states;
+  std::vector<LifeState> states;
   std::vector<int> maxSurvive;
   SearchParams params;
-  LifeState *pat{};
+  LifeState pat;
   int numIters{};
   Enumerator *enu;
-  std::vector<LifeTarget *> targetFilter;
-  std::vector<LifeTarget *> targets;
-  std::vector<std::vector<LifeTarget *>> forbiddenTargets;
+  std::vector<LifeTarget> targetFilter;
+  std::vector<LifeTarget> targets;
+  std::vector<std::vector<LifeTarget>> forbiddenTargets;
   std::vector<std::vector<std::vector<int>>> statexyGen;
-  std::vector<LifeState *> preIterated;
+  std::vector<LifeState> preIterated;
   std::vector<int> activated;
   std::vector<int> absentCount;
   clock_t current{};
@@ -1163,17 +1099,17 @@ public:
   void Init(const char *inputFile, int nthreads) {
     begin = clock();
     InitCatalysts(inputFile, states, forbiddenTargets, maxSurvive, params);
-    pat = NewState(params.pat.c_str(), params.xPat, params.yPat);
+    pat = LifeState::Parse(params.pat.c_str(), params.xPat, params.yPat);
     numIters = params.numCatalysts;
     categoryContainer = new CategoryContainer(params.maxGen);
     fullCategoryContainer = new CategoryContainer(params.maxGen);
 
     for (auto & state : states)
-      targets.push_back(NewTarget(state));
+      targets.push_back(LifeTarget(state));
 
     for (int i = 0; i < params.targetFilter.size(); i++)
-      targetFilter.push_back(NewTarget(params.targetFilter[i].c_str(),
-                                       params.filterdx[i], params.filterdy[i]));
+      targetFilter.push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
+                                               params.filterdx[i], params.filterdy[i]));
 
     XYStartGenPerState(targets, pat, params, states, statexyGen, nthreads);
 
@@ -1314,33 +1250,33 @@ public:
 
   void InitActivationCounters() {
     for (int i = 0; i < numIters; i++) {
-      activated[i] = NO;
+      activated[i] = false;
       absentCount[i] = 0;
     }
   }
 
   bool HasForbidden(Configuration &c, int curIter) {
     LifeState workspace;
-    PutStartState(&workspace, c);
+    PutStartState(workspace, c);
 
     for (int i = 0; i <= curIter + 1; i++) {
       for (int j = 0; j < numIters; j++) {
         for (int k = 0; k < forbiddenTargets[c.curs[j]].size(); k++) {
-          if (Contains(&workspace, forbiddenTargets[c.curs[j]][k],
-                       c.curx[j], c.cury[j]) == YES)
+          if (workspace.Contains(forbiddenTargets[c.curs[j]][k],
+                       c.curx[j], c.cury[j]) == true)
             return true;
         }
       }
-      Run(&workspace, 1);
+      workspace.Step();
     }
 
     return false;
   }
 
-  bool UpdateActivationCountersFail(LifeState *workspace, Configuration &conf) {
+  bool UpdateActivationCountersFail(LifeState &workspace, Configuration &conf) {
     for (int j = 0; j < numIters; j++) {
-      if (Contains(workspace, conf.shiftedTargets[j]) == NO) {
-        activated[j] = YES;
+      if (workspace.Contains(conf.shiftedTargets[j]) == false) {
+        activated[j] = true;
         absentCount[j] += MAIN_STEP;
 
         if (absentCount[j] > maxSurvive[conf.curs[j]]) {
@@ -1354,10 +1290,10 @@ public:
     return false;
   }
 
-  bool FilterForCurrentGenFail(LifeState *workspace) {
+  bool FilterForCurrentGenFail(LifeState &workspace) {
     for (int j = 0; j < targetFilter.size(); j++) {
-      if (workspace->gen == params.filterGen[j] &&
-          Contains(workspace, targetFilter[j]) == NO) {
+      if (workspace.gen == params.filterGen[j] &&
+          workspace.Contains(targetFilter[j]) == false) {
         return true;
       }
     }
@@ -1367,23 +1303,23 @@ public:
 
   bool IsAllActivated() {
     for (int j = 0; j < numIters; j++) {
-      if (activated[j] == NO || absentCount[j] != 0) {
-        return NO;
+      if (activated[j] == false || absentCount[j] != 0) {
+        return false;
       }
     }
 
-    return YES;
+    return true;
   }
 
-  void PutStartState(LifeState *workspace, Configuration &conf) {
-    ClearData(workspace);
-    JoinWSymChain(workspace, &conf.state, params.symmetryChain);
-    JoinWSymChain(workspace, pat, params.symmetryChain);
+  void PutStartState(LifeState &workspace, Configuration &conf) {
+    workspace.Clear();
+    workspace.JoinWSymChain(conf.state, params.symmetryChain);
+    workspace.JoinWSymChain(pat, params.symmetryChain);
   }
 
   bool ValidateFilters(Configuration &conf) {
     LifeState workspace;
-    PutStartState(&workspace, conf);
+    PutStartState(workspace, conf);
 
     std::vector<bool> rangeValid(params.filterGen.size(), false);
 
@@ -1394,17 +1330,17 @@ public:
     for (int j = 0; j <= filterMaxGen; j++) {
       for (int k = 0; k < params.filterGen.size(); k++) {
         if (workspace.gen == params.filterGen[k] &&
-            Contains(&workspace, targetFilter[k]) == NO)
+            workspace.Contains(targetFilter[k]) == false)
           return false;
 
         if (params.filterGen[k] == -1 &&
             params.filterGenRange[k].first <= workspace.gen &&
             params.filterGenRange[k].second >= workspace.gen &&
-            Contains(&workspace, targetFilter[k]) == YES)
+            workspace.Contains(targetFilter[k]) == true)
           rangeValid[k] = true;
       }
 
-      Run(&workspace, 1);
+      workspace.Step();
     }
 
     for (int k = 0; k < params.filterGen.size(); k++)
@@ -1419,9 +1355,8 @@ public:
       return -1; // Temporary fix
 
     LifeState workspace;
-    ClearData(&workspace);
-    JoinWSymChain(&workspace, &conf.state, params.symmetryChain);
-    Join(&workspace, preIterated[conf.minIter]);
+    workspace.JoinWSymChain(conf.state, params.symmetryChain);
+    workspace.Join(preIterated[conf.minIter]);
     workspace.gen = conf.minIter;
 
     // Initial searcher countters for absense and activation
@@ -1434,13 +1369,13 @@ public:
 
       // Fail if some catalyst is idle for too long - updates the counters for
       // them otherwise.
-      if (UpdateActivationCountersFail(&workspace, conf))
+      if (UpdateActivationCountersFail(workspace, conf))
         return -1;
 
       if (hasFilter && !reportAll) {
         // Validate filters if any of them exist. Will validate on current gen
         // of GlobalState
-        if (FilterForCurrentGenFail(&workspace))
+        if (FilterForCurrentGenFail(workspace))
           return -1;
       }
 
@@ -1466,20 +1401,18 @@ public:
     LifeState workspace;
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
-      ClearData(&workspace);
+      workspace.JoinWSymChain(conf.state, params.symmetryChain);
+      catalysts.Copy(workspace);
 
-      JoinWSymChain(&workspace, &conf.state, params.symmetryChain);
-      Copy(&catalysts, &workspace);
+      PutStartState(workspace, conf);
+      init.Copy(workspace);
 
-      PutStartState(&workspace, conf);
-      Copy(&init, &workspace);
-
-      Run(&workspace, successtime - params.stableInterval + 2);
-      Copy(&afterCatalyst, &workspace);
+      workspace.Step(successtime - params.stableInterval + 2);
+      afterCatalyst.Copy(workspace);
 
       fullfound++;
 
-      fullCategoryContainer->Add(&init, &afterCatalyst, &catalysts, conf,
+      fullCategoryContainer->Add(init, afterCatalyst, catalysts, conf,
                                  successtime - params.stableInterval + 2, 0);
     }
 
@@ -1493,17 +1426,17 @@ public:
       return;
 
     // If all filters validated update results
-    ClearData(&workspace);
-    JoinWSymChain(&workspace, &conf.state, params.symmetryChain);
-    Copy(&catalysts, &workspace);
+    workspace.Clear();
+    workspace.JoinWSymChain(conf.state, params.symmetryChain);
+    catalysts.Copy(workspace);
 
-    PutStartState(&workspace, conf);
-    Copy(&init, &workspace);
+    PutStartState(workspace, conf);
+    init.Copy(workspace);
 
-    Run(&workspace, successtime - params.stableInterval + 2);
-    Copy(&afterCatalyst, &workspace);
+    workspace.Step(successtime - params.stableInterval + 2);
+    afterCatalyst.Copy(workspace);
 
-    categoryContainer->Add(&init, &afterCatalyst, &catalysts, conf,
+    categoryContainer->Add(init, afterCatalyst, catalysts, conf,
                            successtime - params.stableInterval + 2, 0);
     found++;
   }
