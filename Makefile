@@ -7,8 +7,8 @@ CFLAGS = -std=c++11 -Wall -Wextra -pedantic -O3 -march=native -mtune=native -flt
 # CFLAGS = -std=c++11 -Wall -Wextra -pedantic -g -fno-stack-protector -fomit-frame-pointer
 LDFLAGS =
 # OMPFLAGS =
-OMPFLAGS = -Xclang -fopenmp -lomp
+# OMPFLAGS = -Xclang -fopenmp -lomp
 
 all: CatForce
 CatForce: CatForce.cpp LifeAPI.h
-	$(CC) $(CFLAGS) $(OMPFLAGS) -o CatForce CatForce.cpp $(LDFLAGS)
+	$(CC) $(CFLAGS) -o CatForce CatForce.cpp $(LDFLAGS)

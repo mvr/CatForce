@@ -1,6 +1,5 @@
 // CatForce - Catalyst search utility based on LifeAPI using brute force.
 // Written by Michael Simkin 2015
-#include <omp.h>
 #include "LifeAPI.h"
 #include <algorithm>
 #include <fstream>
@@ -708,57 +707,84 @@ void XYStartGenPerState(const std::vector<LifeTarget> &targets,
   //   return;
   // }
 
+  for (int i = 0; i < states.size(); i++) {
+    std::vector<std::vector<int>> xyVec;
 
-  const int chunksize = states.size() / ((unsigned long)nthreads);
-  std::vector<std::pair<long, long>> chunkbounds;
-  long lowerbound = 0;
-  for (int chunki = 0; chunki < nthreads-1; chunki++){
-      chunkbounds.emplace_back(lowerbound, lowerbound + chunksize);
-      lowerbound += chunksize;
-  }
-  chunkbounds.emplace_back(lowerbound, states.size());
-  statexyGen.reserve(states.size());
-  #pragma omp parallel for ordered schedule(static,1) default(none) shared(states, params, targets, statexyGen, pat, chunkbounds, std::cout)
-  for (auto & bounds : chunkbounds){
-    std::vector<std::vector<std::vector<int>>> perthread_statexyGen;
-    perthread_statexyGen.reserve(bounds.second-bounds.first);
+    for (int x = 0; x < 64; x++) {
+      std::vector<int> xVec;
 
-    for (long i = bounds.first; i < bounds.second; i++) {
-      std::vector<std::vector<int>> xyVec;
-      xyVec.reserve(64);
+      for (int y = 0; y < 64; y++) {
+        LifeState state;
+        state.JoinWSymChain(states[i], x, y, params.symmetryChain);
+        state.JoinWSymChain(pat, params.symmetryChain);
+        int j;
 
-      for (int x = 0; x < 64; x++) {
-        std::vector<int> xVec;
-        xVec.reserve(64);
-
-        for (int y = 0; y < 64; y++) {
-          LifeState state;
-          state.JoinWSymChain(states[i], x, y, params.symmetryChain);
-          state.JoinWSymChain(pat, params.symmetryChain);
-          int j;
-          for (j = 0; j < params.maxGen + 1; j++) {
-            if (!state.Contains(targets[i], x, y))
-              break;
-            state.Step();
+        for (j = 0; j < params.maxGen + 1; j++) {
+          if (!state.Contains(targets[i], x, y)) {
+            break;
           }
-
-          xVec.push_back(j - 1);
+          state.Step();
         }
-        xyVec.push_back(xVec);
+
+        xVec.push_back(j - 1);
       }
 
-      perthread_statexyGen.push_back(xyVec);
+      xyVec.push_back(xVec);
     }
 
-    #pragma omp ordered
-    {
-      statexyGen.insert(
-          statexyGen.end(),
-          std::make_move_iterator(perthread_statexyGen.begin()),
-          std::make_move_iterator(perthread_statexyGen.end())
-      );
-    };
+    statexyGen.push_back(xyVec);
   }
+
+  // const int chunksize = states.size() / ((unsigned long)nthreads);
+  // std::vector<std::pair<long, long>> chunkbounds;
+  // long lowerbound = 0;
+  // for (int chunki = 0; chunki < nthreads-1; chunki++){
+  //     chunkbounds.emplace_back(lowerbound, lowerbound + chunksize);
+  //     lowerbound += chunksize;
+  // }
+  // chunkbounds.emplace_back(lowerbound, states.size());
+  // statexyGen.reserve(states.size());
+  // #pragma omp parallel for ordered schedule(static,1) default(none) shared(states, params, targets, statexyGen, pat, chunkbounds, std::cout)
+  // for (auto & bounds : chunkbounds){
+  //   std::vector<std::vector<std::vector<int>>> perthread_statexyGen;
+  //   perthread_statexyGen.reserve(bounds.second-bounds.first);
+
+  //   for (long i = bounds.first; i < bounds.second; i++) {
+  //     std::vector<std::vector<int>> xyVec;
+  //     xyVec.reserve(64);
+
+  //     for (int x = 0; x < 64; x++) {
+  //       std::vector<int> xVec;
+  //       xVec.reserve(64);
+
+  //       for (int y = 0; y < 64; y++) {
+  //         LifeState state;
+  //         state.JoinWSymChain(states[i], x, y, params.symmetryChain);
+  //         state.JoinWSymChain(pat, params.symmetryChain);
+  //         int j;
+  //         for (j = 0; j < params.maxGen + 1; j++) {
+  //           if (!state.Contains(targets[i], x, y))
+  //             break;
+  //           state.Step();
+  //         }
+
+  //         xVec.push_back(j - 1);
+  //       }
+  //       xyVec.push_back(xVec);
+  //     }
+
+  //     perthread_statexyGen.push_back(xyVec);
+  //   }
+
+  //   #pragma omp ordered
+  //   {
+  //     statexyGen.insert(
+  //         statexyGen.end(),
+  //         std::make_move_iterator(perthread_statexyGen.begin()),
+  //         std::make_move_iterator(perthread_statexyGen.end())
+  //     );
+  //   };
+  // }
 }
 
 void PreIteratePat(LifeState &pat, std::vector<LifeState> &preIterated,
@@ -1464,7 +1490,7 @@ int main(int argc, char *argv[]) {
   if (argc > 2) {
     nthreads = atoi(argv[2]);
   }
-  omp_set_num_threads(nthreads);
+  // omp_set_num_threads(nthreads);
   std::cout << "Input: " << argv[1] << std::endl
             << "Initializing please wait..." << std::endl;
 
