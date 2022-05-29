@@ -282,8 +282,7 @@ public:
     if (symChain.size() == 0)
       return;
 
-    LifeState transformed;
-    transformed.Copy(state);
+    LifeState transformed = state;
     for (int i = 0; i < symChain.size(); ++i) {
       transformed.Transform(symChain[i]);
       Join(transformed);

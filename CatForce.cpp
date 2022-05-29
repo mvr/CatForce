@@ -570,8 +570,7 @@ struct Enumerator {
       shiftedTargets[i].wanted.Copy(targets[curs[i]].wanted, curx[i], cury[i]);
 
       // Check overlap
-      LifeState temp;
-      temp.Copy(cumulative[i + 1]);
+      LifeState temp = cumulative[i + 1];
       temp.Join(shiftedTargets[i].wanted);
       temp.Step();
       if (!temp.Contains(shiftedTargets[i].wanted))
@@ -641,7 +640,7 @@ struct Enumerator {
     c.cury = cury;
     c.curs = curs;
     c.minIter = cumulActivation[count-1];
-    c.state.Copy(cumulative[0]);
+    c.state = cumulative[0];
     c.shiftedTargets = shiftedTargets;
     // for(int i = 0; i < enu.count; i++) {
     //   c.shiftedTargets.push_back(NewTarget(enu.shiftedTargets[i].wanted, enu.shiftedTargets[i].unwanted));
@@ -793,9 +792,7 @@ void PreIteratePat(LifeState &pat, std::vector<LifeState> &preIterated,
   workspace.JoinWSymChain(pat, params.symmetryChain);
 
   for (int i = 0; i < params.maxGen + 5; i++) {
-    LifeState t;
-    t.Copy(workspace);
-    preIterated.push_back(t);
+    preIterated.push_back(workspace);
     workspace.Step();
   }
 }
@@ -938,9 +935,7 @@ public:
     catDelta = catDeltaIn;
     maxgen = maxGen;
 
-    LifeState temp;
-    temp.Clear();
-    temp.Copy(categoryKey);
+    LifeState temp = categoryKey;
     temp.Step(maxgen - temp.gen);
     hash = temp.GetHash();
   }
@@ -951,11 +946,8 @@ public:
     if (testHash != hash)
       return false;
 
-    LifeState tempCat;
-    LifeState tempTest;
-
-    tempCat.Copy(categoryKey);
-    tempTest.Copy(test);
+    LifeState tempCat = categoryKey;
+    LifeState tempTest = test;
 
     if (tempTest.gen > tempCat.gen)
       tempCat.Step(tempTest.gen - tempCat.gen);
