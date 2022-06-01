@@ -537,8 +537,8 @@ private:
                          const uint64_t &bU1, const uint64_t &bB0,
                          const uint64_t &bB1) {
     uint64_t sum0, sum1, sum2;
-    sum0 = temp << 1;
-    Add_Init(sum1, sum0, temp >> 1);
+    sum0 = RotateLeft(temp);
+    Add_Init(sum1, sum0, RotateRight(temp));
 
     Add(sum1, sum0, bU0);
     Add_Init(sum2, sum1, bU1);
