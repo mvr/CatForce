@@ -9,17 +9,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
+#include <iostream>
 
 #define N 64
 
 #define SUCCESS 1
 #define FAIL 0
 
+// GCC
 #ifdef __GNUC__
 #ifndef __clang__
 #include <x86intrin.h>
 
-uint64_t BitReverse(uint64_t x) {
+uint64_t reverse_uint64_t(uint64_t x) {
   const uint64_t h1 = 0x5555555555555555ULL;
   const uint64_t h2 = 0x3333333333333333ULL;
   const uint64_t h4 = 0x0F0F0F0F0F0F0F0FULL;
@@ -36,16 +38,36 @@ uint64_t BitReverse(uint64_t x) {
 
 #define __builtin_rotateleft64 __rolq
 #define __builtin_rotateright64 __rorq
-#define __builtin_bitreverse64 BitReverse
+#define __builtin_bitreverse64 ::reverse_uint64_t
 #endif
 #endif
 
+// MSVC
 #ifdef __MSC_VER
 #include <intrin.h>
 #define __builtin_popcount __popcnt64
 #define __builtin_rotateleft64 _rotl64
 #define __builtin_rotateright64 _rotr64
+
+inline int __builtin_ctzll(uint64_t x) {
+  unsigned long log2;
+  _BitScanReverse64(&log2, x);
+  return log2;
+}
 #endif
+
+uint64_t convolve_uint64_t(uint64_t x, uint64_t y) {
+  if(x == 0)
+    return 0;
+
+  uint64_t result = 0;
+  while (y != 0) {
+    int lsb = __builtin_ctzll(y);
+    result |= __builtin_rotateleft64(x, lsb);
+    y &= ~(((uint64_t)1) << lsb);
+  }
+  return result;
+}
 
 namespace PRNG {
 
@@ -79,7 +101,7 @@ uint64_t rand64() {
 //   _mm_sfence();
 // }
 
-enum CopyType { COPY, OR, XOR, AND };
+enum CopyType { COPY, OR, XOR, AND, ANDNOT, ORNOT };
 
 enum SymmetryTransform {
   Identity, // only used for catalyst initialization. The identity is omitted
@@ -131,12 +153,14 @@ public:
   int Get(int x, int y) const { return (state[x] & (1ULL << y)) >> y; }
   void SetCell(int x, int y, int val) {
     if (val == 1) {
-      Set((x + 32) % N, (y + 32) % 64);
+      Set((x + 64) % N, (y + 64) % 64);
     }
     if (val == 0)
-      Erase((x + 32) % 64, (y + 32) % 64);
+      Erase((x + 64) % N, (y + 64) % 64);
   }
-  int GetCell(int x, int y) const { return Get((x + 32) % 64, (y + 32) % 64); }
+  int GetCell(int x, int y) const {
+    return Get((x + 64) % N, (y + 64) % 64);
+  }
   uint64_t GetHash() const {
     uint64_t result = 0;
 
@@ -179,7 +203,7 @@ public:
   }
 
 public:
-  void Print();
+  void Print() const;
 
   void Copy(const LifeState &delta, CopyType op) {
     if (op == COPY) {
@@ -201,6 +225,14 @@ public:
     if (op == AND) {
       for (int i = 0; i < N; i++)
         state[i] &= delta.state[i];
+    }
+    if (op == ANDNOT) {
+      for (int i = 0; i < N; i++)
+        state[i] &= ~delta.state[i];
+    }
+    if (op == ORNOT) {
+      for (int i = 0; i < N; i++)
+        state[i] |= ~delta.state[i];
     }
     if (op == XOR) {
       for (int i = 0; i < N; i++)
@@ -297,6 +329,24 @@ public:
     }
 
     return pop;
+  }
+
+  // bool IsEmpty() const {
+  //   for (int i = 0; i < N; i++) {
+  //     if(state[i] != 0)
+  //       return false;
+  //   }
+
+  //   return true;
+  // }
+
+  bool IsEmpty() const {
+    uint64_t all = 0;
+    for (int i = 0; i < N; i++) {
+      all |= state[i];
+    }
+
+    return all == 0;
   }
 
   void Inverse() {
@@ -472,7 +522,7 @@ public:
     RecalculateMinMax();
   }
 
-  LifeState GetBoundary() const {
+  LifeState ZOI() const {
     LifeState temp;
     LifeState boundary;
     for (int i = 0; i < N; i++) {
@@ -485,14 +535,63 @@ public:
     for (int i = 1; i < N - 1; i++)
       boundary.state[i] = temp.state[i - 1] | temp.state[i] | temp.state[i + 1];
 
-    boundary.state[N - 1] =
-        temp.state[N - 2] | temp.state[N - 1] | temp.state[0];
-
-    for (int i = 0; i < N; i++)
-      boundary.state[i] &= ~(state[i]);
+    boundary.state[N - 1] = temp.state[N - 2] | temp.state[N - 1] | temp.state[0];
 
     boundary.RecalculateMinMax();
     return boundary;
+  }
+
+  LifeState GetBoundary() const {
+    LifeState boundary = ZOI();
+    boundary.Copy(*this, ANDNOT);
+    return boundary;
+  }
+
+  LifeState BigZOI() const {
+    LifeState b;
+    b.state[0] = state[0] | RotateLeft(state[0]) | RotateRight(state[0]) |
+                 state[N - 1] | state[0 + 1];
+    for (int i = 1; i < N-1; i++) {
+      b.state[i] = state[i] | RotateLeft(state[i]) | RotateRight(state[i]) | state[i-1] | state[i+1];
+    }
+    b.state[N-1] = state[N-1] | RotateLeft(state[N-1]) | RotateRight(state[N-1]) |
+                 state[N-1 - 1] | state[0];
+
+    LifeState c;
+    c.state[0] = b.state[0] | b.state[N - 1] | b.state[0 + 1];
+    for (int i = 1; i < N - 1; i++) {
+      c.state[i] = b.state[i] | b.state[i - 1] | b.state[i + 1];
+    }
+    c.state[N - 1] = b.state[N - 1] | b.state[N - 1 - 1] | b.state[0];
+
+    LifeState zoi;
+
+    zoi.state[0] =
+      c.state[0] | RotateLeft(c.state[0]) | RotateRight(c.state[0]);
+    for (int i = 1; i < N - 1; i++) {
+      zoi.state[i] =
+        c.state[i] | RotateLeft(c.state[i]) | RotateRight(c.state[i]);
+    }
+    zoi.state[N - 1] = c.state[N - 1] | RotateLeft(c.state[N - 1]) |
+      RotateRight(c.state[N - 1]);
+
+    zoi.RecalculateMinMax();
+    return zoi;
+  }
+
+  LifeState Convolve(const LifeState &other) const {
+    LifeState result;
+    for (int i = 0; i < N; i++) {
+      for (int j = 0; j < N; j++) {
+        // if(i == 1)
+        //   std::cout << state[j] << "," << other.state[(i-j+64) % 64] << "," << convolve_uint64_t(state[j], other.state[(i-j+64) % 64]) << std::endl;
+        result.state[i] |= convolve_uint64_t(state[j], other.state[(i-j+64) % 64]);
+      }
+    }
+
+    result.RecalculateMinMax();
+
+    return result;
   }
 
   void Clear() {
@@ -610,30 +709,52 @@ public:
 
     return result;
   }
+
+  std::pair<int, int> FirstOn() const {
+    for (int x = 0; x < N; x++) {
+      if (state[x] == 0ULL)
+        continue;
+
+      return std::make_pair(x, __builtin_ctzll(state[x]));
+    }
+
+    return std::make_pair(0, 0);
+  }
+
+  static LifeState SolidRect(int x, int y, int w, int h) {
+    uint64_t column = RotateLeft(((uint64_t)1 << h) - 1, y);
+    unsigned int start = (x + N) % N;
+    unsigned int end = (x + w + N) % N;
+
+    LifeState result;
+    if(end > start) {
+      for(unsigned int i = start; i < end; i++)
+        result.state[i] = column;
+    } else {
+      for(unsigned int i = 0; i < end; i++)
+        result.state[i] = column;
+      for(unsigned int i = start; i < N; i++)
+        result.state[i] = column;
+    }
+    return result;
+  }
 };
 
 void LifeState::Step() {
-  // int min = lifstate->min;
-  // int max = lifstate->max;
-  int min = 0;
-  int max = N - 1;
-
   uint64_t tempxor[N];
   uint64_t tempand[N];
 
   uint64_t tempState[N];
 
-  for (int i = min; i <= max; i++) {
-    uint64_t l, r, temp;
-    temp = state[i];
-    l = RotateLeft(temp);
-    r = RotateRight(temp);
-    tempxor[i] = l ^ r ^ temp;
-    tempand[i] = ((l | r) & temp) | (l & r);
+  for (int i = 0; i < N; i++) {
+    uint64_t l = RotateLeft(state[i]);
+    uint64_t r = RotateRight(state[i]);
+    tempxor[i] = l ^ r ^ state[i];
+    tempand[i] = ((l | r) & state[i]) | (l & r);
   }
 
-#pragma clang loop unroll(full)
-  for (int i = min; i <= max; i++) {
+  #pragma clang loop unroll(full)
+  for (int i = 0; i < N; i++) {
     int idxU;
     int idxB;
     if (i == 0)
@@ -667,7 +788,7 @@ void LifeState::Step() {
     state[i] = tempState[i];
   }
 
-  // RecalculateMinMax(lifstate);
+  // RecalculateMinMax();
   min = 0;
   max = N - 1;
   gen++;
@@ -741,19 +862,17 @@ void LifeState::Transform(SymmetryTransform transf) {
   }
 }
 
-void LifeState::Print() {
-  int i, j;
-
-  for (i = 0; i < N; i++) {
-    for (j = 0; j < 64; j++) {
-      if (GetCell(j - 32, i - 32) == 0) {
+void LifeState::Print() const {
+  for (int j = 0; j < 64; j++) {
+    for (int i = 0; i < N; i++) {
+      if (GetCell(i - 32, j - 32) == 0) {
         int hor = 0;
         int ver = 0;
 
-        if ((i - 32) % 10 == 0)
+        if ((j - 32) % 10 == 0)
           hor = 1;
 
-        if ((j - 32) % 10 == 0)
+        if ((i - 32) % 10 == 0)
           ver = 1;
 
         if (hor == 1 && ver == 1)
