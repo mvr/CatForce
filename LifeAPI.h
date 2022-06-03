@@ -11,6 +11,8 @@
 #include <vector>
 #include <iostream>
 
+#include <immintrin.h>
+
 #define N 64
 
 #define SUCCESS 1
@@ -581,10 +583,10 @@ public:
 
   LifeState Convolve(const LifeState &other) const {
     LifeState result;
-    for (int i = 0; i < N; i++) {
-      for (int j = 0; j < N; j++) {
-        // if(i == 1)
-        //   std::cout << state[j] << "," << other.state[(i-j+64) % 64] << "," << convolve_uint64_t(state[j], other.state[(i-j+64) % 64]) << std::endl;
+    for (int j = 0; j < N; j++) {
+      if (state[j] == 0)
+        continue;
+      for (int i = 0; i < N; i++) {
         result.state[i] |= convolve_uint64_t(state[j], other.state[(i-j+64) % 64]);
       }
     }
@@ -710,15 +712,48 @@ public:
     return result;
   }
 
-  std::pair<int, int> FirstOn() const {
-    for (int x = 0; x < N; x++) {
-      if (state[x] == 0ULL)
-        continue;
+  // std::pair<int, int> FirstOn() const {
+  //   for (int x = 0; x < N; x++) {
+  //     if (state[x] == 0ULL)
+  //       continue;
 
-      return std::make_pair(x, __builtin_ctzll(state[x]));
-    }
+  //     return std::make_pair(x, __builtin_ctzll(state[x]));
+  //   }
 
-    return std::make_pair(0, 0);
+  //   return std::make_pair(0, 0);
+  // }
+
+  // https://stackoverflow.com/questions/56153183/is-using-avx2-can-implement-a-faster-processing-of-lzcnt-on-a-word-array
+  std::pair<int, int> FirstOn() const
+  {
+    const char *p = (const char *)state;
+    size_t len = 8*N;
+    //assert(len % 64 == 0);
+    //optimal if p is 64-byte aligned, so we're checking single cache-lines
+    const char *p_init = p;
+    const char *endp = p + len;
+    do {
+      __m256i v1 = _mm256_loadu_si256((const __m256i*)p);
+      __m256i v2 = _mm256_loadu_si256((const __m256i*)(p+32));
+      __m256i vor = _mm256_or_si256(v1,v2);
+      if (!_mm256_testz_si256(vor, vor)) {        // find the first non-zero cache line
+        __m256i v1z = _mm256_cmpeq_epi32(v1, _mm256_setzero_si256());
+        __m256i v2z = _mm256_cmpeq_epi32(v2, _mm256_setzero_si256());
+        uint32_t zero_map = _mm256_movemask_ps(_mm256_castsi256_ps(v1z));
+        zero_map |= _mm256_movemask_ps(_mm256_castsi256_ps(v2z)) << 8;
+
+        unsigned idx = __builtin_ctz(~zero_map);  // Use ctzll for GCC, because GCC is dumb and won't optimize away a movsx
+        uint32_t nonzero_chunk;
+        memcpy(&nonzero_chunk, p+4*idx, sizeof(nonzero_chunk));  // aliasing / alignment-safe load
+        if(idx % 2 == 0) {
+          return std::make_pair((p-p_init + 4*idx)/8, __builtin_ctz(nonzero_chunk));
+        } else {
+          return std::make_pair((p-p_init + 4*(idx-1))/8, __builtin_ctz(nonzero_chunk) + 32);
+        }
+      }
+      p += 64;
+    } while(p < endp);
+    return std::make_pair(-1, -1);
   }
 
   static LifeState SolidRect(int x, int y, int w, int h) {

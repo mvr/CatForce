@@ -113,6 +113,8 @@ public:
   char symmType;
   std::vector<std::string> forbiddenRLE;
   std::vector<std::pair<int, int>> forbiddenXY;
+  std::string requiredRLE;
+  std::pair<int, int> requiredXY;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems;
@@ -134,13 +136,20 @@ public:
 
     int argi = 6;
 
-    while (argi + 3 < elems.size()) {
+    while (argi < elems.size()) {
       if (elems[argi] == "forbidden") {
         forbiddenRLE.push_back(elems[argi + 1]);
         forbiddenXY.emplace_back(
             atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
 
         argi += 4;
+      } else if (elems[argi] == "required") {
+        requiredRLE = elems[argi + 1];
+        requiredXY = std::make_pair(atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
+        argi += 4;
+      } else {
+        std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
+        exit(1);
       }
     }
   }
@@ -685,8 +694,10 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b) {
 
 void GenerateStates(const std::vector<CatalystInput> &catalysts,
                     std::vector<LifeState> &states,
+                    std::vector<LifeState> &required,
                     std::vector<std::vector<LifeTarget>> &forbidden,
                     std::vector<int> &maxMissing) {
+
   for (const auto & catalyst : catalysts) {
     std::vector<SymmetryTransform> trans;
     CharToTransVec(catalyst.symmType, trans);
@@ -709,140 +720,25 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
       }
 
       forbidden.push_back(forbidTarg);
+
+      LifeState catrequired;
+      if (catalyst.requiredRLE != "") {
+        catrequired = LifeState::Parse(catalyst.requiredRLE.c_str(),
+                                       catalyst.requiredXY.first,
+                                       catalyst.requiredXY.second, tran);
+      }
+      required.push_back(catrequired);
     }
   }
 }
 
-void InitCatalysts(const std::string& fname, std::vector<LifeState> &states,
+void InitCatalysts(const std::string &fname, std::vector<LifeState> &states,
+                   std::vector<LifeState> &required,
                    std::vector<std::vector<LifeTarget>> &forbidden,
                    std::vector<int> &maxMissing, SearchParams &params) {
   std::vector<CatalystInput> catalysts;
   ReadParams(fname, catalysts, params);
-  GenerateStates(catalysts, states, forbidden, maxMissing);
-}
-
-void XYStartGenPerState(const std::vector<LifeTarget> &targets,
-                        const LifeState &pat, const SearchParams &params,
-                        const std::vector<LifeState> &states,
-                        std::vector<std::vector<std::vector<int>>> &statexyGen,
-                        int const nthreads) {
-  if (params.numCatalysts == 1) {
-    for (uint16_t i = 0; i < states.size(); i++) {
-      std::vector<std::vector<int>> xyVec;
-      xyVec.reserve(64);
-
-      for (uint16_t x = 0; x < 64; x++) {
-        std::vector<int> xVec;
-        xVec.reserve(64);
-        for (uint16_t y = 0; y < 64; y++) {
-          LifeState state;
-          state.JoinWSymChain(states[i], x, y, params.symmetryChain);
-          state.JoinWSymChain(pat, params.symmetryChain);
-
-          state.Step();
-
-          if (!state.Contains(targets[i], x, y)) {
-            xVec.push_back(-1);
-          } else {
-            xVec.push_back(params.startGen);
-          }
-        }
-        xyVec.push_back(xVec);
-      }
-      statexyGen.push_back(xyVec);
-    }
-    return;
-  }
-
-  for (int i = 0; i < states.size(); i++) {
-    std::vector<std::vector<int>> xyVec;
-
-    for (int x = 0; x < 64; x++) {
-      std::vector<int> xVec;
-
-      for (int y = 0; y < 64; y++) {
-        LifeState state;
-        state.JoinWSymChain(states[i], x, y, params.symmetryChain);
-        state.JoinWSymChain(pat, params.symmetryChain);
-        int j;
-
-        for (j = 0; j < params.maxGen + 1; j++) {
-          if (!state.Contains(targets[i], x, y)) {
-            break;
-          }
-          state.Step();
-        }
-
-        xVec.push_back(j - 1);
-      }
-
-      xyVec.push_back(xVec);
-    }
-
-    statexyGen.push_back(xyVec);
-  }
-
-  // const int chunksize = states.size() / ((unsigned long)nthreads);
-  // std::vector<std::pair<long, long>> chunkbounds;
-  // long lowerbound = 0;
-  // for (int chunki = 0; chunki < nthreads-1; chunki++){
-  //     chunkbounds.emplace_back(lowerbound, lowerbound + chunksize);
-  //     lowerbound += chunksize;
-  // }
-  // chunkbounds.emplace_back(lowerbound, states.size());
-  // statexyGen.reserve(states.size());
-  // #pragma omp parallel for ordered schedule(static,1) default(none) shared(states, params, targets, statexyGen, pat, chunkbounds, std::cout)
-  // for (auto & bounds : chunkbounds){
-  //   std::vector<std::vector<std::vector<int>>> perthread_statexyGen;
-  //   perthread_statexyGen.reserve(bounds.second-bounds.first);
-
-  //   for (long i = bounds.first; i < bounds.second; i++) {
-  //     std::vector<std::vector<int>> xyVec;
-  //     xyVec.reserve(64);
-
-  //     for (int x = 0; x < 64; x++) {
-  //       std::vector<int> xVec;
-  //       xVec.reserve(64);
-
-  //       for (int y = 0; y < 64; y++) {
-  //         LifeState state;
-  //         state.JoinWSymChain(states[i], x, y, params.symmetryChain);
-  //         state.JoinWSymChain(pat, params.symmetryChain);
-  //         int j;
-  //         for (j = 0; j < params.maxGen + 1; j++) {
-  //           if (!state.Contains(targets[i], x, y))
-  //             break;
-  //           state.Step();
-  //         }
-
-  //         xVec.push_back(j - 1);
-  //       }
-  //       xyVec.push_back(xVec);
-  //     }
-
-  //     perthread_statexyGen.push_back(xyVec);
-  //   }
-
-  //   #pragma omp ordered
-  //   {
-  //     statexyGen.insert(
-  //         statexyGen.end(),
-  //         std::make_move_iterator(perthread_statexyGen.begin()),
-  //         std::make_move_iterator(perthread_statexyGen.end())
-  //     );
-  //   };
-  // }
-}
-
-void PreIteratePat(LifeState &pat, std::vector<LifeState> &preIterated,
-                   const SearchParams &params) {
-  LifeState workspace;
-  workspace.JoinWSymChain(pat, params.symmetryChain);
-
-  for (int i = 0; i < params.maxGen + 5; i++) {
-    preIterated.push_back(workspace);
-    workspace.Step();
-  }
+  GenerateStates(catalysts, states, required, forbidden, maxMissing);
 }
 
 std::string GetRLE(const std::vector<std::vector<int>> &life2d) {
@@ -1139,12 +1035,9 @@ public:
   std::vector<LifeTarget> targetFilter;
   std::vector<LifeTarget> targets;
   std::vector<std::vector<LifeTarget>> forbiddenTargets;
-  std::vector<std::vector<std::vector<int>>> statexyGen;
+  std::vector<LifeState> requiredParts;
   std::vector<std::vector<LifeState>> catalystCollisionMasks;
   std::vector<LifeState> catalystReactionMasks;
-  std::vector<LifeState> preIterated;
-  std::vector<int> activated;
-  std::vector<int> absentCount;
   clock_t current{};
   long long idx{};
   int found{};
@@ -1164,7 +1057,7 @@ public:
 
   void Init(const char *inputFile, int nthreads) {
     begin = clock();
-    InitCatalysts(inputFile, catalysts, forbiddenTargets, maxMissing, params);
+    InitCatalysts(inputFile, catalysts, requiredParts, forbiddenTargets, maxMissing, params);
     pat = LifeState::Parse(params.pat.c_str(), params.xPat, params.yPat);
     numIters = params.numCatalysts;
     categoryContainer = new CategoryContainer(params.maxGen);
@@ -1225,15 +1118,6 @@ public:
     reportAll = params.fullReportFile.length() != 0;
 
     filterMaxGen = FilterMaxGen();
-  }
-
-  void AddIterators(int num) {
-    for (int i = 0; i < num; i++) {
-      activated.push_back(0);
-      absentCount.push_back(0);
-    }
-
-    numIters = num;
   }
 
   int FilterMaxGen() {
@@ -1328,13 +1212,6 @@ public:
     }
   }
 
-  void InitActivationCounters() {
-    for (int i = 0; i < numIters; i++) {
-      activated[i] = false;
-      absentCount[i] = 0;
-    }
-  }
-
   bool HasForbidden(Configuration &c, int curIter) {
     LifeState workspace;
     PutStartState(workspace, c);
@@ -1379,16 +1256,6 @@ public:
     }
 
     return false;
-  }
-
-  bool IsAllActivated() {
-    for (int j = 0; j < numIters; j++) {
-      if (activated[j] == false || absentCount[j] != 0) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
   void PutStartState(LifeState &workspace, Configuration &conf) {
@@ -1550,14 +1417,13 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(
-        config, history, masks, shiftedTargets,
-        std::array<int, MAX_CATALYSTS>(), std::array<int, MAX_CATALYSTS>(),
-        std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
+    RecursiveSearch(config, history, LifeState(), masks, shiftedTargets,
+                    std::array<int, MAX_CATALYSTS>(), std::array<int, MAX_CATALYSTS>(),
+                    std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
   }
 
   void
-  RecursiveSearch(Configuration config, LifeState history,
+  RecursiveSearch(Configuration config, LifeState history, LifeState required,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
@@ -1572,6 +1438,28 @@ public:
 
       if (config.count == 0) {
         std::cout << "Collision at gen " << g << std::endl;
+      }
+
+      if (!config.state.Contains(required))
+        return;
+
+      for (int i = 0; i < config.count; i++) {
+        // if (hasRecovered[i]) {
+        //   continue;
+        // }
+        if (config.state.Contains(shiftedTargets[i])) {
+          missingTime[i] = 0;
+          recoveredTime[i] += 1;
+        } else {
+          hasReacted[i] = true;
+          missingTime[i] += 1;
+          recoveredTime[i] = 0;
+        }
+        if (hasReacted[i] && recoveredTime[i] > params.stableInterval)
+          hasRecovered[i] = true;
+
+        if (missingTime[i] > maxMissing[i])
+          return;
       }
 
       LifeState newcells = config.state;
@@ -1591,9 +1479,15 @@ public:
             auto newPlacement = newPlacements.FirstOn();
 
             if (config.count == 0) {
-              std::cout << "Placing catalyst " << s << " at " << newPlacement.first << ", "
-                        << newPlacement.second << std::endl;
+              std::cout << "Placing catalyst " << s << " at "
+                        << newPlacement.first << ", " << newPlacement.second
+                        << std::endl;
+              // newPlacements.Print();
             }
+
+            // if (newPlacement.first == -1 && newPlacement.second == -1) {
+            //   exit(0);
+            // }
 
             // if (newPlacement.first == 1 && newPlacement.second == 60) {
             //   masks[0].Print();
@@ -1619,6 +1513,9 @@ public:
 
             shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
 
+            LifeState newRequired = required;
+            newRequired.Join(requiredParts[s], newPlacement.first, newPlacement.second);
+
             std::array<int, MAX_CATALYSTS> newMissingTime = missingTime;
             newMissingTime[config.count] = 0;
             std::array<int, MAX_CATALYSTS> newRecoveredTime = recoveredTime;
@@ -1630,15 +1527,27 @@ public:
 
             std::vector<LifeState> newMasks = masks;
 
+            LifeState bounds;
+            if (params.maxW != -1) {
+              bounds = LifeState::SolidRect(
+                  newPlacement.first - params.maxW,
+                  newPlacement.second - params.maxH, 2 * params.maxW - 1,
+                  2 * params.maxH - 1);
+            }
+
             // If we have placed the last catalyst, don't bother
             if (newConfig.count != params.numCatalysts) {
               for (int t = 0; t < catalysts.size(); t++) {
                 newMasks[t].Join(catalystCollisionMasks[s][t],
                                  newPlacement.first, newPlacement.second);
+
+                if (params.maxW != -1) {
+                  newMasks[t].Copy(bounds, ORNOT);
+                }
               }
             }
 
-            RecursiveSearch(newConfig, history, newMasks, shiftedTargets, newMissingTime,
+            RecursiveSearch(newConfig, history, newRequired, newMasks, shiftedTargets, newMissingTime,
                             newRecoveredTime, newHasReacted, newHasRecovered);
 
             masks[s].Set(newPlacement.first, newPlacement.second);
@@ -1655,24 +1564,6 @@ public:
         }
       }
 
-      for (int i = 0; i < config.count; i++) {
-        // if (hasRecovered[i]) {
-        //   continue;
-        // }
-        if (config.state.Contains(shiftedTargets[i])) {
-          missingTime[i] = 0;
-          recoveredTime[i] += 1;
-        } else {
-          hasReacted[i] = true;
-          missingTime[i] += 1;
-          recoveredTime[i] = 0;
-        }
-        if (hasReacted[i] && recoveredTime[i] > params.stableInterval)
-          hasRecovered[i] = true;
-
-        if (missingTime[i] > maxMissing[i])
-          return;
-      }
 
       bool allRecovered = true;
       for (int i = 0; i < config.count; i++) {
