@@ -446,9 +446,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
 struct Configuration {
   int count;
-  std::vector<int> curx;
-  std::vector<int> cury;
-  std::vector<int> curs;
+  std::array<int, MAX_CATALYSTS> curx;
+  std::array<int, MAX_CATALYSTS> cury;
+  std::array<int, MAX_CATALYSTS> curs;
   // int minIter;
   LifeState state;
   LifeState catalystsState;
