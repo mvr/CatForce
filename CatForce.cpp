@@ -1462,120 +1462,101 @@ public:
           return;
       }
 
-      LifeState newcells = config.state;
-      newcells.Copy(history, ANDNOT);
-      history.Copy(config.state, OR);
 
       // Try adding a catalyst
-      if (config.state.gen >= params.startGen &&
-          config.count < params.numCatalysts &&
-          !newcells.IsEmpty()) {
-        for(int s = 0; s < catalysts.size(); s++) {
-          LifeState newPlacements = newcells.Convolve(catalystReactionMasks[s]);
-          newPlacements.Copy(masks[s], ANDNOT);
+      if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
+        LifeState newcells = config.state;
+        newcells.Copy(history, ANDNOT);
+        history.Copy(config.state, OR);
 
-          while (!newPlacements.IsEmpty()) {
-            // Do the placement
-            auto newPlacement = newPlacements.FirstOn();
+        if (!newcells.IsEmpty()) {
+          for(int s = 0; s < catalysts.size(); s++) {
+            LifeState newPlacements = newcells.Convolve(catalystReactionMasks[s]);
+            newPlacements.Copy(masks[s], ANDNOT);
 
-            if (config.count == 0) {
-              std::cout << "Placing catalyst " << s << " at "
-                        << newPlacement.first << ", " << newPlacement.second
-                        << std::endl;
-              // newPlacements.Print();
-            }
+            while (!newPlacements.IsEmpty()) {
+              // Do the placement
+              auto newPlacement = newPlacements.FirstOn();
 
-            // if (newPlacement.first == -1 && newPlacement.second == -1) {
-            //   exit(0);
-            // }
+              if (config.count == 0) {
+                std::cout << "Placing catalyst " << s << " at "
+                          << newPlacement.first << ", " << newPlacement.second
+                          << std::endl;
+                // newPlacements.Print();
+              }
 
-            // if (newPlacement.first == 1 && newPlacement.second == 60) {
-            //   masks[0].Print();
-            //   config.state.Print();
-            //   exit(0);
-            //   // config.state.Print();
-            //   // std::cout << "Time " << g << " missing " << missingTime[0] <<
-            //   // ", "
-            //   //           << recoveredTime[0] << std::endl;
-            //   // if (recoveredTime[0] > 5)
-            //   //   exit(0);
-            // }
+              Configuration newConfig = config;
+              newConfig.count += 1;
+              newConfig.curx[config.count] = newPlacement.first;
+              newConfig.cury[config.count] = newPlacement.second;
+              newConfig.curs[config.count] = s;
 
-            Configuration newConfig = config;
-            newConfig.count += 1;
-            newConfig.curx.push_back(newPlacement.first);
-            newConfig.cury.push_back(newPlacement.second);
-            newConfig.curs.push_back(s);
-            LifeState shiftedCatalyst = catalysts[s];
-            shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
-            newConfig.state.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
-            newConfig.catalystsState.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
+              LifeState shiftedCatalyst = catalysts[s];
+              shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
+              newConfig.state.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
+              newConfig.catalystsState.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
 
-            shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
+              shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
 
-            LifeState newRequired = required;
-            newRequired.Join(requiredParts[s], newPlacement.first, newPlacement.second);
+              LifeState newRequired = required;
+              newRequired.Join(requiredParts[s], newPlacement.first, newPlacement.second);
 
-            std::array<int, MAX_CATALYSTS> newMissingTime = missingTime;
-            newMissingTime[config.count] = 0;
-            std::array<int, MAX_CATALYSTS> newRecoveredTime = recoveredTime;
-            newRecoveredTime[config.count] = 0;
-            std::array<bool, MAX_CATALYSTS> newHasReacted = hasReacted;
-            newHasReacted[config.count] = false;
-            std::array<bool, MAX_CATALYSTS> newHasRecovered = hasRecovered;
-            newHasRecovered[config.count] = false;
+              std::array<int, MAX_CATALYSTS> newMissingTime = missingTime;
+              std::array<int, MAX_CATALYSTS> newRecoveredTime = recoveredTime;
+              std::array<bool, MAX_CATALYSTS> newHasReacted = hasReacted;
+              std::array<bool, MAX_CATALYSTS> newHasRecovered = hasRecovered;
 
-            std::vector<LifeState> newMasks = masks;
+              std::vector<LifeState> newMasks = masks;
 
-            LifeState bounds;
-            if (params.maxW != -1) {
-              bounds = LifeState::SolidRect(
-                  newPlacement.first - params.maxW,
-                  newPlacement.second - params.maxH, 2 * params.maxW - 1,
-                  2 * params.maxH - 1);
-            }
+              LifeState bounds;
+              if (params.maxW != -1) {
+                bounds = LifeState::SolidRect(newPlacement.first - params.maxW,
+                                              newPlacement.second - params.maxH,
+                                              2 * params.maxW - 1,
+                                              2 * params.maxH - 1);
+              }
 
-            // If we have placed the last catalyst, don't bother
-            if (newConfig.count != params.numCatalysts) {
-              for (int t = 0; t < catalysts.size(); t++) {
-                newMasks[t].Join(catalystCollisionMasks[s][t],
-                                 newPlacement.first, newPlacement.second);
+              // If we just placed the last catalyst, don't bother
+              if (newConfig.count != params.numCatalysts) {
+                for (int t = 0; t < catalysts.size(); t++) {
+                  newMasks[t].Join(catalystCollisionMasks[s][t],
+                                   newPlacement.first, newPlacement.second);
 
-                if (params.maxW != -1) {
-                  newMasks[t].Copy(bounds, ORNOT);
+                  if (params.maxW != -1) {
+                    newMasks[t].Copy(bounds, ORNOT);
+                  }
                 }
               }
+
+              RecursiveSearch(newConfig, history, newRequired, newMasks, shiftedTargets, newMissingTime,
+                              newRecoveredTime, newHasReacted, newHasRecovered);
+
+              masks[s].Set(newPlacement.first, newPlacement.second);
+              newPlacements.Erase(newPlacement.first, newPlacement.second);
             }
+          }
+        }
 
-            RecursiveSearch(newConfig, history, newRequired, newMasks, shiftedTargets, newMissingTime,
-                            newRecoveredTime, newHasReacted, newHasRecovered);
-
-            masks[s].Set(newPlacement.first, newPlacement.second);
-            newPlacements.Erase(newPlacement.first, newPlacement.second);
+        // Still block the locations that are hit too early
+        if (config.state.gen < params.startGen) {
+          for (int s = 0; s < catalysts.size(); s++) {
+            LifeState hitLocations = newcells.Convolve(catalystReactionMasks[s]);
+            masks[s].Join(hitLocations);
           }
         }
       }
 
-      // Still block the locations that are hit too early
-      if (config.state.gen < params.startGen) {
-        for (int s = 0; s < catalysts.size(); s++) {
-          LifeState hitLocations = newcells.Convolve(catalystReactionMasks[s]);
-          masks[s].Join(hitLocations);
+      if (config.count == params.numCatalysts) {
+        bool allRecovered = true;
+        for (int i = 0; i < config.count; i++) {
+          if (!hasRecovered[i]) {
+            allRecovered = false;
+          }
         }
-      }
-
-
-      bool allRecovered = true;
-      for (int i = 0; i < config.count; i++) {
-        if (!hasRecovered[i]) {
-          allRecovered = false;
+        if(allRecovered) {
+          ReportSolution(config, g);
+          return;
         }
-      }
-      if (config.count == params.numCatalysts && allRecovered) {
-        // std::cout << config.curx[0] << ", " << config.cury[0] << std::endl;
-        // exit(0);
-        ReportSolution(config, g);
-        return;
       }
 
       if (config.count == 0)
