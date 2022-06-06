@@ -235,13 +235,13 @@ public:
     if (op == ORNOT) {
       for (int i = 0; i < N; i++)
         state[i] |= ~delta.state[i];
+      RecalculateMinMax();
     }
     if (op == XOR) {
       for (int i = 0; i < N; i++)
         state[i] ^= delta.state[i];
+      RecalculateMinMax();
     }
-
-    RecalculateMinMax();
   }
 
   void Copy(const LifeState &delta) { Copy(delta, COPY); }
