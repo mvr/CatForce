@@ -376,10 +376,7 @@ public:
       differences |= difference;
     }
 
-    if (differences == 0)
-      return true;
-    else
-      return false;
+    return differences == 0;
   }
 
   inline bool Contains(const LifeState &pat) const {
@@ -393,10 +390,7 @@ public:
       differences |= difference;
     }
 
-    if (differences == 0)
-      return true;
-    else
-      return false;
+    return differences == 0;
   }
 
   bool Contains(const LifeState &pat, int targetDx, int targetDy) const {
