@@ -692,6 +692,29 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b) {
   return mask;
 }
 
+std::string GetRLE(const LifeState &s);
+
+LifeState LoadCollisionMask(const LifeState &a, const LifeState &b) {
+  std::stringstream ss;
+  ss << "masks/mask-" << a.GetHash() << "-" << b.GetHash();
+  std::string fname = ss.str();
+
+  std::ifstream infile;
+  infile.open(fname.c_str(), std::ifstream::in);
+  if (!infile.good()) {
+    LifeState mask = CollisionMask(a, b);
+    std::ofstream outfile;
+    outfile.open(fname.c_str(), std::ofstream::out);
+    outfile << GetRLE(mask);
+    return mask;
+  } else {
+    std::stringstream buffer;
+    buffer << infile.rdbuf();
+    std::string rle = buffer.str();
+    return LifeState::Parse(rle.c_str());
+  }
+}
+
 void GenerateStates(const std::vector<CatalystInput> &catalysts,
                     std::vector<LifeState> &states,
                     std::vector<LifeState> &required,
@@ -1078,7 +1101,7 @@ public:
       catalystReactionMasks[s] = catalysts[s].BigZOI();
       catalystReactionMasks[s].Transform(Rotate180OddBoth);
       for (int t = 0; t < catalysts.size(); t++) {
-        catalystCollisionMasks[s][t] = CollisionMask(catalysts[s], catalysts[t]);
+        catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
       }
     }
 
