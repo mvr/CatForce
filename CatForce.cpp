@@ -356,9 +356,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
             params.symmetryChain = {ReflectY};
           } else if (rest == "|even" or rest == "horizontaleven"){
             params.symmetryChain = {ReflectYEven};
-          } else if ( rest == "/" or rest == "/odd") {
+          } else if ( rest == "/" or rest == "/odd" or rest == "negdiagodd") {
             params.symmetryChain = {ReflectYeqNegX};
-          } else if ( rest == "\\" or rest == "\\odd") {
+          } else if ( rest == "\\" or rest == "\\odd" or rest == "diagodd") {
             params.symmetryChain = {ReflectYeqX};
           } else {
             badSymmetry = true;
