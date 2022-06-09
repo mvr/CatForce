@@ -575,13 +575,45 @@ public:
     return zoi;
   }
 
+  static inline void ConvolveInner(LifeState &result, const uint64_t (&doubledother)[N*2], uint64_t x, unsigned int k, unsigned int postshift) {
+    for (int i = 0; i < N; i++) {
+      result.state[i] |= __builtin_rotateleft64(convolve_uint64_t(x, doubledother[i+k]), postshift);
+    }
+  }
+
   LifeState Convolve(const LifeState &other) const {
     LifeState result;
+    uint64_t doubledother[N*2];
+    memcpy(doubledother,     other.state, N * sizeof(uint64_t));
+    memcpy(doubledother + N, other.state, N * sizeof(uint64_t));
+
     for (int j = 0; j < N; j++) {
-      if (state[j] == 0)
+      uint64_t x = state[j];
+      if(x == 0)
         continue;
-      for (int i = 0; i < N; i++) {
-        result.state[i] |= convolve_uint64_t(state[j], other.state[(i-j+64) % 64]);
+
+      unsigned int postshift;
+
+      if((x & 1) == 0) { // Possibly wrapped
+        int lsb = __builtin_ctzll(x);
+        x = __builtin_rotateright64(x, lsb);
+        postshift = lsb;
+      } else{
+        int lead = __builtin_clzll(~x);
+        x = __builtin_rotateleft64(x, lead);
+        postshift = 64-lead;
+      }
+
+      switch(x) {
+      case (1 << 1) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
+      case (1 << 2) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
+      case (1 << 3) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
+      case (1 << 4) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
+      case (1 << 5) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
+      case (1 << 6) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
+      case (1 << 7) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
+      case (1 << 8) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
+      default:           ConvolveInner(result, doubledother, x, 64-j, postshift); break;
       }
     }
 
