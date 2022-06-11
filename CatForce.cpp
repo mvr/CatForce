@@ -837,6 +837,16 @@ std::string GetRLE(const std::vector<std::vector<int>> &life2d) {
   return result.str();
 }
 
+std::string GetRLE(const LifeState &s) {
+  std::vector<std::vector<int>> vec(N, std::vector<int>(N));
+
+  for (int j = 0; j < N; j++)
+    for (int i = 0; i < N; i++)
+      vec[i][j] = s.GetCell(i - 32, j - 32);
+
+  return GetRLE(vec);
+}
+
 class SearchResult {
 public:
   // Saved for the report
