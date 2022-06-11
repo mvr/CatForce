@@ -70,7 +70,8 @@ public:
   int searchArea[4]{};
   int maxW;
   int maxH;
-  std::vector<SymmetryTransform> symmetryChain;
+  std::vector<AffineTransform> symmetryChain;
+
   std::vector<std::string> targetFilter;
   std::vector<int> filterdx;
   std::vector<int> filterdy;
@@ -148,49 +149,133 @@ public:
   }
 };
 
-void CharToTransVec(char ch, std::vector<SymmetryTransform> &trans) {
-  trans.push_back(Identity);
 
-  if (ch == '.')
+// returns empty if it can't parse.
+std::vector<AffineTransform> SymmetryGroupFromString(const std::string & groupName){
+
+  AffineTransform Identity;
+  AffineTransform ReflectAcrossX(1,0,0,-1);
+  AffineTransform ReflectAcrossY(-1,0,0,1);
+  AffineTransform ReflectAcrossYeqX(0,1,1,0);
+  AffineTransform ReflectAcrossYeqNegXP1(0,-1,-1,0);
+  AffineTransform ReflectAcrossXEven(1,0,0,-1,0,-1);
+  AffineTransform ReflectAcrossYEven(-1,0,0,1,-1,0);
+  AffineTransform ReflectAcrossYeqNegX(0,-1,-1,0,-1,-1);
+  AffineTransform Rotate90(0,-1,1,0);
+  AffineTransform Rotate270(0,1,-1,0);
+  AffineTransform Rotate90Even(0,-1,1,0,-1,0);
+  AffineTransform Rotate270Even(0,1,-1,0,0,-1);
+  AffineTransform Rotate180OddBoth(-1,0,0,-1);
+  AffineTransform Rotate180EvenBoth(-1,0,0,-1,-1,-1);
+  AffineTransform Rotate180EvenHorizontal(-1,0,0,-1,-1,0); // horizontal bounding box dimension is even.
+  AffineTransform Rotate180EvenVertical(-1,0,0,-1,0,-1); // vertical bounding box dimension is even.
+
+  std::string start = groupName.substr(0,2);
+  std::string rest = groupName.substr(2);
+  if (start == "C1" or start == "no"){
+    return {Identity};
+  } else if (start == "D2"){
+    if (rest == "-" or rest == "vertical" or rest == "verticalodd" or rest == "-odd"){
+      return {Identity, ReflectAcrossX};
+    } else if (rest == "-even" or rest == "verticaleven"){
+      return {Identity, ReflectAcrossXEven};
+    } else if (rest == "|" or rest == "horizontal" or rest == "horizontalodd" or rest == "|odd"){
+      return {Identity, ReflectAcrossY};
+    } else if (rest == "|even" or rest == "horizontaleven"){
+      return {Identity, ReflectAcrossYEven};
+    } else if ( rest == "/" or rest == "/odd") {
+      return {Identity, ReflectAcrossYeqNegXP1};
+    } else if ( rest == "\\" or rest == "\\odd") {
+      return {Identity, ReflectAcrossYeqX};
+    }
+  } else if (start == "C2") {
+    if (rest == "odd" or rest == "oddboth" or rest == "bothodd" or rest == ""){
+      return {Identity,Rotate180OddBoth};
+    } else if (rest == "even" or rest == "botheven" or rest == "evenboth"){
+      return {Identity,Rotate180EvenBoth};
+    } else if (rest == "horizontaleven" or rest == "|even"){
+      return {Identity,Rotate180EvenHorizontal};
+    } else if (rest == "verticaleven" or rest == "-even"){
+      return {Identity, Rotate180EvenVertical};
+    }
+  } else if (start == "C4"){
+    if (rest == "" or rest == "odd" or rest == "oddboth" or rest == "bothodd"){
+      return {Identity, Rotate90, Rotate180OddBoth, Rotate270};
+    } else if (rest == "even" or rest =="evenboth" or rest == "botheven") {
+      return {Identity, Rotate90Even, Rotate180EvenBoth, Rotate270Even};
+    }
+  } else if (start == "D4"){
+    std::string evenOddInfo = rest.substr(1);
+    if (rest[0] == '+'){
+      if(evenOddInfo == "" or evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == "bothodd"){
+        return {Identity, ReflectAcrossX, ReflectAcrossY, Rotate180OddBoth};
+      } else if (evenOddInfo == "even" or evenOddInfo =="evenboth" or evenOddInfo == "botheven"){
+        return {Identity, ReflectAcrossXEven, Rotate180EvenBoth, ReflectAcrossYEven};
+      } else if ( evenOddInfo == "verticaleven" or evenOddInfo == "-even") {
+        return {Identity, ReflectAcrossXEven, Rotate180EvenVertical, ReflectAcrossY}; // should this be evenX or evenY?
+      } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even") {
+        return {Identity, ReflectAcrossX, Rotate180EvenHorizontal, ReflectAcrossYEven}; // should this be evenX or evenY?
+      }
+    } else if (rest[0] == 'x') {
+      if (evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == ""){
+        return {Identity, ReflectAcrossYeqX, Rotate180OddBoth,ReflectAcrossYeqNegXP1};
+      } else if (evenOddInfo == "even" or evenOddInfo == "evenboth"){
+        return {Identity, ReflectAcrossYeqX, Rotate180EvenBoth, ReflectAcrossYeqNegX};
+      }
+    }
+  } else if (start == "D8") {
+    if (rest == "odd" or rest == "oddboth" or rest == ""){
+      return {Identity, ReflectAcrossX, ReflectAcrossY, Rotate90, Rotate270, Rotate180OddBoth, ReflectAcrossYeqX, ReflectAcrossYeqNegXP1};
+    } else if (rest == "even" or rest == "evenboth"){
+      return {Identity, ReflectAcrossXEven, ReflectAcrossYEven, Rotate90Even, Rotate270Even, Rotate180EvenBoth, ReflectAcrossYeqX, ReflectAcrossYeqNegX};
+    }
+  }
+  return {};
+}
+
+void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
+  AffineTransform Identity;
+  AffineTransform ReflectAcrossX(1,0,0,-1);
+  AffineTransform ReflectAcrossY(-1,0,0,1);
+  AffineTransform ReflectAcrossYeqX(0,1,1,0);
+  AffineTransform ReflectAcrossYeqNegXP1(0,-1,-1,0);
+  AffineTransform Rotate90(0,-1,1,0);
+  AffineTransform Rotate270(0,1,-1,0);
+  AffineTransform Rotate180OddBoth(-1,0,0,-1);
+
+  if (ch == '.'){
+    trans = SymmetryGroupFromString("C1");
     return;
-
-  if (ch == '|') {
-    trans.push_back(ReflectY);
+  } if (ch == '|') {
+    trans = SymmetryGroupFromString("D2|");
     return;
   }
 
   if (ch == '-') {
-    trans.push_back(ReflectX);
+    trans = SymmetryGroupFromString("D2-");
     return;
   }
 
   if (ch == '+') {
-    trans.push_back(ReflectX);
-    trans.push_back(ReflectY);
-    trans.push_back(Rotate180OddBoth);
+    trans = SymmetryGroupFromString("D4+");
     return;
   }
 
   if (ch == '/' || ch == '\\') {
-    trans.push_back(ReflectYeqX);
+    trans = SymmetryGroupFromString("D2\\");
     return;
   }
   // For 180 degree symetrical
   if (ch == 'x') {
+    trans.push_back(Identity);
     trans.push_back(Rotate90);
-    trans.push_back(ReflectX);
-    trans.push_back(ReflectYeqX);
+    trans.push_back(ReflectAcrossX);
+    trans.push_back(ReflectAcrossYeqX);
     return;
   }
 
   if (ch == '*') {
-    trans.push_back(ReflectX);
-    trans.push_back(ReflectY);
-    trans.push_back(Rotate90);
-    trans.push_back(Rotate180OddBoth);
-    trans.push_back(Rotate270);
-    trans.push_back(ReflectYeqX);
-    trans.push_back(ReflectYeqNegXP1);
+    trans=SymmetryGroupFromString("D8");
     return;
   }
 
@@ -200,6 +285,41 @@ void CharToTransVec(char ch, std::vector<SymmetryTransform> &trans) {
     trans.push_back(Rotate270);
     return;
   }
+}
+
+std::vector<AffineTransform> SymmetryChainFromGroup(const std::vector<AffineTransform> & symmetryGroup){
+  
+  std::vector<AffineTransform> reorderedGroup; 
+  std::vector<AffineTransform> remaining(symmetryGroup);
+  
+  // identity first.
+  reorderedGroup.push_back(AffineTransform());
+  remaining.erase(std::remove(remaining.begin(), remaining.end(), AffineTransform()), remaining.end());
+
+  for(int i = 1; i < symmetryGroup.size(); ++i){
+    // where possible, reorder so it alternates, orientation preserving and reversing
+    // this way, symmetryChain will be entirely reflections, which is more efficient
+    bool wantOrientationPreserving = (i % 2 == 0);
+    int j = 0;
+    while (j < remaining.size() && remaining[j].IsOrientationPreserving() != wantOrientationPreserving){
+      ++j;
+    }
+    if( j == remaining.size() ){
+      reorderedGroup.push_back(remaining[remaining.size()-1]);
+      remaining.pop_back();
+    } else {
+      reorderedGroup.push_back(remaining[j]);
+      remaining.erase(remaining.begin()+j);
+    }
+  }
+
+  // ith element of chain is g_i^-1 * g_{i+1}.
+  std::vector<AffineTransform> symmetryChain;
+  for(int i = 0; i < reorderedGroup.size()-1; ++i){
+    symmetryChain.push_back(reorderedGroup[i].Inverse().Compose(reorderedGroup[i+1]));
+  }
+
+  return symmetryChain;
 }
 
 void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
@@ -229,8 +349,6 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string symmetry = "symmetry";
 
   std::string line;
-
-  bool badSymmetry = false;
 
   while (std::getline(infile, line)) {
     try {
@@ -339,84 +457,12 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         } else {
           symmetryString = elems[1];
         }
-
-        std::string start = symmetryString.substr(0,2);
-        std::string rest = symmetryString.substr(2);
-        if (start == "D2"){
-          if (rest == "-" or rest == "vertical" or rest == "verticalodd" or rest == "-odd"){
-            params.symmetryChain = {ReflectX};
-          } else if (rest == "-even" or rest == "verticaleven"){
-            params.symmetryChain = {ReflectXEven};
-          } else if (rest == "|" or rest == "horizontal" or rest == "horizontalodd" or rest == "|odd"){
-            params.symmetryChain = {ReflectY};
-          } else if (rest == "|even" or rest == "horizontaleven"){
-            params.symmetryChain = {ReflectYEven};
-          } else if ( rest == "/" or rest == "/odd") {
-            params.symmetryChain = {ReflectYeqNegX};
-          } else if ( rest == "\\" or rest == "\\odd") {
-            params.symmetryChain = {ReflectYeqX};
-          } else {
-            badSymmetry = true;
-          }
-        } else if (start == "C2") {
-          if (rest == "odd" or rest == "oddboth" or rest == "bothodd" or rest == ""){
-            params.symmetryChain = { Rotate180OddBoth};
-          } else if (rest == "even" or rest == "botheven" or rest == "evenboth"){
-            params.symmetryChain = { Rotate180EvenBoth};
-          } else if (rest == "horizontaleven" or rest == "|even"){
-            params.symmetryChain = { Rotate180EvenX};
-          } else if (rest == "verticaleven" or rest == "-even"){
-            params.symmetryChain = {Rotate180EvenY};
-          } else {
-            badSymmetry = true;
-          }
-        } else if (start == "C4"){
-          if (rest == "" or rest == "odd" or rest == "oddboth" or rest == "bothodd"){
-            params.symmetryChain = {Rotate90, Rotate90, Rotate90}; //{Rotate90, Rotate180OddBoth, Rotate270};
-          } else if (rest == "even" or rest =="evenboth" or rest == "botheven") {
-            params.symmetryChain = { Rotate90Even, Rotate90Even, Rotate90Even};//{ Rotate90Even, Rotate180EvenBoth, Rotate270Even};
-          } else {
-            badSymmetry = true;
-          }
-        } else if (start == "D4"){
-          std::string evenOddInfo = rest.substr(1);
-          if (rest[0] == '+'){
-            if(evenOddInfo == "" or evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == "bothodd"){
-              params.symmetryChain = { ReflectX, ReflectY, ReflectX};//{ ReflectX, ReflectY, Rotate180OddBoth};
-            } else if (evenOddInfo == "even" or evenOddInfo =="evenboth" or evenOddInfo == "botheven"){
-              params.symmetryChain = { ReflectXEven, ReflectYEven, ReflectXEven}; //{ ReflectXEven, ReflectYEven, Rotate180EvenBoth};
-            } else if ( evenOddInfo == "verticaleven" or evenOddInfo == "-even") {
-              params.symmetryChain = { ReflectXEven, ReflectY, ReflectXEven};//{ ReflectXEven, ReflectY, Rotate180EvenX};
-            } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even") {
-              params.symmetryChain = { ReflectX, ReflectYEven, ReflectX};//{ ReflectX, ReflectYEven, Rotate180EvenY};
-            } else {
-              badSymmetry = true;
-            }
-          } else if (rest[0] == 'x') {
-            if (evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == ""){
-              params.symmetryChain = {ReflectYeqX, ReflectYeqNegXP1, ReflectYeqX};//{ ReflectYeqX, ReflectYeqNegXP1, Rotate180OddBoth};
-            } else if (evenOddInfo == "even" or evenOddInfo == "evenboth"){
-              params.symmetryChain = { ReflectYeqX, ReflectYeqNegX,ReflectYeqX};//{ ReflectYeqX, ReflectYeqNegX, Rotate180EvenBoth};
-            } else {
-              badSymmetry = true;
-            }
-          } else {
-              badSymmetry = true;
-          }
-        } else if (start == "D8") {
-          if (rest == "odd" or rest == "oddboth" or rest == ""){
-            params.symmetryChain = {ReflectY, ReflectYeqNegXP1, ReflectX, ReflectYeqX, ReflectY, ReflectYeqNegXP1, ReflectX};
-            // reflections are faster than 90 degree rotations, so we reflect around in a circle.
-            //{ ReflectX, ReflectY, Rotate90, Rotate270, Rotate180OddBoth, ReflectYeqX, ReflectYeqNegXP1};
-          } else if (rest == "even" or rest == "evenboth"){
-            params.symmetryChain = {ReflectYEven, ReflectYeqNegX, ReflectXEven, ReflectYeqX, ReflectYEven, ReflectYeqNegX, ReflectXEven};
-            //{ ReflectXEven, ReflectYEven, Rotate90Even, Rotate270Even, Rotate180EvenBoth, ReflectYeqX, ReflectYeqNegX};
-          } else {
-            badSymmetry = true;
-          }
-        } else {
-          badSymmetry = true;
+        auto symGroup = SymmetryGroupFromString(symmetryString);
+        if(symGroup.size() == 0){
+          std::cout << "Couldn't parse symmetry option " << symmetryString << std::endl;
+          exit(0);
         }
+        params.symmetryChain = SymmetryChainFromGroup(symGroup);
       }
 
     } catch (const std::exception &ex) {
@@ -431,10 +477,6 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   }
   if (catalysts.empty()) {
     std::cout << "Did not read any catalysts!" << std::endl;
-    exit(1);
-  }
-  if (badSymmetry) {
-    std::cout << "Couldn\'t parse symmetry option" << std::endl;
     exit(1);
   }
 }
@@ -661,7 +703,7 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
                     std::vector<std::vector<LifeTarget>> &forbidden,
                     std::vector<int> &maxSurvive) {
   for (const auto & catalyst : catalysts) {
-    std::vector<SymmetryTransform> trans;
+    std::vector<AffineTransform> trans;
     CharToTransVec(catalyst.symmType, trans);
 
     const char *rle = catalyst.rle.c_str();
@@ -670,6 +712,7 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
     int maxDesapear = catalyst.maxDesapear;
 
     for (auto & tran : trans) {
+      // here the shift applies BEFORE the transformation.
       states.push_back(LifeState::Parse(rle, dx, dy, tran));
       maxSurvive.push_back(maxDesapear);
 

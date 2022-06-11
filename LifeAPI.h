@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
+#include <array>
 #include <string.h>
 #include <vector>
 
@@ -81,26 +83,74 @@ uint64_t rand64() {
 
 enum CopyType { COPY, OR, XOR, AND };
 
-enum SymmetryTransform {
-  Identity, // only used for catalyst initialization. The identity is omitted
-            // for symmetry of the pattern.
-  ReflectXEven,
-  ReflectX,
-  ReflectYEven,
-  ReflectY,
-  Rotate90Even,
-  Rotate90,
-  Rotate270Even,
-  Rotate270,
-  Rotate180OddBoth,
-  Rotate180EvenX,
-  Rotate180EvenY,
-  Rotate180EvenBoth,
-  ReflectYeqX,
-  ReflectYeqNegX,
-  ReflectYeqNegXP1 // reflect across y = -x+3/2, fixing (0,0), instead of
-                   // y=-x+1/2, sending (0,0) to (-1,-1). Needed for D4x_1
-                   // symmetry.
+// array here is mostly for convenience, so I can use == and =
+// for comparison and assignment, instead of loops.
+class AffineTransform {
+  public:
+    std::array<int,2> transl;
+    std::array<int,4> matrix;
+  public:
+    AffineTransform(int axx, int axy, int ayx, int ayy,int x0, int y0) :
+    transl{x0, y0}, matrix{axx, axy, ayx, ayy} {};
+
+    AffineTransform(int axx, int axy, int ayx, int ayy) :
+    transl{0, 0}, matrix{axx, axy, ayx, ayy} {};
+
+    AffineTransform() : transl{0, 0}, matrix{1, 0, 0, 1} {};
+
+    AffineTransform(int x0, int y0) : transl{x0,y0}, matrix{0,0,0,0} {};
+
+    bool operator==(const AffineTransform & other){
+      return transl == other.transl && matrix == other.matrix;
+    }
+
+    //AffineTransform & operator= ( const AffineTransform & other ){
+
+    //}
+    
+    std::array<int,2> ActOn(const std::array<int,2> & vec) {
+      
+      return std::array<int,2>({matrix[0]*vec[0]+matrix[1]*vec[1]+transl[0],
+                                matrix[2]*vec[0]+matrix[3]*vec[1]+transl[1]});
+    }
+
+    AffineTransform Compose(const AffineTransform & other){ // A1(A2x+b2)+b1 = (A1 A2)x + (A1 b2 + b1)
+      int newX0 = matrix[0]*other.transl[0]+matrix[1]*other.transl[1]+transl[0];
+      int newY0 = matrix[2]*other.transl[0]+matrix[3]*other.transl[1]+transl[1];
+      int newAxx = matrix[0]*other.matrix[0]+matrix[1]*other.matrix[2];
+      int newAxy = matrix[0]*other.matrix[1]+matrix[1]*other.matrix[3];
+      int newAyx = matrix[2]*other.matrix[0]+matrix[3]*other.matrix[2];
+      int newAyy = matrix[2]*other.matrix[1]+matrix[3]*other.matrix[3];
+      return AffineTransform(newAxx, newAxy, newAyx, newAyy, newX0, newY0);
+    }
+
+    AffineTransform Inverse(){
+      int det = matrix[0]*matrix[3]-matrix[1]*matrix[2];
+      assert(det == 1 || det == -1);
+      // y = Ax+b becomes x = A^{-1}y-A^{-1}b
+      AffineTransform inverse =   AffineTransform(det*matrix[3], -1*det*matrix[1],
+                          -1*det*matrix[2], det*matrix[0]); // compute inverse matrix A^{-1}
+      inverse.transl = inverse.ActOn(transl); // this is A^{-1} b
+      inverse.transl[0] *= -1;
+      inverse.transl[1] *= -1;
+
+      return inverse;
+    }
+
+    bool IsOrientationPreserving(){
+      return matrix[0]*matrix[3]-matrix[1]*matrix[2] > 0;
+    }
+
+    void Print() {
+      for( auto num : matrix ) {
+        std::cout << std::to_string( num ) << " ";
+      }
+      std::cout << std::to_string(transl[0]) << " " << std::to_string(transl[1]) << std::endl;
+    }
+
+    /*AffineTransform ShiftedBy(const std::array<int,2> & otherTransl){
+      return AffineTransform(matrix[0], matrix[1], matrix[2], matrix[3], transl[0] + otherTransl[0], trans[1]+otherTransl[1]);
+    }*/
 };
 
 inline uint64_t RotateLeft(uint64_t x, unsigned int k) {
@@ -256,7 +306,7 @@ public:
   }
 
   void JoinWSymChain(const LifeState &state, int x, int y,
-                     const std::vector<SymmetryTransform> &symChain) {
+                     const std::vector<AffineTransform> &symChain) {
     // instead of passing in the symmetry group {id, g_1, g_2,...g_n} and
     // applying each to default orientation we pass in a "chain" of symmetries
     // {h_1, ...h_n-1} that give the group when "chained together": g_j =
@@ -277,7 +327,7 @@ public:
   }
 
   void JoinWSymChain(const LifeState &state,
-                     const std::vector<SymmetryTransform> &symChain) {
+                     const std::vector<AffineTransform> &symChain) {
     Join(state); // identity transformation
     if (symChain.size() == 0)
       return;
@@ -433,10 +483,14 @@ public:
     }
   }
 
-  void FlipY() { // even reflection across y-axis, ie (0,0) maps to (0, -1)
-    Reverse(0, N - 1);
+  void FlipAcrossY() {
+    Reverse(0, N - 1); // (0,0) => (-1, 0)
+    Move(1,0); // now it fixes (0,0)
   }
 
+  // true: flip across main matrix diagonal, coordinates flip across y = -x-1
+  //       note that this doesn't fix (0,0)!
+  // false: flip other diagonal, coordinates flip across y=x
   void Transpose(bool whichDiagonal) {
     int j, k;
     uint64_t m, t;
@@ -453,20 +507,20 @@ public:
           state[k | j] ^= t;
         }
       }
-
-      RecalculateMinMax();
     }
   }
 
   void Transform(int dx, int dy) { Move(dx, dy); }
 
-  void FlipX() { // even reflection across x-axis, ie (0,0) maps to (0, -1)
-    BitReverse();
+  void FlipAcrossX() { // flips across x-axis, fixing (0,0)
+    BitReverse(); // sends (0,0) to (0,-1)
+    Move(0,1); // now it fixes (0,0)
   }
 
-  void Transform(SymmetryTransform transf);
+  void Transform(AffineTransform transf);
 
-  void Transform(int dx, int dy, SymmetryTransform transf) {
+  // here the shift applies BEFORE the affine transformation
+  void Transform(int dx, int dy, AffineTransform transf) {
     Move(dx, dy);
     Transform(transf);
     RecalculateMinMax();
@@ -573,8 +627,10 @@ public:
     return Parse(state, rle, 0, 0);
   }
 
+  // with all versions of Parse with dx, dy, and transf,
+  // the shift by dx, dy applies BEFORE the affine transformation
   static int Parse(LifeState &state, const char *rle, int dx, int dy,
-                   SymmetryTransform transf) {
+                   AffineTransform transf) {
     int result = Parse(state, rle);
 
     if (result == SUCCESS)
@@ -584,10 +640,10 @@ public:
   }
 
   static LifeState Parse(const char *rle, int dx, int dy,
-                         SymmetryTransform trans) {
+                         AffineTransform trans) {
     LifeState result;
     Parse(result, rle);
-    result.Transform(dx, dy, trans);
+    result.Transform(dx,dy,trans);
 
     return result;
   }
@@ -673,72 +729,56 @@ void LifeState::Step() {
   gen++;
 }
 
-void LifeState::Transform(SymmetryTransform transf) {
-  switch (transf) {
-  case Identity:
-    break;
-  case ReflectXEven:
-    FlipX();
-    break;
-  case ReflectX:
-    FlipX();
-    Move(0, 1);
-    break;
-  case ReflectYEven:
-    FlipY();
-    break;
-  case ReflectY:
-    FlipY();
-    Move(1, 0);
-    break;
-  case Rotate180EvenBoth:
-    FlipX();
-    FlipY();
-    break;
-  case Rotate180EvenX:
-    FlipX();
-    FlipY();
-    Move(1, 0);
-    break;
-  case Rotate180EvenY:
-    FlipX();
-    FlipY();
-    Move(0, 1);
-    break;
-  case Rotate180OddBoth:
-    FlipX();
-    FlipY();
-    Move(1, 1);
-    break;
-  case ReflectYeqX:
+
+// could phase out calls of the form Transform/Parse( ,int dx, int dy,AffineTransform transform)
+// since now we're storing the translation inside AffineTransform, those shouldn't be needed.
+// [Alternatively: if it isn't broken, don't fix it.]
+
+void LifeState::Transform(AffineTransform transform) {
+  // rotate90 stuff is ending up being reflected across the y axis.
+  // rotate90 is 0 -1   right mult by 0 -1  => 1  0
+  //             1  0                 -1 0     0  -1
+
+  // only neccessary if we pass by reference (if by value, we can modify transform itself)
+  AffineTransform transCopy = transform;
+
+
+  // probably possible to rewrite to eliminate the need for the copy
+  // but it's convenient.
+
+  // as we do operations, we right compose our matrix with the inverse
+  // until we reach identity matrix (they're all reflections so inverse=self) 
+  // at which point we do the translation and we're done
+  // [proof: M*(A1)^{-1}*(A2)^{-1} = id => Mx+b = A2 (A1 x) + b ]
+
+  if ( transCopy.matrix[1] == 1){
+
     Transpose(false);
-    break;
-  case ReflectYeqNegX:
+    transCopy = transCopy.Compose(AffineTransform(0,1,1,0));
+
+
+  } else if ( transform.matrix[1] == -1) {
+
     Transpose(true);
-    break;
-  case ReflectYeqNegXP1:
-    Transpose(true);
-    Move(1, 1);
-    break;
-  case Rotate90Even:
-    FlipX();
-    Transpose(false);
-    break;
-  case Rotate90:
-    FlipX();
-    Transpose(false);
-    Move(1, 0);
-    break;
-  case Rotate270Even:
-    FlipY();
-    Transpose(false);
-    break;
-  case Rotate270:
-    FlipY();
-    Transpose(false);
-    Move(0, 1);
-    break;
+    Move(1,1);
+    transCopy = transCopy.Compose(AffineTransform(0,-1,-1,0));
+
   }
+
+  if(transCopy.matrix[3] == -1 ) {
+    FlipAcrossX();
+    transCopy = transCopy.Compose(AffineTransform(1,0,0,-1)); 
+  }
+
+  if(transCopy.matrix[0] == -1 ) {
+    FlipAcrossY();
+    transCopy = transCopy.Compose(AffineTransform(-1,0,0,1));
+  }
+
+  assert(transCopy.matrix[0] == 1 && transCopy.matrix[1] == 0 && transCopy.matrix[2] == 0 && transCopy.matrix[3] == 1);
+
+  Move(transCopy.transl[0], transCopy.transl[1]);
+
 }
 
 void LifeState::Print() {
@@ -842,7 +882,7 @@ public:
   }
 
   static int Parse(LifeTarget &target, const char *rle, int x, int y,
-                   SymmetryTransform transf) {
+                   AffineTransform transf) {
     LifeState Temp;
     int result = LifeState::Parse(Temp, rle, x, y, transf);
 
@@ -856,14 +896,14 @@ public:
   }
 
   static LifeTarget Parse(const char *rle, int x, int y,
-                          SymmetryTransform transf) {
+                          AffineTransform transf) {
     LifeTarget target;
     Parse(target, rle, x, y, transf);
     return target;
   }
 
   static LifeTarget Parse(const char *rle, int x, int y) {
-    return Parse(rle, x, y, Identity);
+    return Parse(rle, x, y, AffineTransform());
   }
 
   static LifeTarget Parse(const char *rle) { return Parse(rle, 0, 0); }
