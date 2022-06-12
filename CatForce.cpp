@@ -62,6 +62,7 @@ class SearchParams {
 public:
   int maxGen;
   int numCatalysts;
+  int numTransparent;
   int stableInterval;
   std::string pat;
   int xPat;
@@ -117,6 +118,7 @@ public:
   std::pair<int, int> requiredXY;
   std::string locusRLE;
   std::pair<int, int> locusXY;
+  bool transparent;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems;
@@ -136,6 +138,8 @@ public:
     centerY = atoi(elems[4].c_str());
     symmType = elems[5].at(0);
 
+    transparent = false;
+
     int argi = 6;
 
     while (argi < elems.size()) {
@@ -153,6 +157,9 @@ public:
         locusRLE = elems[argi + 1];
         locusXY = std::make_pair(atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
         argi += 4;
+      } else if (elems[argi] == "transparent") {
+        transparent = true;
+        argi += 1;
       } else {
         std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
         exit(1);
@@ -228,6 +235,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string lastGen = "last-gen";
 
   std::string numCat = "num-catalyst";
+  std::string numTransp = "num-transparent";
   std::string stable = "stable-interval";
   std::string area = "search-area";
   std::string pat = "pat";
@@ -259,6 +267,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
       if (elems[0] == numCat)
         params.numCatalysts = atoi(elems[1].c_str());
+
+      if (elems[0] == numTransp)
+        params.numTransparent = atoi(elems[1].c_str());
 
       if (elems[0] == stable)
         params.stableInterval = atoi(elems[1].c_str());
@@ -452,6 +463,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
 struct Configuration {
   int count;
+  int transparentCount;
   std::array<int, MAX_CATALYSTS> curx;
   std::array<int, MAX_CATALYSTS> cury;
   std::array<int, MAX_CATALYSTS> curs;
@@ -726,7 +738,8 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
                     std::vector<LifeState> &required,
                     std::vector<LifeState> &locus,
                     std::vector<std::vector<LifeTarget>> &forbidden,
-                    std::vector<int> &maxMissing) {
+                    std::vector<int> &maxMissing,
+                    std::vector<bool> &transparent) {
 
   for (const auto & catalyst : catalysts) {
     std::vector<SymmetryTransform> trans;
@@ -769,6 +782,8 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
         catlocus = pat;
       }
       locus.push_back(catlocus);
+
+      transparent.push_back(catalyst.transparent);
     }
   }
 }
@@ -777,10 +792,11 @@ void InitCatalysts(const std::string &fname, std::vector<LifeState> &states,
                    std::vector<LifeState> &required,
                    std::vector<LifeState> &locus,
                    std::vector<std::vector<LifeTarget>> &forbidden,
-                   std::vector<int> &maxMissing, SearchParams &params) {
+                   std::vector<int> &maxMissing, std::vector<bool> &transparent,
+                   SearchParams &params) {
   std::vector<CatalystInput> catalysts;
   ReadParams(fname, catalysts, params);
-  GenerateStates(catalysts, states, required, locus, forbidden, maxMissing);
+  GenerateStates(catalysts, states, required, locus, forbidden, maxMissing, transparent);
 }
 
 std::string GetRLE(const std::vector<std::vector<int>> &life2d) {
@@ -1093,6 +1109,7 @@ public:
   std::vector<LifeState> catalystLocus;
   std::vector<LifeState> catalystLocusReactionMasks;
   std::vector<LifeState> catalystAvoidMasks;
+  std::vector<bool>      transparent;
   clock_t current{};
   long long idx{};
   int found{};
@@ -1112,7 +1129,7 @@ public:
 
   void Init(const char *inputFile, int nthreads) {
     begin = clock();
-    InitCatalysts(inputFile, catalysts, requiredParts, catalystLocus, forbiddenTargets, maxMissing, params);
+    InitCatalysts(inputFile, catalysts, requiredParts, catalystLocus, forbiddenTargets, maxMissing, transparent, params);
     pat = LifeState::Parse(params.pat.c_str(), params.xPat, params.yPat);
     numIters = params.numCatalysts;
     categoryContainer = new CategoryContainer(params.maxGen);
@@ -1470,6 +1487,7 @@ public:
   void Search() {
     Configuration config;
     config.count = 0;
+    config.transparentCount = 0;
     config.state.JoinWSymChain(pat, params.symmetryChain);
     LifeState history = config.state;
 
@@ -1543,7 +1561,10 @@ public:
             masks[s].Join(hitLocations);
           }
 
-          for(int s = 0; s < catalysts.size(); s++) {
+          for (int s = 0; s < catalysts.size(); s++) {
+            if (transparent[s] && config.transparentCount == params.numTransparent)
+              continue;
+
             LifeState newPlacements = catalystLocusReactionMasks[s].Convolve(newcells);
             newPlacements.Copy(masks[s], ANDNOT);
 
@@ -1563,6 +1584,8 @@ public:
               newConfig.curx[config.count] = newPlacement.first;
               newConfig.cury[config.count] = newPlacement.second;
               newConfig.curs[config.count] = s;
+              if (transparent[s])
+                newConfig.transparentCount++;
 
               LifeState shiftedCatalyst = catalysts[s];
               shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
