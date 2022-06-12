@@ -108,7 +108,7 @@ public:
 class CatalystInput {
 public:
   std::string rle;
-  int maxDesapear;
+  int maxDisappear;
   int centerX;
   int centerY;
   char symmType;
@@ -133,7 +133,7 @@ public:
     }
 
     rle = elems[1];
-    maxDesapear = atoi(elems[2].c_str());
+    maxDisappear = atoi(elems[2].c_str());
     centerX = atoi(elems[3].c_str());
     centerY = atoi(elems[4].c_str());
     symmType = elems[5].at(0);
@@ -168,7 +168,7 @@ public:
   }
 
   void Print() const {
-    std::cout << rle << " " << maxDesapear << " " << centerX << " " << centerY
+    std::cout << rle << " " << maxDisappear << " " << centerX << " " << centerY
               << " " << symmType << std::endl;
   }
 };
@@ -748,12 +748,12 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
     const char *rle = catalyst.rle.c_str();
     int dx = catalyst.centerX;
     int dy = catalyst.centerY;
-    int maxDesapear = catalyst.maxDesapear;
+    int maxDisappear = catalyst.maxDisappear;
 
     for (auto & tran : trans) {
       LifeState pat = LifeState::Parse(rle, dx, dy, tran);
       states.push_back(pat);
-      maxMissing.push_back(maxDesapear);
+      maxMissing.push_back(maxDisappear);
 
       std::vector<LifeTarget> forbidTarg;
 
