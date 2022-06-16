@@ -738,17 +738,7 @@ public:
     return result;
   }
 
-  // std::pair<int, int> FirstOn() const {
-  //   for (int x = 0; x < N; x++) {
-  //     if (state[x] == 0ULL)
-  //       continue;
-
-  //     return std::make_pair(x, __builtin_ctzll(state[x]));
-  //   }
-
-  //   return std::make_pair(0, 0);
-  // }
-
+#ifdef __AVX2__
   // https://stackoverflow.com/questions/56153183/is-using-avx2-can-implement-a-faster-processing-of-lzcnt-on-a-word-array
   std::pair<int, int> FirstOn() const
   {
@@ -781,6 +771,18 @@ public:
     } while(p < endp);
     return std::make_pair(-1, -1);
   }
+#else
+  std::pair<int, int> FirstOn() const {
+    for (int x = 0; x < N; x++) {
+      if (state[x] == 0ULL)
+        continue;
+
+      return std::make_pair(x, __builtin_ctzll(state[x]));
+    }
+
+    return std::make_pair(0, 0);
+  }
+#endif
 
   static LifeState SolidRect(int x, int y, int w, int h) {
     uint64_t column = RotateLeft(((uint64_t)1 << h) - 1, y);
