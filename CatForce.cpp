@@ -1597,6 +1597,19 @@ public:
               LifeState newRequired = required;
               newRequired.Join(requiredParts[s], newPlacement.first, newPlacement.second);
 
+              {
+                LifeState lookahead = newConfig.state;
+                lookahead.Step();
+                lookahead.Step();
+                lookahead.Step();
+                lookahead.Step();
+                if (!lookahead.Contains(newRequired)) {
+                  masks[s].Set(newPlacement.first, newPlacement.second);
+                  newPlacements.Erase(newPlacement.first, newPlacement.second);
+                  continue;
+                }
+              }
+
               std::array<int, MAX_CATALYSTS> newMissingTime = missingTime;
               std::array<int, MAX_CATALYSTS> newRecoveredTime = recoveredTime;
               std::array<bool, MAX_CATALYSTS> newHasReacted = hasReacted;
