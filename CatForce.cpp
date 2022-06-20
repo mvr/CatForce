@@ -1565,7 +1565,7 @@ public:
             if (transparent[s] && config.transparentCount == params.numTransparent)
               continue;
 
-            LifeState newPlacements = catalystLocusReactionMasks[s].Convolve(newcells);
+            LifeState newPlacements = catalystReactionMasks[s].Convolve(newcells);
             newPlacements.Copy(masks[s], ANDNOT);
 
             while (!newPlacements.IsEmpty()) {

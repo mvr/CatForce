@@ -58,15 +58,15 @@ inline int __builtin_ctzll(uint64_t x) {
 }
 #endif
 
-uint64_t convolve_uint64_t(uint64_t x, uint64_t y) {
-  if(x == 0)
+inline uint64_t convolve_uint64_t(uint64_t x, uint64_t y) {
+  if(y == 0)
     return 0;
 
   uint64_t result = 0;
-  while (y != 0) {
-    int lsb = __builtin_ctzll(y);
-    result |= __builtin_rotateleft64(x, lsb);
-    y &= ~(((uint64_t)1) << lsb);
+  while (x != 0) {
+    int lsb = __builtin_ctzll(x);
+    result |= __builtin_rotateleft64(y, lsb);
+    x &= ~(((uint64_t)1) << lsb);
   }
   return result;
 }
