@@ -10,6 +10,11 @@
 #include <ctime>
 #include <vector>
 
+// GOAL: be able to say "non-transparent catalysts are forbidden in this region."
+// alternatively, "the different active regions must interact within the first n gens"
+// one idea: if
+
+
 const int MAIN_STEP = 1;
 __attribute__((flatten)) void MainRun(LifeState &state) {
   state.Step();
@@ -76,6 +81,13 @@ public:
   std::vector<int> filterdx;
   std::vector<int> filterdy;
   std::vector<int> filterGen;
+
+  //modification
+  std::vector<std::string> filterGroups;
+  // number of generations: if catalysts are destroyed, filters must be met within this many generations afterward or earlier.
+  int stopAfterCatsDestroyed; 
+
+
   std::vector<std::pair<int, int>> filterGenRange;
 
   int maxCatSize;
@@ -99,6 +111,9 @@ public:
     symmetryChain = {};
     maxCatSize = -1;
     fullReportFile = "";
+    
+    filterGroups = {};
+    stopAfterCatsDestroyed = -1;
   }
 };
 
@@ -148,90 +163,6 @@ public:
               << " " << symmType << std::endl;
   }
 };
-
-
-// returns empty if it can't parse.
-std::vector<AffineTransform> SymmetryGroupFromString(const std::string & groupName){
-
-  AffineTransform Identity;
-  AffineTransform ReflectAcrossX(1,0,0,-1);
-  AffineTransform ReflectAcrossY(-1,0,0,1);
-  AffineTransform ReflectAcrossYeqX(0,1,1,0);
-  AffineTransform ReflectAcrossYeqNegXP1(0,-1,-1,0);
-  AffineTransform ReflectAcrossXEven(1,0,0,-1,0,-1);
-  AffineTransform ReflectAcrossYEven(-1,0,0,1,-1,0);
-  AffineTransform ReflectAcrossYeqNegX(0,-1,-1,0,-1,-1);
-  AffineTransform Rotate90(0,-1,1,0);
-  AffineTransform Rotate270(0,1,-1,0);
-  AffineTransform Rotate90Even(0,-1,1,0,-1,0);
-  AffineTransform Rotate270Even(0,1,-1,0,0,-1);
-  AffineTransform Rotate180OddBoth(-1,0,0,-1);
-  AffineTransform Rotate180EvenBoth(-1,0,0,-1,-1,-1);
-  AffineTransform Rotate180EvenHorizontal(-1,0,0,-1,-1,0); // horizontal bounding box dimension is even.
-  AffineTransform Rotate180EvenVertical(-1,0,0,-1,0,-1); // vertical bounding box dimension is even.
-
-  std::string start = groupName.substr(0,2);
-  std::string rest = groupName.substr(2);
-  if (start == "C1" or start == "no"){
-    return {Identity};
-  } else if (start == "D2"){
-    if (rest == "-" or rest == "vertical" or rest == "verticalodd" or rest == "-odd"){
-      return {Identity, ReflectAcrossX};
-    } else if (rest == "-even" or rest == "verticaleven"){
-      return {Identity, ReflectAcrossXEven};
-    } else if (rest == "|" or rest == "horizontal" or rest == "horizontalodd" or rest == "|odd"){
-      return {Identity, ReflectAcrossY};
-    } else if (rest == "|even" or rest == "horizontaleven"){
-      return {Identity, ReflectAcrossYEven};
-    } else if ( rest == "/" or rest == "/odd") {
-      return {Identity, ReflectAcrossYeqNegXP1};
-    } else if ( rest == "\\" or rest == "\\odd") {
-      return {Identity, ReflectAcrossYeqX};
-    }
-  } else if (start == "C2") {
-    if (rest == "odd" or rest == "oddboth" or rest == "bothodd" or rest == ""){
-      return {Identity,Rotate180OddBoth};
-    } else if (rest == "even" or rest == "botheven" or rest == "evenboth"){
-      return {Identity,Rotate180EvenBoth};
-    } else if (rest == "horizontaleven" or rest == "|even"){
-      return {Identity,Rotate180EvenHorizontal};
-    } else if (rest == "verticaleven" or rest == "-even"){
-      return {Identity, Rotate180EvenVertical};
-    }
-  } else if (start == "C4"){
-    if (rest == "" or rest == "odd" or rest == "oddboth" or rest == "bothodd"){
-      return {Identity, Rotate90, Rotate180OddBoth, Rotate270};
-    } else if (rest == "even" or rest =="evenboth" or rest == "botheven") {
-      return {Identity, Rotate90Even, Rotate180EvenBoth, Rotate270Even};
-    }
-  } else if (start == "D4"){
-    std::string evenOddInfo = rest.substr(1);
-    if (rest[0] == '+'){
-      if(evenOddInfo == "" or evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == "bothodd"){
-        return {Identity, ReflectAcrossX, ReflectAcrossY, Rotate180OddBoth};
-      } else if (evenOddInfo == "even" or evenOddInfo =="evenboth" or evenOddInfo == "botheven"){
-        return {Identity, ReflectAcrossXEven, Rotate180EvenBoth, ReflectAcrossYEven};
-      } else if ( evenOddInfo == "verticaleven" or evenOddInfo == "-even") {
-        return {Identity, ReflectAcrossXEven, Rotate180EvenVertical, ReflectAcrossY}; // should this be evenX or evenY?
-      } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even") {
-        return {Identity, ReflectAcrossX, Rotate180EvenHorizontal, ReflectAcrossYEven}; // should this be evenX or evenY?
-      }
-    } else if (rest[0] == 'x') {
-      if (evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == ""){
-        return {Identity, ReflectAcrossYeqX, Rotate180OddBoth,ReflectAcrossYeqNegXP1};
-      } else if (evenOddInfo == "even" or evenOddInfo == "evenboth"){
-        return {Identity, ReflectAcrossYeqX, Rotate180EvenBoth, ReflectAcrossYeqNegX};
-      }
-    }
-  } else if (start == "D8") {
-    if (rest == "odd" or rest == "oddboth" or rest == ""){
-      return {Identity, ReflectAcrossX, ReflectAcrossY, Rotate90, Rotate270, Rotate180OddBoth, ReflectAcrossYeqX, ReflectAcrossYeqNegXP1};
-    } else if (rest == "even" or rest == "evenboth"){
-      return {Identity, ReflectAcrossXEven, ReflectAcrossYEven, Rotate90Even, Rotate270Even, Rotate180EvenBoth, ReflectAcrossYeqX, ReflectAcrossYeqNegX};
-    }
-  }
-  return {};
-}
 
 void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
   AffineTransform Identity;
@@ -287,40 +218,7 @@ void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
   }
 }
 
-std::vector<AffineTransform> SymmetryChainFromGroup(const std::vector<AffineTransform> & symmetryGroup){
-  
-  std::vector<AffineTransform> reorderedGroup; 
-  std::vector<AffineTransform> remaining(symmetryGroup);
-  
-  // identity first.
-  reorderedGroup.push_back(AffineTransform());
-  remaining.erase(std::remove(remaining.begin(), remaining.end(), AffineTransform()), remaining.end());
 
-  for(int i = 1; i < symmetryGroup.size(); ++i){
-    // where possible, reorder so it alternates, orientation preserving and reversing
-    // this way, symmetryChain will be entirely reflections, which is more efficient
-    bool wantOrientationPreserving = (i % 2 == 0);
-    int j = 0;
-    while (j < remaining.size() && remaining[j].IsOrientationPreserving() != wantOrientationPreserving){
-      ++j;
-    }
-    if( j == remaining.size() ){
-      reorderedGroup.push_back(remaining[remaining.size()-1]);
-      remaining.pop_back();
-    } else {
-      reorderedGroup.push_back(remaining[j]);
-      remaining.erase(remaining.begin()+j);
-    }
-  }
-
-  // ith element of chain is g_i^-1 * g_{i+1}.
-  std::vector<AffineTransform> symmetryChain;
-  for(int i = 0; i < reorderedGroup.size()-1; ++i){
-    symmetryChain.push_back(reorderedGroup[i].Inverse().Compose(reorderedGroup[i+1]));
-  }
-
-  return symmetryChain;
-}
 
 void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
                 SearchParams &params) {
@@ -347,6 +245,8 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string fullReport = "full-report";
 
   std::string symmetry = "symmetry";
+
+  std::string stopAfterCatsDestroyed = "stop-after-cats-destroyed";
 
   std::string line;
 
@@ -428,6 +328,18 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         params.targetFilter.push_back(elems[2]);
         params.filterdx.push_back(atoi(elems[3].c_str()));
         params.filterdy.push_back(atoi(elems[4].c_str()));
+
+        // modification
+        if( elems.size() == 5){
+          params.filterGroups.push_back("C1");
+        } else if ( elems[5][0] == 'D' || elems[5][0] == 'C' ) {
+          if(SymmetryGroupFromString(elems[5]).size() == 0){
+            std::cout << "filter symmetry group " << elems[5] << " not understood." << std::endl;
+            exit(0);
+          }
+          params.filterGroups.push_back(elems[5]);
+        }
+
       }
 
       if (elems[0] == maxWH) {
@@ -439,8 +351,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         params.maxCatSize = atoi(elems[1].c_str());
       }
 
-     std::string symmetryString = "";
+      
       if (elems[0] == symmetry) {
+        std::string symmetryString = "";
         // reverse-compatibility reasons.
         if (elems[1] == "horizontal") {
           symmetryString = "D2|odd";
@@ -463,6 +376,10 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
           exit(0);
         }
         params.symmetryChain = SymmetryChainFromGroup(symGroup);
+      }
+
+      if (elems[0] == stopAfterCatsDestroyed){
+        params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
       }
 
     } catch (const std::exception &ex) {
@@ -1140,7 +1057,13 @@ public:
   LifeState pat;
   int numIters{};
   Enumerator *enu;
-  std::vector<LifeTarget> targetFilter;
+
+  //modification
+  std::vector<bool> transparent;
+  
+  //std::vector<LifeTarget> targetFilter;
+  std::vector<std::vector<LifeTarget>> targetFilterLists;
+  
   std::vector<LifeTarget> targets;
   std::vector<std::vector<LifeTarget>> forbiddenTargets;
   std::vector<std::vector<std::vector<int>>> statexyGen;
@@ -1175,9 +1098,18 @@ public:
     for (auto & state : states)
       targets.push_back(LifeTarget(state));
 
-    for (int i = 0; i < params.targetFilter.size(); i++)
-      targetFilter.push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
-                                               params.filterdx[i], params.filterdy[i]));
+    // modification
+    for (int i = 0; i < params.targetFilter.size(); i++){
+      targetFilterLists.push_back(std::vector<LifeTarget>({}));
+      for ( AffineTransform trans : SymmetryGroupFromString(params.filterGroups[i])){
+        targetFilterLists[i].push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
+                                        params.filterdx[i], params.filterdy[i], trans));
+        // debugging purposes
+        // trans.Print();
+        // targetFilterLists[i][targetFilterLists[i].size()-1].wanted.Print();
+      }
+    }
+
 
     XYStartGenPerState(targets, pat, params, states, statexyGen, nthreads);
 
@@ -1229,7 +1161,7 @@ public:
   int FilterMaxGen() {
     int maxGen = -1;
 
-    for (int j = 0; j < targetFilter.size(); j++) {
+    for (int j = 0; j < targetFilterLists.size(); j++) {
       if (params.filterGen[j] > maxGen)
         maxGen = params.filterGen[j];
 
@@ -1359,10 +1291,13 @@ public:
   }
 
   bool FilterForCurrentGenFail(LifeState &workspace) {
-    for (int j = 0; j < targetFilter.size(); j++) {
-      if (workspace.gen == params.filterGen[j] &&
-          workspace.Contains(targetFilter[j]) == false) {
-        return true;
+    for (int j = 0; j < targetFilterLists.size(); j++) {
+      if (workspace.gen == params.filterGen[j] ){
+        bool anyMet = false;
+        for( auto filter : targetFilterLists[j]){
+          anyMet = anyMet | workspace.Contains(filter);
+        }
+        if(!anyMet) return true;
       }
     }
 
@@ -1385,27 +1320,43 @@ public:
     workspace.JoinWSymChain(pat, params.symmetryChain);
   }
 
-  bool ValidateFilters(Configuration &conf) {
+  // modified
+  bool ValidateFilters(Configuration &conf, int catsDestroyedGen) {
     LifeState workspace;
     PutStartState(workspace, conf);
 
     std::vector<bool> rangeValid(params.filterGen.size(), false);
 
+    // stop early if catalysts are destroyed
+    int stopAt = params.maxGen;
+    if (params.stopAfterCatsDestroyed > 0 ){
+      stopAt = catsDestroyedGen + params.stopAfterCatsDestroyed;
+    }
+    
     for (int k = 0; k < params.filterGen.size(); k++)
       if (params.filterGen[k] >= 0)
         rangeValid[k] = true;
+        // we return false early below if a single-generation filter
+        // isn't met, so we don't need to keep track of those
+        // via our vector rangeValid.
 
-    for (int j = 0; j <= filterMaxGen; j++) {
+    for (int j = 0; j <= std::min(filterMaxGen, stopAt); j++) {
       for (int k = 0; k < params.filterGen.size(); k++) {
-        if (workspace.gen == params.filterGen[k] &&
-            workspace.Contains(targetFilter[k]) == false)
-          return false;
-
+        if (workspace.gen == params.filterGen[k]){
+          bool anyMet = false;
+          for ( auto filter : targetFilterLists[k] ){
+            anyMet = anyMet |  workspace.Contains(filter);
+          }
+          if(!anyMet)
+            return false;
+        }
         if (params.filterGen[k] == -1 &&
-            params.filterGenRange[k].first <= workspace.gen &&
-            params.filterGenRange[k].second >= workspace.gen &&
-            workspace.Contains(targetFilter[k]) == true)
-          rangeValid[k] = true;
+                params.filterGenRange[k].first <= workspace.gen &&
+                params.filterGenRange[k].second >= workspace.gen){
+          for(LifeTarget transformedTarget :targetFilterLists[k]){
+            rangeValid[k] = rangeValid[k] | workspace.Contains(transformedTarget);
+          }
+        }
       }
 
       workspace.Step();
@@ -1484,11 +1435,39 @@ public:
                                  successtime - params.stableInterval + 2, 0);
     }
 
-    // If has fitlter validate them;
+    // modification
+    int catsDestroyedGen = params.maxGen;
+    if (params.stopAfterCatsDestroyed > 0){
+
+      LifeState checkCatsDestroyed;
+      checkCatsDestroyed.JoinWSymChain(conf.state, params.symmetryChain);
+      PutStartState(checkCatsDestroyed, conf);
+      checkCatsDestroyed.Step(successtime);
+      int absence = 0;
+      
+      while(checkCatsDestroyed.gen < params.maxGen+10 && absence < 10){ // 10 here more or less arbitrary.
+        bool allPresent = true;
+        for (auto target : conf.shiftedTargets){
+          if (!checkCatsDestroyed.Contains(target))
+            allPresent = false;
+        }
+        if(!allPresent){
+          ++absence;
+        } else {
+          absence = 0;
+        }
+        checkCatsDestroyed.Step();
+      }
+      catsDestroyedGen = checkCatsDestroyed.gen-absence;
+      
+    }
+
+    // If has filter validate them;
     if (hasFilter) {
-      if (!ValidateFilters(conf))
+      if (!ValidateFilters(conf, catsDestroyedGen))
         return;
     }
+    // end modifications
 
     if (HasForbidden(conf, successtime + 3))
       return;
