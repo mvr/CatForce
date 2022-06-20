@@ -71,6 +71,128 @@ inline uint64_t convolve_uint64_t(uint64_t x, uint64_t y) {
   return result;
 }
 
+uint64_t convolve_uint64_t2(uint64_t x, uint64_t y) {
+  if(x == 0 || y == 0)
+    return 0;
+
+  // power of 2:
+  if((x & (x - 1)) == 0) {
+    int lsb = __builtin_ctzll(x);
+    return __builtin_rotateleft64(x, lsb);
+  }
+  if((y & (y - 1)) == 0) {
+    int lsb = __builtin_ctzll(y);
+    return __builtin_rotateleft64(y, lsb);
+  }
+
+  return 0
+    | __builtin_rotateleft64(y, 0) * ((x & (1ULL << 0)) != 0)
+    | __builtin_rotateleft64(y, 1) * ((x & (1ULL << 1)) != 0)
+    | __builtin_rotateleft64(y, 2) * ((x & (1ULL << 2)) != 0)
+    | __builtin_rotateleft64(y, 3) * ((x & (1ULL << 3)) != 0)
+    | __builtin_rotateleft64(y, 4) * ((x & (1ULL << 4)) != 0)
+    | __builtin_rotateleft64(y, 5) * ((x & (1ULL << 5)) != 0)
+    | __builtin_rotateleft64(y, 6) * ((x & (1ULL << 6)) != 0)
+    | __builtin_rotateleft64(y, 7) * ((x & (1ULL << 7)) != 0)
+    | __builtin_rotateleft64(y, 8) * ((x & (1ULL << 8)) != 0)
+    | __builtin_rotateleft64(y, 9) * ((x & (1ULL << 9)) != 0)
+    | __builtin_rotateleft64(y, 10) * ((x & (1ULL << 10)) != 0)
+    | __builtin_rotateleft64(y, 11) * ((x & (1ULL << 11)) != 0)
+    | __builtin_rotateleft64(y, 12) * ((x & (1ULL << 12)) != 0)
+    | __builtin_rotateleft64(y, 13) * ((x & (1ULL << 13)) != 0)
+    | __builtin_rotateleft64(y, 14) * ((x & (1ULL << 14)) != 0)
+    | __builtin_rotateleft64(y, 15) * ((x & (1ULL << 15)) != 0)
+    | __builtin_rotateleft64(y, 16) * ((x & (1ULL << 16)) != 0)
+    | __builtin_rotateleft64(y, 17) * ((x & (1ULL << 17)) != 0)
+    | __builtin_rotateleft64(y, 18) * ((x & (1ULL << 18)) != 0)
+    | __builtin_rotateleft64(y, 19) * ((x & (1ULL << 19)) != 0)
+    | __builtin_rotateleft64(y, 20) * ((x & (1ULL << 20)) != 0)
+    | __builtin_rotateleft64(y, 21) * ((x & (1ULL << 21)) != 0)
+    | __builtin_rotateleft64(y, 22) * ((x & (1ULL << 22)) != 0)
+    | __builtin_rotateleft64(y, 23) * ((x & (1ULL << 23)) != 0)
+    | __builtin_rotateleft64(y, 24) * ((x & (1ULL << 24)) != 0)
+    | __builtin_rotateleft64(y, 25) * ((x & (1ULL << 25)) != 0)
+    | __builtin_rotateleft64(y, 26) * ((x & (1ULL << 26)) != 0)
+    | __builtin_rotateleft64(y, 27) * ((x & (1ULL << 27)) != 0)
+    | __builtin_rotateleft64(y, 28) * ((x & (1ULL << 28)) != 0)
+    | __builtin_rotateleft64(y, 29) * ((x & (1ULL << 29)) != 0)
+    | __builtin_rotateleft64(y, 30) * ((x & (1ULL << 30)) != 0)
+    | __builtin_rotateleft64(y, 31) * ((x & (1ULL << 31)) != 0)
+    | __builtin_rotateleft64(y, 32) * ((x & (1ULL << 32)) != 0)
+    | __builtin_rotateleft64(y, 33) * ((x & (1ULL << 33)) != 0)
+    | __builtin_rotateleft64(y, 34) * ((x & (1ULL << 34)) != 0)
+    | __builtin_rotateleft64(y, 35) * ((x & (1ULL << 35)) != 0)
+    | __builtin_rotateleft64(y, 36) * ((x & (1ULL << 36)) != 0)
+    | __builtin_rotateleft64(y, 37) * ((x & (1ULL << 37)) != 0)
+    | __builtin_rotateleft64(y, 38) * ((x & (1ULL << 38)) != 0)
+    | __builtin_rotateleft64(y, 39) * ((x & (1ULL << 39)) != 0)
+    | __builtin_rotateleft64(y, 40) * ((x & (1ULL << 40)) != 0)
+    | __builtin_rotateleft64(y, 41) * ((x & (1ULL << 41)) != 0)
+    | __builtin_rotateleft64(y, 42) * ((x & (1ULL << 42)) != 0)
+    | __builtin_rotateleft64(y, 43) * ((x & (1ULL << 43)) != 0)
+    | __builtin_rotateleft64(y, 44) * ((x & (1ULL << 44)) != 0)
+    | __builtin_rotateleft64(y, 45) * ((x & (1ULL << 45)) != 0)
+    | __builtin_rotateleft64(y, 46) * ((x & (1ULL << 46)) != 0)
+    | __builtin_rotateleft64(y, 47) * ((x & (1ULL << 47)) != 0)
+    | __builtin_rotateleft64(y, 48) * ((x & (1ULL << 48)) != 0)
+    | __builtin_rotateleft64(y, 49) * ((x & (1ULL << 49)) != 0)
+    | __builtin_rotateleft64(y, 50) * ((x & (1ULL << 50)) != 0)
+    | __builtin_rotateleft64(y, 51) * ((x & (1ULL << 51)) != 0)
+    | __builtin_rotateleft64(y, 52) * ((x & (1ULL << 52)) != 0)
+    | __builtin_rotateleft64(y, 53) * ((x & (1ULL << 53)) != 0)
+    | __builtin_rotateleft64(y, 54) * ((x & (1ULL << 54)) != 0)
+    | __builtin_rotateleft64(y, 55) * ((x & (1ULL << 55)) != 0)
+    | __builtin_rotateleft64(y, 56) * ((x & (1ULL << 56)) != 0)
+    | __builtin_rotateleft64(y, 57) * ((x & (1ULL << 57)) != 0)
+    | __builtin_rotateleft64(y, 58) * ((x & (1ULL << 58)) != 0)
+    | __builtin_rotateleft64(y, 59) * ((x & (1ULL << 59)) != 0)
+    | __builtin_rotateleft64(y, 60) * ((x & (1ULL << 60)) != 0)
+    | __builtin_rotateleft64(y, 61) * ((x & (1ULL << 61)) != 0)
+    | __builtin_rotateleft64(y, 62) * ((x & (1ULL << 62)) != 0)
+    | __builtin_rotateleft64(y, 63) * ((x & (1ULL << 63)) != 0) ;
+}
+
+uint64_t convolve_uint8_t(uint8_t x, uint64_t y) {
+  if(x == 0 || y == 0)
+    return 0;
+
+  return 0
+    | __builtin_rotateleft64(y, 0) * ((x & (1ULL << 0)) != 0)
+    | __builtin_rotateleft64(y, 1) * ((x & (1ULL << 1)) != 0)
+    | __builtin_rotateleft64(y, 2) * ((x & (1ULL << 2)) != 0)
+    | __builtin_rotateleft64(y, 3) * ((x & (1ULL << 3)) != 0)
+    | __builtin_rotateleft64(y, 4) * ((x & (1ULL << 4)) != 0)
+    | __builtin_rotateleft64(y, 5) * ((x & (1ULL << 5)) != 0)
+    | __builtin_rotateleft64(y, 6) * ((x & (1ULL << 6)) != 0)
+    | __builtin_rotateleft64(y, 7) * ((x & (1ULL << 7)) != 0);
+}
+
+uint64_t convolve_uint64_t3(uint64_t x, uint64_t y) {
+  if(x == 0 || y == 0)
+    return 0;
+
+  uint8_t x0 = x >> (8 * 0) & 0xFF;
+  uint8_t x1 = x >> (8 * 1) & 0xFF;
+  uint8_t x2 = x >> (8 * 2) & 0xFF;
+  uint8_t x3 = x >> (8 * 3) & 0xFF;
+  uint8_t x4 = x >> (8 * 4) & 0xFF;
+  uint8_t x5 = x >> (8 * 5) & 0xFF;
+  uint8_t x6 = x >> (8 * 6) & 0xFF;
+  uint8_t x7 = x >> (8 * 7) & 0xFF;
+
+  return 0
+    | __builtin_rotateleft64(convolve_uint8_t(x0, y), (8 * 0))
+    | __builtin_rotateleft64(convolve_uint8_t(x1, y), (8 * 1))
+    | __builtin_rotateleft64(convolve_uint8_t(x2, y), (8 * 2))
+    | __builtin_rotateleft64(convolve_uint8_t(x3, y), (8 * 3))
+    | __builtin_rotateleft64(convolve_uint8_t(x4, y), (8 * 4))
+    | __builtin_rotateleft64(convolve_uint8_t(x5, y), (8 * 5))
+    | __builtin_rotateleft64(convolve_uint8_t(x6, y), (8 * 6))
+    | __builtin_rotateleft64(convolve_uint8_t(x7, y), (8 * 7));
+
+}
+
+
 namespace PRNG {
 
 // Public domain PRNG by Sebastian Vigna 2014, see http://xorshift.di.unimi.it
