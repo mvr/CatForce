@@ -11,6 +11,7 @@
 #include <array>
 #include <string.h>
 #include <vector>
+#include <assert.h>
 
 #define N 64
 
@@ -49,6 +50,9 @@ uint64_t BitReverse(uint64_t x) {
 #define __builtin_rotateright64 _rotr64
 #endif
 
+#ifndef LifeAPI
+#define LifeAPI
+
 namespace PRNG {
 
 // Public domain PRNG by Sebastian Vigna 2014, see http://xorshift.di.unimi.it
@@ -80,6 +84,9 @@ uint64_t rand64() {
 //   }
 //   _mm_sfence();
 // }
+
+// returns empty if it can't parse.
+
 
 enum CopyType { COPY, OR, XOR, AND };
 
@@ -152,6 +159,123 @@ class AffineTransform {
       return AffineTransform(matrix[0], matrix[1], matrix[2], matrix[3], transl[0] + otherTransl[0], trans[1]+otherTransl[1]);
     }*/
 };
+
+std::vector<AffineTransform> SymmetryGroupFromString(const std::string & groupName){
+
+  AffineTransform Identity;
+  AffineTransform ReflectAcrossX(1,0,0,-1);
+  AffineTransform ReflectAcrossY(-1,0,0,1);
+  AffineTransform ReflectAcrossYeqX(0,1,1,0);
+  AffineTransform ReflectAcrossYeqNegXP1(0,-1,-1,0);
+  AffineTransform ReflectAcrossXEven(1,0,0,-1,0,-1);
+  AffineTransform ReflectAcrossYEven(-1,0,0,1,-1,0);
+  AffineTransform ReflectAcrossYeqNegX(0,-1,-1,0,-1,-1);
+  AffineTransform Rotate90(0,-1,1,0);
+  AffineTransform Rotate270(0,1,-1,0);
+  AffineTransform Rotate90Even(0,-1,1,0,-1,0);
+  AffineTransform Rotate270Even(0,1,-1,0,0,-1);
+  AffineTransform Rotate180OddBoth(-1,0,0,-1);
+  AffineTransform Rotate180EvenBoth(-1,0,0,-1,-1,-1);
+  AffineTransform Rotate180EvenHorizontal(-1,0,0,-1,-1,0); // horizontal bounding box dimension is even.
+  AffineTransform Rotate180EvenVertical(-1,0,0,-1,0,-1); // vertical bounding box dimension is even.
+
+  std::string start = groupName.substr(0,2);
+  std::string rest = groupName.substr(2);
+  if (start == "C1" or start == "no"){
+    return {Identity};
+  } else if (start == "D2"){
+    if (rest == "-" or rest == "vertical" or rest == "verticalodd" or rest == "-odd"){
+      return {Identity, ReflectAcrossX};
+    } else if (rest == "-even" or rest == "verticaleven"){
+      return {Identity, ReflectAcrossXEven};
+    } else if (rest == "|" or rest == "horizontal" or rest == "horizontalodd" or rest == "|odd"){
+      return {Identity, ReflectAcrossY};
+    } else if (rest == "|even" or rest == "horizontaleven"){
+      return {Identity, ReflectAcrossYEven};
+    } else if ( rest == "/" or rest == "/odd") {
+      return {Identity, ReflectAcrossYeqNegXP1};
+    } else if ( rest == "\\" or rest == "\\odd") {
+      return {Identity, ReflectAcrossYeqX};
+    }
+  } else if (start == "C2") {
+    if (rest == "odd" or rest == "oddboth" or rest == "bothodd" or rest == ""){
+      return {Identity,Rotate180OddBoth};
+    } else if (rest == "even" or rest == "botheven" or rest == "evenboth"){
+      return {Identity,Rotate180EvenBoth};
+    } else if (rest == "horizontaleven" or rest == "|even"){
+      return {Identity,Rotate180EvenHorizontal};
+    } else if (rest == "verticaleven" or rest == "-even"){
+      return {Identity, Rotate180EvenVertical};
+    }
+  } else if (start == "C4"){
+    if (rest == "" or rest == "odd" or rest == "oddboth" or rest == "bothodd"){
+      return {Identity, Rotate90, Rotate180OddBoth, Rotate270};
+    } else if (rest == "even" or rest =="evenboth" or rest == "botheven") {
+      return {Identity, Rotate90Even, Rotate180EvenBoth, Rotate270Even};
+    }
+  } else if (start == "D4"){
+    std::string evenOddInfo = rest.substr(1);
+    if (rest[0] == '+'){
+      if(evenOddInfo == "" or evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == "bothodd"){
+        return {Identity, ReflectAcrossX, ReflectAcrossY, Rotate180OddBoth};
+      } else if (evenOddInfo == "even" or evenOddInfo =="evenboth" or evenOddInfo == "botheven"){
+        return {Identity, ReflectAcrossXEven, Rotate180EvenBoth, ReflectAcrossYEven};
+      } else if ( evenOddInfo == "verticaleven" or evenOddInfo == "-even") {
+        return {Identity, ReflectAcrossXEven, Rotate180EvenVertical, ReflectAcrossY}; // should this be evenX or evenY?
+      } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even") {
+        return {Identity, ReflectAcrossX, Rotate180EvenHorizontal, ReflectAcrossYEven}; // should this be evenX or evenY?
+      }
+    } else if (rest[0] == 'x') {
+      if (evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == ""){
+        return {Identity, ReflectAcrossYeqX, Rotate180OddBoth,ReflectAcrossYeqNegXP1};
+      } else if (evenOddInfo == "even" or evenOddInfo == "evenboth"){
+        return {Identity, ReflectAcrossYeqX, Rotate180EvenBoth, ReflectAcrossYeqNegX};
+      }
+    }
+  } else if (start == "D8") {
+    if (rest == "odd" or rest == "oddboth" or rest == ""){
+      return {Identity, ReflectAcrossX, ReflectAcrossY, Rotate90, Rotate270, Rotate180OddBoth, ReflectAcrossYeqX, ReflectAcrossYeqNegXP1};
+    } else if (rest == "even" or rest == "evenboth"){
+      return {Identity, ReflectAcrossXEven, ReflectAcrossYEven, Rotate90Even, Rotate270Even, Rotate180EvenBoth, ReflectAcrossYeqX, ReflectAcrossYeqNegX};
+    }
+  }
+  return {};
+}
+
+std::vector<AffineTransform> SymmetryChainFromGroup(const std::vector<AffineTransform> & symmetryGroup){
+  
+  std::vector<AffineTransform> reorderedGroup; 
+  std::vector<AffineTransform> remaining(symmetryGroup);
+  
+  // identity first.
+  reorderedGroup.push_back(AffineTransform());
+  remaining.erase(std::remove(remaining.begin(), remaining.end(), AffineTransform()), remaining.end());
+
+  for(int i = 1; i < symmetryGroup.size(); ++i){
+    // where possible, reorder so it alternates, orientation preserving and reversing
+    // this way, symmetryChain will be entirely reflections, which is more efficient
+    bool wantOrientationPreserving = (i % 2 == 0);
+    int j = 0;
+    while (j < remaining.size() && remaining[j].IsOrientationPreserving() != wantOrientationPreserving){
+      ++j;
+    }
+    if( j == remaining.size() ){
+      reorderedGroup.push_back(remaining[remaining.size()-1]);
+      remaining.pop_back();
+    } else {
+      reorderedGroup.push_back(remaining[j]);
+      remaining.erase(remaining.begin()+j);
+    }
+  }
+
+  // ith element of chain is g_i^-1 * g_{i+1}.
+  std::vector<AffineTransform> symmetryChain;
+  for(int i = 0; i < reorderedGroup.size()-1; ++i){
+    symmetryChain.push_back(reorderedGroup[i].Inverse().Compose(reorderedGroup[i+1]));
+  }
+
+  return symmetryChain;
+}
 
 inline uint64_t RotateLeft(uint64_t x, unsigned int k) {
   return __builtin_rotateleft64(x, k);
@@ -1144,3 +1268,5 @@ inline bool LifeState::Contains(const LifeTarget &target) const {
 //     Clear(GlobalState);
 //   }
 // }
+
+#endif
