@@ -729,7 +729,9 @@ LifeState LoadCollisionMask(const LifeState &a, const LifeState &b) {
     std::stringstream buffer;
     buffer << infile.rdbuf();
     std::string rle = buffer.str();
-    return LifeState::Parse(rle.c_str());
+    LifeState result = LifeState::Parse(rle.c_str());
+    result.Move(-32, -32);
+    return result;
   }
 }
 
