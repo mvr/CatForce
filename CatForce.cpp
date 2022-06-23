@@ -1553,13 +1553,12 @@ public:
       if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
         LifeState newcells = config.state;
         newcells.Copy(history, ANDNOT);
-        history.Copy(config.state, OR);
 
         if (!newcells.IsEmpty()) {
-          for (int s = 0; s < catalysts.size(); s++) {
-            LifeState hitLocations = newcells.Convolve(catalystAvoidMasks[s]);
-            masks[s].Join(hitLocations);
-          }
+          // for (int s = 0; s < catalysts.size(); s++) {
+          //   LifeState hitLocations = newcells.Convolve(catalystAvoidMasks[s]);
+          //   masks[s].Join(hitLocations);
+          // }
 
           for (int s = 0; s < catalysts.size(); s++) {
             if (transparent[s] && config.transparentCount == params.numTransparent)
@@ -1592,12 +1591,13 @@ public:
               newConfig.state.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
               newConfig.catalystsState.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
 
-              shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
+              LifeState newHistory = history;
+              newHistory.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
 
               LifeState newRequired = required;
               newRequired.Join(requiredParts[s], newPlacement.first, newPlacement.second);
 
-              {
+              if (newConfig.count != params.numCatalysts) {
                 LifeState lookahead = newConfig.state;
                 lookahead.Step();
                 lookahead.Step();
@@ -1610,12 +1610,14 @@ public:
                 }
               }
 
+              std::vector<LifeState> newMasks = masks;
+
+              shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
+
               std::array<int, MAX_CATALYSTS> newMissingTime = missingTime;
               std::array<int, MAX_CATALYSTS> newRecoveredTime = recoveredTime;
               std::array<bool, MAX_CATALYSTS> newHasReacted = hasReacted;
               std::array<bool, MAX_CATALYSTS> newHasRecovered = hasRecovered;
-
-              std::vector<LifeState> newMasks = masks;
 
               LifeState bounds;
               if (params.maxW != -1) {
@@ -1637,7 +1639,7 @@ public:
                 }
               }
 
-              RecursiveSearch(newConfig, history, newRequired, newMasks, shiftedTargets, newMissingTime,
+              RecursiveSearch(newConfig, newHistory, newRequired, newMasks, shiftedTargets, newMissingTime,
                               newRecoveredTime, newHasReacted, newHasRecovered);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
@@ -1670,6 +1672,7 @@ public:
       if (config.count == 0)
         Report();
 
+      history.Copy(config.state, OR);
       config.state.Step();
     }
   }
