@@ -1546,7 +1546,7 @@ public:
         if (hasReacted[i] && recoveredTime[i] > params.stableInterval)
           hasRecovered[i] = true;
 
-        if (missingTime[i] > maxMissing[i])
+        if (missingTime[i] > maxMissing[config.curs[i]])
           return;
       }
 
