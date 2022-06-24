@@ -790,17 +790,6 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
   }
 }
 
-void InitCatalysts(const std::string &fname, std::vector<LifeState> &states,
-                   std::vector<LifeState> &required,
-                   std::vector<LifeState> &locus,
-                   std::vector<std::vector<LifeTarget>> &forbidden,
-                   std::vector<int> &maxMissing, std::vector<bool> &transparent,
-                   SearchParams &params) {
-  std::vector<CatalystInput> catalysts;
-  ReadParams(fname, catalysts, params);
-  GenerateStates(catalysts, states, required, locus, forbidden, maxMissing, transparent);
-}
-
 std::string GetRLE(const std::vector<std::vector<int>> &life2d) {
   if (life2d.empty())
     return "";
@@ -1131,7 +1120,11 @@ public:
 
   void Init(const char *inputFile, int nthreads) {
     begin = clock();
-    InitCatalysts(inputFile, catalysts, requiredParts, catalystLocus, forbiddenTargets, maxMissing, transparent, params);
+
+    std::vector<CatalystInput> inputcats;
+    ReadParams(inputFile, inputcats, params);
+    GenerateStates(inputcats, catalysts, requiredParts, catalystLocus, forbiddenTargets, maxMissing, transparent);
+
     pat = LifeState::Parse(params.pat.c_str(), params.xPat, params.yPat);
     numIters = params.numCatalysts;
     categoryContainer = new CategoryContainer(params.maxGen);
@@ -1590,11 +1583,13 @@ public:
 
               LifeState shiftedCatalyst = catalysts[s];
               shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
-              newConfig.state.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
-              newConfig.catalystsState.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
+              LifeState symCatalyst;
+              symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
+              newConfig.catalystsState.Join(symCatalyst);
+              newConfig.state.Join(symCatalyst);
 
               LifeState newHistory = history;
-              newHistory.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
+              newHistory.Join(symCatalyst);
 
               LifeState newRequired = required;
               newRequired.Join(requiredParts[s], newPlacement.first, newPlacement.second);
