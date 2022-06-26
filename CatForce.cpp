@@ -1285,15 +1285,16 @@ public:
     }
   }
 
-  bool HasForbidden(Configuration &c, int curIter) {
+  bool HasForbidden(Configuration &conf, int curIter) {
     LifeState workspace;
-    PutStartState(workspace, c);
+    workspace.Join(conf.catalystsState);
+    workspace.JoinWSymChain(pat, params.symmetryChain);
 
     for (int i = 0; i <= curIter + 1; i++) {
       for (int j = 0; j < numIters; j++) {
-        for (int k = 0; k < forbiddenTargets[c.curs[j]].size(); k++) {
-          if (workspace.Contains(forbiddenTargets[c.curs[j]][k],
-                       c.curx[j], c.cury[j]) == true)
+        for (int k = 0; k < forbiddenTargets[conf.curs[j]].size(); k++) {
+          if (workspace.Contains(forbiddenTargets[conf.curs[j]][k],
+                       conf.curx[j], conf.cury[j]) == true)
             return true;
         }
       }
@@ -1314,15 +1315,10 @@ public:
     return false;
   }
 
-  void PutStartState(LifeState &workspace, Configuration &conf) {
-    workspace.Clear();
-    workspace.JoinWSymChain(conf.state, params.symmetryChain);
-    workspace.JoinWSymChain(pat, params.symmetryChain);
-  }
-
   bool ValidateFilters(Configuration &conf) {
     LifeState workspace;
-    PutStartState(workspace, conf);
+    workspace.JoinWSymChain(pat, params.symmetryChain);
+    workspace.Join(conf.catalystsState);
 
     std::vector<bool> rangeValid(params.filterGen.size(), false);
 
@@ -1361,10 +1357,8 @@ public:
     LifeState workspace;
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
-      workspace.JoinWSymChain(conf.state, params.symmetryChain);
-      catalysts.Copy(workspace);
-
-      PutStartState(workspace, conf);
+      workspace.Join(conf.catalystsState);
+      workspace.JoinWSymChain(pat, params.symmetryChain);
       init.Copy(workspace);
 
       workspace.Step(successtime - params.stableInterval + 2);
@@ -1372,7 +1366,7 @@ public:
 
       fullfound++;
 
-      fullCategoryContainer->Add(init, afterCatalyst, catalysts, conf,
+      fullCategoryContainer->Add(init, afterCatalyst, conf.catalystsState, conf,
                                  successtime - params.stableInterval + 2, 0);
     }
 
@@ -1382,8 +1376,8 @@ public:
         return;
     }
 
-    if (HasForbidden(conf, successtime + 3))
-      return;
+    // if (HasForbidden(conf, successtime + 3))
+    //   return;
 
     // If all filters validated update results
     workspace.Clear();
