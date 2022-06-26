@@ -54,13 +54,13 @@ The option delimiter is `" "` - i.e. space.
 **Encounter**: An active cell from the input pattern is present in
 the immediate neighbourhood of the catalyst.
 
-**Catalyst Symmetry**: A character specifying what symmetries are
+**Catalyst Symmetry**: A character specifying what transformations are
 applied to the catalyst:
 - `|` mirror by y.
 - `-` mirror by x.
-- `+` mirror by x, y and both. 
-- `/` diagonal mirror.
-- `x` make for 180 degree symmetrical catalysts.
+- `+` all 90 degree rotations, for D2- or D2/ invariant catalysts (eg boat).
+- `/` diagonal mirror
+- `x` for 180 degree symmetrical catalysts.
 - `*` all 8 transformations.
 
 **Forbidden**: Will search for `rle` in the same location as the
@@ -72,9 +72,9 @@ may have several forbidden patterns per catalyst. See `3.in` for
 an example.
 
 **Filters**: one can use several filters. Every filter will be
-checked if successful catalyst was found. Each filter will assume live
-cells in `rle` and dead cell in close proximity neighbourhood to the
-pattern in `rle`.
+checked if successful catalyst was found. Each filter will select
+for patterns matching the live cells in `rle` and dead cells in close
+proximity neighbourhood to the live cells in `rle`.
 
 <!-- Combining Results -->
 <!-- --- -->
@@ -119,15 +119,25 @@ Symmetric Searches
 
 `symmetry s`
 
-Automatically apply the symmetry `s` to the active pattern and
-catalysts. The lines of symmetry are always `x=0` and `y=0`, and
-so if you want a different offset you will have to change the `dx dy`
-parameters of the active pattern.
+Automatically apply the symmetry `s` to the active pattern and catalysts. Options:
+- D2 symmetries: `D2|` (reflect across x = 0), `D2-` (y = 0), `D2\` (y=x) and `D2/` (y=-x)
+- C2 symmetries: `C2_1` (bounding box odd by odd), `C2_2` (odd by even), `C2_4` (even by even)
+- C4 symmetries: `C4_1`, (odd by odd) `C4_4` (even by even)
+- D4 symmetries: `D4_+1`, `D4_+2` (odd by even),`D4_+4`, `D4_x1`, and `D4_x4`
+- D8 symmetries: `D8_1` and `D8_4`
 
-Options are:
-- `horizontal`
-- `horizontaleven`
-- `diagonal`
-- `diagonalevenx` 
-- `diagonalevenboth`
- 
+
+The options D2 follow [LLS](https://gitlab.com/OscarCunningham/logic-life-search), while the rest of the symmetries follow [Catagolue](https://catagolue.hatsya.com/census). [LifeWiki](https://conwaylife.com/wiki/Static_symmetry) has a more in-depth explanation, though the notation there is slightly
+different. (They choose `C2_2` to be even by odd not odd by even).
+
+There's LLS-inspired alternatives for the other groups: 
+- D2 symmetries: as above
+- C2 symmetries: `C2 C2even C2|even C2-even`
+- C4 symmetries: `C4 C4even`
+- D4 symmetries: `D4+ D4+|even D4+-even D4+|even D4x D4xeven`
+- D8 symmetries: `D8 D8even`
+
+Here, things default to odd transformations, ie ones that fix the cell at (0,0);`verticaleven` and `horizontaleven` (referring to bounding
+box dimensions) are recognized as equivalent to `-even` and `|even`,
+respectively.
+
