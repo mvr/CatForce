@@ -582,19 +582,6 @@ public:
     }
   }
 
-  void Transpose() {
-    int j, k;
-    uint64_t m, t;
-
-    for (j = 32, m = 0x00000000FFFFFFFF; j; j >>= 1, m ^= m << j) {
-      for (k = 0; k < 64; k = ((k | j) + 1) & ~j) {
-        t = (state[k] ^ (state[k | j] >> j)) & m;
-        state[k] ^= t;
-        state[k | j] ^= (t << j);
-      }
-    }
-  }
-
   void BitReverse() {
     for (int i = 0; i < N; i++) {
       state[i] = __builtin_bitreverse64(state[i]);
@@ -626,11 +613,10 @@ public:
     }
   }
 
-  void Transform(int dx, int dy) { Move(dx, dy); }
+  void Transpose() { Transpose(true); }
 
-  void FlipX() { // even reflection across x-axis, ie (0,0) maps to (0, -1)
-    BitReverse();
-  }
+  // even reflection across x-axis, ie (0,0) maps to (0, -1)
+  void FlipX() { BitReverse(); }
 
   void Transform(SymmetryTransform transf);
 

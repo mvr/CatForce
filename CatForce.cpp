@@ -1162,13 +1162,6 @@ public:
       }
     }
 
-    // XYStartGenPerState(targets, pat, params, catalysts, statexyGen, nthreads);
-
-    // enu = new Enumerator(params, catalysts, targets, statexyGen);
-
-    // PreIteratePat(pat, preIterated, params);
-    // AddIterators(numIters);
-
     current = clock();
     idx = 0;
     found = 0;
@@ -1310,23 +1303,6 @@ public:
     return false;
   }
 
-  // bool UpdateActivationCountersFail(LifeState &workspace, Configuration &conf) {
-  //   for (int j = 0; j < numIters; j++) {
-  //     if (workspace.Contains(conf.shiftedTargets[j]) == false) {
-  //       activated[j] = true;
-  //       absentCount[j] += MAIN_STEP;
-
-  //       if (absentCount[j] > maxMissing[conf.curs[j]]) {
-  //         return true;
-  //       }
-  //     } else {
-  //       absentCount[j] = 0;
-  //     }
-  //   }
-
-  //   return false;
-  // }
-
   bool FilterForCurrentGenFail(LifeState &workspace) {
     for (int j = 0; j < targetFilter.size(); j++) {
       if (workspace.gen == params.filterGen[j] &&
@@ -1376,49 +1352,6 @@ public:
 
     return true;
   }
-
-  // int TestConfiguration(Configuration &conf) {
-  //   if(conf.minIter == -1)
-  //     return -1; // Temporary fix
-
-  //   LifeState workspace;
-  //   workspace.JoinWSymChain(conf.state, params.symmetryChain);
-  //   workspace.Join(preIterated[conf.minIter]);
-  //   workspace.gen = conf.minIter;
-
-  //   // Initial searcher countters for absense and activation
-  //   InitActivationCounters();
-
-  //   int surviveCount = 0;
-
-  //   for (int i = conf.minIter; i < params.maxGen; i += MAIN_STEP) {
-  //     MainRun(workspace);
-
-  //     // Fail if some catalyst is idle for too long - updates the counters for
-  //     // them otherwise.
-  //     if (UpdateActivationCountersFail(workspace, conf))
-  //       return -1;
-
-  //     if (hasFilter && !reportAll) {
-  //       // Validate filters if any of them exist. Will validate on current gen
-  //       // of GlobalState
-  //       if (FilterForCurrentGenFail(workspace))
-  //         return -1;
-  //     }
-
-  //     if (IsAllActivated()) {
-  //       surviveCount += MAIN_STEP;
-  //     }
-  //     else
-  //       surviveCount = 0;
-
-  //     // If everything was actuvated and stable for stableInterval then report.
-  //     if (surviveCount >= params.stableInterval) {
-  //       return i;
-  //     }
-  //   }
-  //   return -1;
-  // }
 
   void ReportSolution(Configuration &conf, int successtime){
     LifeState init;
