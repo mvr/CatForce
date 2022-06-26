@@ -193,6 +193,13 @@ void CharToTransVec(char ch, std::vector<SymmetryTransform> &trans) {
     trans.push_back(ReflectYeqNegXP1);
     return;
   }
+
+  if (ch == '@') {
+    trans.push_back(Rotate90);
+    trans.push_back(Rotate180OddBoth);
+    trans.push_back(Rotate270);
+    return;
+  }
 }
 
 void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
