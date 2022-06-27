@@ -6,7 +6,7 @@ stable-interval 15
 
 search-area -1 -18 18 36
 
-symmetry rotate180evenx
+symmetry C2horizontaleven
 pat 2bo$b3o$o3bo$b3o$2bo! 1 1
 output sym.rle
 
