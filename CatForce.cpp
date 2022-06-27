@@ -1583,7 +1583,7 @@ public:
       if (config.count == params.numCatalysts) {
         bool allRecovered = true;
         for (int i = 0; i < config.count; i++) {
-          if (!hasRecovered[i]) {
+          if (!hasRecovered[i] || missingTime[i] > 0) {
             allRecovered = false;
           }
         }
