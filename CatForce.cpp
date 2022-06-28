@@ -188,12 +188,12 @@ void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
   }
 
   if (ch == '+') {
-    trans = SymmetryGroupFromString("D4+");
+    trans = SymmetryGroupFromString("C4");
     return;
   }
 
-  if (ch == '/' || ch == '\\') {
-    trans = SymmetryGroupFromString("D2\\");
+  if (ch == '/') {
+    trans = SymmetryGroupFromString("D2/");
     return;
   }
   // For 180 degree symetrical
@@ -346,24 +346,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
       
       if (elems[0] == symmetry) {
-        std::string symmetryString = "";
-        // reverse-compatibility reasons.
-        if (elems[1] == "horizontal") {
-          symmetryString = "D2|odd";
-        } else if (elems[1] == "horizontaleven") {
-          symmetryString = "D2|even";
-        } else if (elems[1] == "diagonal") {
-          symmetryString = "D2/"; // I think this was the way that it worked before?
-        } else if (elems[1] == "rotate180") {
-          symmetryString = "C2";
-        } else if (elems[1] == "rotate180evenx") {
-          symmetryString = "C2horizontaleven";
-        } else if (elems[1] == "rotate180evenboth") {
-          symmetryString = "C2evenboth";
-        } else {
-          symmetryString = elems[1];
-        }
-        auto symGroup = SymmetryGroupFromString(symmetryString);
+        auto symGroup = SymmetryGroupFromString(elems[1]);
         if(symGroup.size() == 0){
           std::cout << "Couldn't parse symmetry option " << symmetryString << std::endl;
           exit(0);
