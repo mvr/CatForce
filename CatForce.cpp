@@ -348,7 +348,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
       if (elems[0] == symmetry) {
         auto symGroup = SymmetryGroupFromString(elems[1]);
         if(symGroup.size() == 0){
-          std::cout << "Couldn't parse symmetry option " << symmetryString << std::endl;
+          std::cout << "Couldn't parse symmetry option " << elems[1] << std::endl;
           exit(0);
         }
         params.symmetryChain = SymmetryChainFromGroup(symGroup);
