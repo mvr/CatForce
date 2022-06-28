@@ -165,14 +165,6 @@ public:
 };
 
 void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
-  AffineTransform Identity;
-  AffineTransform ReflectAcrossX(1,0,0,-1);
-  AffineTransform ReflectAcrossY(-1,0,0,1);
-  AffineTransform ReflectAcrossYeqX(0,1,1,0);
-  AffineTransform ReflectAcrossYeqNegXP1(0,-1,-1,0);
-  AffineTransform Rotate90(0,-1,1,0);
-  AffineTransform Rotate270(0,1,-1,0);
-  AffineTransform Rotate180OddBoth(-1,0,0,-1);
 
   if (ch == '.'){
     trans = SymmetryGroupFromString("C1");
@@ -198,10 +190,10 @@ void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
   }
   // For 180 degree symetrical
   if (ch == 'x') {
-    trans.push_back(Identity);
-    trans.push_back(Rotate90);
-    trans.push_back(ReflectAcrossX);
-    trans.push_back(ReflectAcrossYeqX);
+    trans.push_back(AffineTransform());
+    trans.push_back(AffineTransform(LinearTransform::Rotate90));
+    trans.push_back(AffineTransform(LinearTransform::FlipAcrossX));
+    trans.push_back(AffineTransform(LinearTransform::FlipAcrossYEqX));
     return;
   }
 
