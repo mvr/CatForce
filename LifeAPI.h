@@ -90,94 +90,131 @@ uint64_t rand64() {
 
 enum CopyType { COPY, OR, XOR, AND };
 
-// array here is mostly for convenience, so I can use == and =
-// for comparison and assignment, instead of loops.
+enum LinearTransform{
+  Rotate0=0,
+  Rotate90=1,// 90 here is clockwise, from x toward y.
+  Rotate180=2,
+  Rotate270=3,
+  FlipAcrossX = 4, // note that these are in clockwise order
+  FlipAcrossYEqX = 5, // angle of 45 degrees between each.
+  FlipAcrossY = 6,
+  FlipAcrossYEqNegXP1 =7
+};
+
+// warning: B here is the inner transformation, the one that applies first.
+LinearTransform LTCompose(const LinearTransform A, const LinearTransform B) {
+  if( A < 4 && B < 4){ // both rotations
+    return static_cast<LinearTransform>((A+B) % 4);
+  }
+  if (A >= 4 && B >= 4 ){ // both reflections => same as rotating by 2x angle between lines.
+    return static_cast<LinearTransform>((A-B+4) % 4);
+  }
+  if (A < 4 && B >= 4) { // reflection first => rotate the line by half of the angle
+    return static_cast<LinearTransform>((B+A) % 4 + 4);
+  }
+
+  if (A >= 4 && B < 4) { // reflection second => same as above but direction of rotation flips
+    return static_cast<LinearTransform>((A-B) % 4 + 4);
+  }
+}
+
+LinearTransform LTInverse(const LinearTransform A) {
+  if( A >= 4 || A == 0 ){
+    return A;
+  }
+  return static_cast<LinearTransform>(4-A);
+}
+std::pair<int,int> ApplyLinearTransform(const LinearTransform T, const std::pair<int,int> vec ) {
+  switch(T){
+    case Rotate0:
+      return vec;
+    case Rotate90:
+      return std::make_pair(-vec.second, vec.first);
+    case Rotate180:
+      return std::make_pair(-vec.first, -vec.second);
+    case Rotate270:
+      return std::make_pair(vec.second, -vec.first);
+    case FlipAcrossX:
+      return std::make_pair(vec.first, -vec.second);
+    case FlipAcrossY:
+      return std::make_pair(-vec.first, vec.second);
+    case FlipAcrossYEqX:
+      return std::make_pair(vec.second, vec.first);
+    case FlipAcrossYEqNegXP1:
+      return std::make_pair(-vec.second, -vec.first);
+  }
+}
+
 class AffineTransform {
   public:
-    std::array<int,2> transl;
-    std::array<int,4> matrix;
+    LinearTransform matrix;
+    std::pair<int,int> transl;
   public:
-    AffineTransform(int axx, int axy, int ayx, int ayy,int x0, int y0) :
-    transl{x0, y0}, matrix{axx, axy, ayx, ayy} {};
 
-    AffineTransform(int axx, int axy, int ayx, int ayy) :
-    transl{0, 0}, matrix{axx, axy, ayx, ayy} {};
+    AffineTransform() : matrix(LinearTransform::Rotate0), transl{0,0} {}
+    AffineTransform(LinearTransform T,int x0, int y0) : matrix(T), transl{x0, y0} {}
+    AffineTransform(LinearTransform T) : matrix(T), transl{0, 0} {}
+    AffineTransform(int x0, int y0) : matrix(LinearTransform::Rotate0), transl{x0,y0} {}
 
-    AffineTransform() : transl{0, 0}, matrix{1, 0, 0, 1} {};
-
-    AffineTransform(int x0, int y0) : transl{x0,y0}, matrix{0,0,0,0} {};
-
-    bool operator==(const AffineTransform & other){
+    bool operator==(const AffineTransform & other) const {
       return transl == other.transl && matrix == other.matrix;
     }
-
-    //AffineTransform & operator= ( const AffineTransform & other ){
-
-    //}
     
-    std::array<int,2> ActOn(const std::array<int,2> & vec) {
-      
-      return std::array<int,2>({matrix[0]*vec[0]+matrix[1]*vec[1]+transl[0],
-                                matrix[2]*vec[0]+matrix[3]*vec[1]+transl[1]});
+    std::pair<int, int> ActOn(const std::pair<int, int> vec) const { // A*x + b.
+      return std::make_pair(ApplyLinearTransform(matrix, vec).first+transl.first,
+          ApplyLinearTransform(matrix, vec).second+transl.second);
     }
 
-    AffineTransform Compose(const AffineTransform & other){ // A1(A2x+b2)+b1 = (A1 A2)x + (A1 b2 + b1)
-      int newX0 = matrix[0]*other.transl[0]+matrix[1]*other.transl[1]+transl[0];
-      int newY0 = matrix[2]*other.transl[0]+matrix[3]*other.transl[1]+transl[1];
-      int newAxx = matrix[0]*other.matrix[0]+matrix[1]*other.matrix[2];
-      int newAxy = matrix[0]*other.matrix[1]+matrix[1]*other.matrix[3];
-      int newAyx = matrix[2]*other.matrix[0]+matrix[3]*other.matrix[2];
-      int newAyy = matrix[2]*other.matrix[1]+matrix[3]*other.matrix[3];
-      return AffineTransform(newAxx, newAxy, newAyx, newAyy, newX0, newY0);
+    AffineTransform Compose(const AffineTransform other) const { // A1(A2x+b2)+b1 = (A1 A2)x + (A1 b2 + b1)
+      LinearTransform newMatrix = LTCompose(matrix, other.matrix);
+      std::pair<int,int> matOfOtherTransl = ApplyLinearTransform(matrix, other.transl);
+
+      return AffineTransform(newMatrix, matOfOtherTransl.first+transl.first,
+                                            matOfOtherTransl.second+transl.second);
     }
 
-    AffineTransform Inverse(){
-      int det = matrix[0]*matrix[3]-matrix[1]*matrix[2];
-      assert(det == 1 || det == -1);
+    AffineTransform Inverse() const{
       // y = Ax+b becomes x = A^{-1}y-A^{-1}b
-      AffineTransform inverse =   AffineTransform(det*matrix[3], -1*det*matrix[1],
-                          -1*det*matrix[2], det*matrix[0]); // compute inverse matrix A^{-1}
-      inverse.transl = inverse.ActOn(transl); // this is A^{-1} b
-      inverse.transl[0] *= -1;
-      inverse.transl[1] *= -1;
+      LinearTransform inverseMat = LTInverse(matrix);
+      std::pair<int, int> negOfTransl = ApplyLinearTransform(inverseMat,transl); // this is A^{-1} b
 
-      return inverse;
+      return AffineTransform(inverseMat,-1*negOfTransl.first, -1*negOfTransl.second);
     }
 
     bool IsOrientationPreserving(){
-      return matrix[0]*matrix[3]-matrix[1]*matrix[2] > 0;
+      return matrix < 4;
     }
 
-    void Print() {
+    /*void Print() {
       for( auto num : matrix ) {
         std::cout << std::to_string( num ) << " ";
       }
       std::cout << std::to_string(transl[0]) << " " << std::to_string(transl[1]) << std::endl;
-    }
+    }*/
 
     /*AffineTransform ShiftedBy(const std::array<int,2> & otherTransl){
       return AffineTransform(matrix[0], matrix[1], matrix[2], matrix[3], transl[0] + otherTransl[0], trans[1]+otherTransl[1]);
     }*/
 };
 
-std::vector<AffineTransform> SymmetryGroupFromString(const std::string & groupName){
+const AffineTransform Identity;
+const AffineTransform ReflectAcrossX(FlipAcrossX);
+const AffineTransform ReflectAcrossY(FlipAcrossY);
+const AffineTransform ReflectAcrossYeqX(FlipAcrossYEqX);
+const AffineTransform ReflectAcrossYeqNegXP1(FlipAcrossYEqNegXP1);
+const AffineTransform ReflectAcrossXEven(FlipAcrossX,0,-1);
+const AffineTransform ReflectAcrossYEven(FlipAcrossY,-1,0);
+const AffineTransform ReflectAcrossYeqNegX(FlipAcrossYEqNegXP1,-1,-1);
+const AffineTransform Rotate90Odd(Rotate90);
+const AffineTransform Rotate90Even(Rotate90,-1,0);
+const AffineTransform Rotate270Odd(Rotate270);
+const AffineTransform Rotate270Even(Rotate270,0,-1);
+const AffineTransform Rotate180OddBoth(Rotate180);
+const AffineTransform Rotate180EvenBoth(Rotate180,-1,-1);
+const AffineTransform Rotate180EvenHorizontal(Rotate180,-1,0); // horizontal bounding box dimension is even.
+const AffineTransform Rotate180EvenVertical(Rotate180,0,-1); // vertical bounding box dimension is even.
 
-  AffineTransform Identity;
-  AffineTransform ReflectAcrossX(1,0,0,-1);
-  AffineTransform ReflectAcrossY(-1,0,0,1);
-  AffineTransform ReflectAcrossYeqX(0,1,1,0);
-  AffineTransform ReflectAcrossYeqNegXP1(0,-1,-1,0);
-  AffineTransform ReflectAcrossXEven(1,0,0,-1,0,-1);
-  AffineTransform ReflectAcrossYEven(-1,0,0,1,-1,0);
-  AffineTransform ReflectAcrossYeqNegX(0,-1,-1,0,-1,-1);
-  AffineTransform Rotate90(0,-1,1,0);
-  AffineTransform Rotate270(0,1,-1,0);
-  AffineTransform Rotate90Even(0,-1,1,0,-1,0);
-  AffineTransform Rotate270Even(0,1,-1,0,0,-1);
-  AffineTransform Rotate180OddBoth(-1,0,0,-1);
-  AffineTransform Rotate180EvenBoth(-1,0,0,-1,-1,-1);
-  AffineTransform Rotate180EvenHorizontal(-1,0,0,-1,-1,0); // horizontal bounding box dimension is even.
-  AffineTransform Rotate180EvenVertical(-1,0,0,-1,0,-1); // vertical bounding box dimension is even.
+std::vector<AffineTransform> SymmetryGroupFromString(const std::string & groupName){
 
   std::string start = groupName.substr(0,2);
   std::string rest = groupName.substr(2);
@@ -855,18 +892,9 @@ void LifeState::Step() {
   gen++;
 }
 
-
-// could phase out calls of the form Transform/Parse( ,int dx, int dy,AffineTransform transform)
-// since now we're storing the translation inside AffineTransform, those shouldn't be needed.
-// [Alternatively: if it isn't broken, don't fix it.]
-
 void LifeState::Transform(AffineTransform transform) {
-  // rotate90 stuff is ending up being reflected across the y axis.
-  // rotate90 is 0 -1   right mult by 0 -1  => 1  0
-  //             1  0                 -1 0     0  -1
-
   // only neccessary if we pass by reference (if by value, we can modify transform itself)
-  AffineTransform transCopy = transform;
+  //AffineTransform transCopy = transform;
 
 
   // probably possible to rewrite to eliminate the need for the copy
@@ -875,35 +903,38 @@ void LifeState::Transform(AffineTransform transform) {
   // as we do operations, we right compose our matrix with the inverse
   // until we reach identity matrix (they're all reflections so inverse=self) 
   // at which point we do the translation and we're done
-  // [proof: M*(A1)^{-1}*(A2)^{-1} = id => Mx+b = A2 (A1 x) + b ]
+  // [proof: M*(A1)^{-1}*(A2)^{-1} = id => M = A2 * A1 => Mx+b = A2 (A1 x) + b ]
 
-  if ( transCopy.matrix[1] == 1){
 
+  if ( transform.matrix == 3 || transform.matrix == 5){
+    // rotate 270 and flipYEqX become ReflectX and Identity.
     Transpose(false);
-    transCopy = transCopy.Compose(AffineTransform(0,1,1,0));
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossYEqX));
 
 
-  } else if ( transform.matrix[1] == -1) {
-
-    Transpose(true);
+  } else if ( transform.matrix == 1 || transform.matrix == 7) {
+    //rotate 90 and flipYEqNegXP1 become ReflectY and Identity.
+    Transpose(true);// this is has [0, -1, -1, 0] as matrix, [-1, -1] for translation.
     Move(1,1);
-    transCopy = transCopy.Compose(AffineTransform(0,-1,-1,0));
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossYEqNegXP1));
 
   }
 
-  if(transCopy.matrix[3] == -1 ) {
+  if(transform.matrix == 4 || transform.matrix == 2 ) {
     FlipAcrossX();
-    transCopy = transCopy.Compose(AffineTransform(1,0,0,-1)); 
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossX));
+
   }
 
-  if(transCopy.matrix[0] == -1 ) {
+  if(transform.matrix == 6 ) {
     FlipAcrossY();
-    transCopy = transCopy.Compose(AffineTransform(-1,0,0,1));
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossY));
+
   }
 
-  assert(transCopy.matrix[0] == 1 && transCopy.matrix[1] == 0 && transCopy.matrix[2] == 0 && transCopy.matrix[3] == 1);
+  assert(transform.matrix == Rotate0);
 
-  Move(transCopy.transl[0], transCopy.transl[1]);
+  Move(transform.transl.first, transform.transl.second);
 
 }
 
