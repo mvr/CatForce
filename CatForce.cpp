@@ -330,14 +330,14 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         params.filterdy.push_back(atoi(elems[4].c_str()));
 
         // modification
-        if( elems.size() == 5){
-          params.filterGroups.push_back("C1");
-        } else if ( elems[5][0] == 'D' || elems[5][0] == 'C' ) {
+        if ( elems.size() >= 6 && (elems[5].at(0) == 'D' || elems[5].at(0) == 'C') ) {
           if(SymmetryGroupFromString(elems[5]).size() == 0){
             std::cout << "filter symmetry group " << elems[5] << " not understood." << std::endl;
             exit(0);
           }
           params.filterGroups.push_back(elems[5]);
+        } else {
+          params.filterGroups.push_back("C1");
         }
 
       }
