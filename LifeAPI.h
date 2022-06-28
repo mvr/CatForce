@@ -181,14 +181,16 @@ std::vector<AffineTransform> SymmetryGroupFromString(const std::string & groupNa
 
   std::string start = groupName.substr(0,2);
   std::string rest = groupName.substr(2);
+
+
   if (start == "C1" or start == "no"){
     return {Identity};
   } else if (start == "D2"){
-    if (rest == "-" or rest == "vertical" or rest == "verticalodd" or rest == "-odd"){
+    if (rest == "-" or rest == "vertical"){
       return {Identity, ReflectAcrossX};
     } else if (rest == "-even" or rest == "verticaleven"){
       return {Identity, ReflectAcrossXEven};
-    } else if (rest == "|" or rest == "horizontal" or rest == "horizontalodd" or rest == "|odd"){
+    } else if (rest == "|" or rest == "horizontal"){
       return {Identity, ReflectAcrossY};
     } else if (rest == "|even" or rest == "horizontaleven"){
       return {Identity, ReflectAcrossYEven};
@@ -198,44 +200,44 @@ std::vector<AffineTransform> SymmetryGroupFromString(const std::string & groupNa
       return {Identity, ReflectAcrossYeqX};
     }
   } else if (start == "C2") {
-    if (rest == "odd" or rest == "oddboth" or rest == "bothodd" or rest == ""){
+    if (rest == "" or rest == "_1"){
       return {Identity,Rotate180OddBoth};
-    } else if (rest == "even" or rest == "botheven" or rest == "evenboth"){
+    } else if (rest == "even" or rest == "_4"){
       return {Identity,Rotate180EvenBoth};
     } else if (rest == "horizontaleven" or rest == "|even"){
       return {Identity,Rotate180EvenHorizontal};
-    } else if (rest == "verticaleven" or rest == "-even"){
+    } else if (rest == "verticaleven" or rest == "-even" or rest == "_2"){
       return {Identity, Rotate180EvenVertical};
     }
   } else if (start == "C4"){
-    if (rest == "" or rest == "odd" or rest == "oddboth" or rest == "bothodd"){
+    if (rest == "" or rest == "_1"){
       return {Identity, Rotate90, Rotate180OddBoth, Rotate270};
-    } else if (rest == "even" or rest =="evenboth" or rest == "botheven") {
+    } else if (rest == "even" or rest == "_4") {
       return {Identity, Rotate90Even, Rotate180EvenBoth, Rotate270Even};
     }
   } else if (start == "D4"){
     std::string evenOddInfo = rest.substr(1);
-    if (rest[0] == '+'){
-      if(evenOddInfo == "" or evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == "bothodd"){
+    if (rest[0] == '+' or (rest.size() > 1 and rest[1] == '+')){
+      if(evenOddInfo == "" or rest == "_+1"){
         return {Identity, ReflectAcrossX, ReflectAcrossY, Rotate180OddBoth};
-      } else if (evenOddInfo == "even" or evenOddInfo =="evenboth" or evenOddInfo == "botheven"){
+      } else if (evenOddInfo == "even" or rest == "_+4"){
         return {Identity, ReflectAcrossXEven, Rotate180EvenBoth, ReflectAcrossYEven};
-      } else if ( evenOddInfo == "verticaleven" or evenOddInfo == "-even") {
+      } else if (  evenOddInfo == "verticaleven" or evenOddInfo == "-even" or rest == "_+2") {
         return {Identity, ReflectAcrossXEven, Rotate180EvenVertical, ReflectAcrossY}; // should this be evenX or evenY?
-      } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even") {
+      } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even" ) {
         return {Identity, ReflectAcrossX, Rotate180EvenHorizontal, ReflectAcrossYEven}; // should this be evenX or evenY?
       }
-    } else if (rest[0] == 'x') {
-      if (evenOddInfo == "odd" or evenOddInfo == "oddboth" or evenOddInfo == ""){
+    } else if (rest[0] == 'x' or (rest.size() > 1 and rest[1] == 'x')) {
+      if (evenOddInfo == "odd" or rest == "_x1"){
         return {Identity, ReflectAcrossYeqX, Rotate180OddBoth,ReflectAcrossYeqNegXP1};
-      } else if (evenOddInfo == "even" or evenOddInfo == "evenboth"){
+      } else if (evenOddInfo == "even" or rest == "_x4"){
         return {Identity, ReflectAcrossYeqX, Rotate180EvenBoth, ReflectAcrossYeqNegX};
       }
     }
   } else if (start == "D8") {
-    if (rest == "odd" or rest == "oddboth" or rest == ""){
+    if (rest == "" or rest == "_1"){
       return {Identity, ReflectAcrossX, ReflectAcrossY, Rotate90, Rotate270, Rotate180OddBoth, ReflectAcrossYeqX, ReflectAcrossYeqNegXP1};
-    } else if (rest == "even" or rest == "evenboth"){
+    } else if (rest == "even" or rest == "_4"){
       return {Identity, ReflectAcrossXEven, ReflectAcrossYEven, Rotate90Even, Rotate270Even, Rotate180EvenBoth, ReflectAcrossYeqX, ReflectAcrossYeqNegX};
     }
   }
