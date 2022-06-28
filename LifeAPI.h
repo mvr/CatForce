@@ -228,7 +228,7 @@ std::vector<AffineTransform> SymmetryGroupFromString(const std::string & groupNa
         return {Identity, ReflectAcrossX, Rotate180EvenHorizontal, ReflectAcrossYEven}; // should this be evenX or evenY?
       }
     } else if (rest[0] == 'x' or (rest.size() > 1 and rest[1] == 'x')) {
-      if (evenOddInfo == "odd" or rest == "_x1"){
+      if (evenOddInfo == "" or rest == "_x1"){
         return {Identity, ReflectAcrossYeqX, Rotate180OddBoth,ReflectAcrossYeqNegXP1};
       } else if (evenOddInfo == "even" or rest == "_x4"){
         return {Identity, ReflectAcrossYeqX, Rotate180EvenBoth, ReflectAcrossYeqNegX};
