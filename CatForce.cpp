@@ -75,7 +75,7 @@ public:
   int searchArea[4]{};
   int maxW;
   int maxH;
-  std::vector<AffineTransform> symmetryChain;
+  StaticSymmetry symmetryEnum;
 
   std::vector<std::string> targetFilter;
   std::vector<int> filterdx;
@@ -83,7 +83,7 @@ public:
   std::vector<int> filterGen;
 
   //modification
-  std::vector<std::string> filterGroups;
+  std::vector<StaticSymmetry> filterGroups;
   // number of generations: if catalysts are destroyed, filters must be met within this many generations afterward or earlier.
   int stopAfterCatsDestroyed; 
 
@@ -108,7 +108,7 @@ public:
     outputFile = "results.rle";
     maxW = -1;
     maxH = -1;
-    symmetryChain = {};
+    symmetryEnum = StaticSymmetry::C1;
     maxCatSize = -1;
     fullReportFile = "";
     
@@ -164,28 +164,90 @@ public:
   }
 };
 
+StaticSymmetry SymmetryEnumFromString(const std::string & name){
+  std::string start = name.substr(0,2);
+  std::string rest = name.substr(2);
+    if (start == "D2"){
+    if (rest == "-" or rest == "vertical"){
+      return StaticSymmetry::D2AcrossX;
+    } else if (rest == "-even" or rest == "verticaleven"){
+      return StaticSymmetry::D2AcrossXEven;
+    } else if (rest == "|" or rest == "horizontal"){
+      return StaticSymmetry::D2AcrossY;
+    } else if (rest == "|even" or rest == "horizontaleven"){
+      return StaticSymmetry::D2AcrossYEven;
+    } else if ( rest == "/" or rest == "/odd") {
+      return StaticSymmetry::D2negdiagodd;
+    } else if ( rest == "\\" or rest == "\\odd") {
+      return StaticSymmetry::D2diagodd;
+    }
+  } else if (start == "C2") {
+    if (rest == "" or rest == "_1"){
+      return StaticSymmetry::C2;
+    } else if (rest == "even" or rest == "_4"){
+      return StaticSymmetry::C2even;
+    } else if (rest == "horizontaleven" or rest == "|even"){
+      return StaticSymmetry::C2horizontaleven;
+    } else if (rest == "verticaleven" or rest == "-even" or rest == "_2"){
+      return StaticSymmetry::C2verticaleven;
+    }
+  } else if (start == "C4"){
+    if (rest == "" or rest == "_1"){
+      return StaticSymmetry::C4;
+    } else if (rest == "even" or rest == "_4") {
+      return StaticSymmetry::C4even;
+    }
+  } else if (start == "D4"){
+    std::string evenOddInfo = rest.substr(1);
+    if (rest[0] == '+' or (rest.size() > 1 and rest[1] == '+')){
+      if(evenOddInfo == "" or rest == "_+1"){
+        return StaticSymmetry::D4;
+      } else if (evenOddInfo == "even" or rest == "_+4"){
+        return StaticSymmetry::D4even;
+      } else if (  evenOddInfo == "verticaleven" or evenOddInfo == "-even" or rest == "_+2") {
+        return StaticSymmetry::D4verticaleven;
+      } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even" ) {
+        return StaticSymmetry::D4horizontaleven;
+      }
+    } else if (rest[0] == 'x' or (rest.size() > 1 and rest[1] == 'x')) {
+      if (evenOddInfo == "" or rest == "_x1"){
+        return StaticSymmetry::D4diag;
+      } else if (evenOddInfo == "even" or rest == "_x4"){
+        return StaticSymmetry::D4diageven;
+      }
+    }
+  } else if (start == "D8") {
+    if (rest == "" or rest == "_1"){
+      return StaticSymmetry::D8;
+    } else if (rest == "even" or rest == "_4"){
+      return StaticSymmetry::D8even;
+    }
+  }
+  return StaticSymmetry::C1;
+}
+
 void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
 
   if (ch == '.'){
-    trans = SymmetryGroupFromString("C1");
+    trans = SymmetryGroupFromEnum(StaticSymmetry::C1);
     return;
   } if (ch == '|') {
-    trans = SymmetryGroupFromString("D2|");
+    trans =  SymmetryGroupFromEnum(StaticSymmetry::D2AcrossY);
     return;
   }
 
   if (ch == '-') {
-    trans = SymmetryGroupFromString("D2-");
+    trans =  SymmetryGroupFromEnum(StaticSymmetry::D2AcrossX);
     return;
   }
 
   if (ch == '+') {
-    trans = SymmetryGroupFromString("C4");
+    trans =  SymmetryGroupFromEnum(StaticSymmetry::C4);
     return;
   }
 
   if (ch == '/') {
-    trans = SymmetryGroupFromString("D2/");
+    trans =  SymmetryGroupFromEnum(StaticSymmetry::D2negdiagodd);
     return;
   }
   // For 180 degree symetrical
@@ -198,7 +260,7 @@ void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
   }
 
   if (ch == '*') {
-    trans=SymmetryGroupFromString("D8");
+    trans=SymmetryGroupFromEnum(StaticSymmetry::D8);
     return;
   }
 
@@ -209,7 +271,6 @@ void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
     return;
   }
 }
-
 
 
 void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
@@ -323,13 +384,14 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
         // modification
         if ( elems.size() >= 6 && (elems[5].at(0) == 'D' || elems[5].at(0) == 'C') ) {
-          if(SymmetryGroupFromString(elems[5]).size() == 0){
+          if ( elems[5] == "C1" || SymmetryEnumFromString(elems[5]) != StaticSymmetry::C1){
+            params.filterGroups.push_back(SymmetryEnumFromString(elems[5]));
+          } else {
             std::cout << "filter symmetry group " << elems[5] << " not understood." << std::endl;
             exit(0);
           }
-          params.filterGroups.push_back(elems[5]);
         } else {
-          params.filterGroups.push_back("C1");
+          params.filterGroups.push_back(StaticSymmetry::C1);
         }
 
       }
@@ -345,12 +407,12 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
       
       if (elems[0] == symmetry) {
-        auto symGroup = SymmetryGroupFromString(elems[1]);
-        if(symGroup.size() == 0){
+        if ( elems[1] == "C1" || SymmetryEnumFromString(elems[1]) != StaticSymmetry::C1){
+          params.symmetryEnum = SymmetryEnumFromString(elems[1]);
+        } else {
           std::cout << "Couldn't parse symmetry option " << elems[1] << std::endl;
           exit(0);
         }
-        params.symmetryChain = SymmetryChainFromGroup(symGroup);
       }
 
       if (elems[0] == stopAfterCatsDestroyed){
@@ -656,8 +718,8 @@ void XYStartGenPerState(const std::vector<LifeTarget> &targets,
 
       for (int y = 0; y < 64; y++) {
         LifeState state;
-        state.JoinWSymChain(states[i], x, y, params.symmetryChain);
-        state.JoinWSymChain(pat, params.symmetryChain);
+        state.JoinWSymChain(states[i], x, y, params.symmetryEnum);
+        state.JoinWSymChain(pat, params.symmetryEnum);
         int j;
 
         for (j = 0; j < params.maxGen + 1; j++) {
@@ -731,7 +793,7 @@ void XYStartGenPerState(const std::vector<LifeTarget> &targets,
 void PreIteratePat(LifeState &pat, std::vector<LifeState> &preIterated,
                    const SearchParams &params) {
   LifeState workspace;
-  workspace.JoinWSymChain(pat, params.symmetryChain);
+  workspace.JoinWSymChain(pat, params.symmetryEnum);
 
   for (int i = 0; i < params.maxGen + 5; i++) {
     preIterated.push_back(workspace);
@@ -1076,7 +1138,7 @@ public:
     // modification
     for (int i = 0; i < params.targetFilter.size(); i++){
       targetFilterLists.push_back(std::vector<LifeTarget>({}));
-      for ( AffineTransform trans : SymmetryGroupFromString(params.filterGroups[i])){
+      for ( AffineTransform trans : SymmetryGroupFromEnum(params.filterGroups[i])){
         targetFilterLists[i].push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
                                         params.filterdx[i], params.filterdy[i], trans));
         // debugging purposes
@@ -1291,8 +1353,8 @@ public:
 
   void PutStartState(LifeState &workspace, Configuration &conf) {
     workspace.Clear();
-    workspace.JoinWSymChain(conf.state, params.symmetryChain);
-    workspace.JoinWSymChain(pat, params.symmetryChain);
+    workspace.JoinWSymChain(conf.state, params.symmetryEnum);
+    workspace.JoinWSymChain(pat, params.symmetryEnum);
   }
 
   // modified
@@ -1349,7 +1411,7 @@ public:
       return -1; // Temporary fix
 
     LifeState workspace;
-    workspace.JoinWSymChain(conf.state, params.symmetryChain);
+    workspace.JoinWSymChain(conf.state, params.symmetryEnum);
     workspace.Join(preIterated[conf.minIter]);
     workspace.gen = conf.minIter;
 
@@ -1395,7 +1457,7 @@ public:
     LifeState workspace;
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
-      workspace.JoinWSymChain(conf.state, params.symmetryChain);
+      workspace.JoinWSymChain(conf.state, params.symmetryEnum);
       catalysts.Copy(workspace);
 
       PutStartState(workspace, conf);
@@ -1415,7 +1477,7 @@ public:
     if (params.stopAfterCatsDestroyed > 0){
 
       LifeState checkCatsDestroyed;
-      checkCatsDestroyed.JoinWSymChain(conf.state, params.symmetryChain);
+      checkCatsDestroyed.JoinWSymChain(conf.state, params.symmetryEnum);
       PutStartState(checkCatsDestroyed, conf);
       checkCatsDestroyed.Step(successtime);
       int absence = 0;
@@ -1449,7 +1511,7 @@ public:
 
     // If all filters validated update results
     workspace.Clear();
-    workspace.JoinWSymChain(conf.state, params.symmetryChain);
+    workspace.JoinWSymChain(conf.state, params.symmetryEnum);
     catalysts.Copy(workspace);
 
     PutStartState(workspace, conf);
