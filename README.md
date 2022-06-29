@@ -26,28 +26,30 @@ See `1.in` for an example.
 
 The option delimiter is `" "` - i.e. space. 
 
-| Line                  | Parameter             | Description                                                            |
-|-----------------------|-----------------------|------------------------------------------------------------------------|
-| `max-gen`             | `n`                   | Overall maximum generation                                             |
-| `start-gen`           | `n`                   | The min gen the first encounter must happen by                         |
-| `last-gen`            | `n`                   | The max gen the _first_ encounter is allowed                           |
-| `num-catalyst`        | `n`                   | The number of catalyst to place                                        |
-| `stable-interval`     | `n`                   | Gens the catalysts must remain untouched to be considered stable       |
-| `search-area`         | `x y w h`             | Search area                                                            |
-| `pat`                 | `rle`                 | The active pattern                                                     |
-|                       | `(dx dy)`             | Optional offset                                                        |
-| `cat `                | `rle`                 | A catalyst                                                             |
-|                       | `max-active`          | Number of generations in a row the catalyst may be missing             |
-|                       | `dx dy`               | Offset to centre the catalyst (typically negative)                     |
-|                       | `symmetries-char`     | Character denoting the symmetry of the catalyst                        |
-|                       | `(forbidden rle x y)` | Optional forbidden pattern around the catalyst                         |
-| `output`              | `filename`            | Output filename                                                        |
-| `filter`              | `gen rle dx dy`       | Filter that must be matched for the solution to be accepted            |
-| `filter`              | `min-max rle dx dy`   | Filter in a range of generations.                                      |
-| `full-report`         | `filename`            | Output filename for solutions ignoring all pattern filters             |
-| `max-category-size`   | `n`                   | Maximum output row length before more solutions are dropped            |
-| `fit-in-width-height` | `w h`                 | Only allow solutions where all catalysts fit in a `w` by `h` rectangle |
-| `symmetry`            |                       | See below                                                              |
+| Line                        | Parameter                | Description                                                            |
+|-----------------------------|--------------------------|------------------------------------------------------------------------|
+| `max-gen`                   | `n`                      | Overall maximum generation                                             |
+| `start-gen`                 | `n`                      | The min gen the first encounter must happen by                         |
+| `last-gen`                  | `n`                      | The max gen the _first_ encounter is allowed                           |
+| `num-catalyst`              | `n`                      | The number of catalyst to place                                        |
+| `stable-interval`           | `n`                      | Gens the catalysts must remain untouched to be considered stable       |
+| `search-area`               | `x y w h`                | Search area                                                            |
+| `pat`                       | `rle`                    | The active pattern                                                     |
+|                             | `(dx dy)`                | Optional offset                                                        |
+| `cat `                      | `rle`                    | A catalyst                                                             |
+|                             | `max-active`             | Number of generations in a row the catalyst may be missing             |
+|                             | `dx dy`                  | Offset to centre the catalyst (typically negative)                     |
+|                             | `symmetries-char`        | Character denoting the symmetry of the catalyst                        |
+|                             | `(forbidden rle x y)`    | Optional forbidden pattern around the catalyst                         |
+| `output`                    | `filename`               | Output filename                                                        |
+| `filter`                    | `gen rle dx dy`          | Filter that must be matched for the solution to be accepted            |
+| `filter`                    | `min-max rle dx dy`      | Filter in a range of generations.                                      |
+| `filter`                    | `min-max rle dx dy sym`  | Filter with symmetry (see below)                                       |
+| `full-report`               | `filename`               | Output filename for solutions ignoring all pattern filters             |
+| `max-category-size`         | `n`                      | Maximum output row length before more solutions are dropped            |
+| `fit-in-width-height`       | `w h`                    | Only allow solutions where all catalysts fit in a `w` by `h` rectangle |
+| `symmetry`                  |                          | See below                                                              |
+| `stop-after-cats-destroyed` | `n`                      | Filters must be met n generations after catalyst destruction or sooner |
 
 
 
@@ -74,7 +76,16 @@ an example.
 **Filters**: one can use several filters. Every filter will be
 checked if successful catalyst was found. Each filter will select
 for patterns matching the live cells in `rle` and dead cells in close
-proximity neighbourhood to the live cells in `rle`.
+proximity neighbourhood to the live cells in `rle`. Filters also
+accept a symmetry group: one of the transformed images of the
+`rle` must appear. (Intended for searching for oscillators that
+flip every half period: this way, one search and one filter covers
+both re-occurrance and the various the oscillator could flip.)
+
+**Stop After Catalysts Destroyed**: if the catalysts all recover,
+only check filters out to n generations after the first
+catalyst is destroyed. (This cuts down on false positives 
+when searching for oscillators.)
 
 <!-- Combining Results -->
 <!-- --- -->
