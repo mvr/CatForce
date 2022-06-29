@@ -81,6 +81,9 @@ public:
   std::vector<int> filterGen;
   std::vector<std::pair<int, int>> filterGenRange;
 
+
+  std::tuple<std::string, int, int> alsoRequired;
+
   int maxCatSize;
 
   SearchParams() {
@@ -102,6 +105,8 @@ public:
     symmetryChain = {};
     maxCatSize = -1;
     fullReportFile = "";
+
+    alsoRequired = std::make_tuple("", 0,0);
   }
 };
 
@@ -246,6 +251,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string fullReport = "full-report";
 
   std::string symmetry = "symmetry";
+  std::string alsoRequired = "also-required";
 
   std::string line;
 
@@ -341,6 +347,10 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
       if (elems[0] == maxCatSize) {
         params.maxCatSize = atoi(elems[1].c_str());
+      }
+
+      if (elems[0] == alsoRequired){
+        params.alsoRequired = std::make_tuple(elems[1], atoi(elems[2].c_str()), atoi(elems[3].c_str()));
       }
 
      std::string symmetryString = "";
@@ -1423,9 +1433,21 @@ public:
       masks[s].Copy(bounds, ORNOT);
     }
 
+    LifeState required = LifeState();
+    if(std::get<0>(params.alsoRequired) != ""){
+
+      LifeState alsoReq = LifeState::Parse(std::get<0>(params.alsoRequired).c_str(), std::get<1>(params.alsoRequired),
+                                                                                        std::get<2>(params.alsoRequired));
+      if (! config.state.Contains(alsoReq)){
+        std::cout << "also-required parameter was passed, yet said pattern isn't in the input RLE." << std::endl;
+        exit(0);
+      }
+      required.Join(alsoReq);
+    }
+
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, history, LifeState(), masks, shiftedTargets,
+    RecursiveSearch(config, history, required, masks, shiftedTargets,
                     std::array<int, MAX_CATALYSTS>(), std::array<int, MAX_CATALYSTS>(),
                     std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
   }

@@ -48,7 +48,7 @@ The option delimiter is `" "` - i.e. space.
 | `max-category-size`   | `n`                   | Maximum output row length before more solutions are dropped            |
 | `fit-in-width-height` | `w h`                 | Only allow solutions where all catalysts fit in a `w` by `h` rectangle |
 | `symmetry`            |                       | See below                                                              |
-
+| `also-required`       | `rle dx dy`           | Require pattern to be present in every generation.                     |
 
 
 **Encounter**: An active cell from the input pattern is present in
