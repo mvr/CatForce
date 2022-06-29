@@ -7,11 +7,12 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
 #include <string.h>
 #include <vector>
-#include <iostream>
 
 #include <immintrin.h>
+#include <assert.h> //clang C++-11 reasons.
 
 #define N 64
 
@@ -227,27 +228,255 @@ uint64_t rand64() {
 
 enum CopyType { COPY, OR, XOR, AND, ANDNOT, ORNOT };
 
-enum SymmetryTransform {
-  Identity, // only used for catalyst initialization. The identity is omitted
-            // for symmetry of the pattern.
-  ReflectXEven,
-  ReflectX,
-  ReflectYEven,
-  ReflectY,
-  Rotate90Even,
-  Rotate90,
-  Rotate270Even,
-  Rotate270,
-  Rotate180OddBoth,
-  Rotate180EvenX,
-  Rotate180EvenY,
-  Rotate180EvenBoth,
-  ReflectYeqX,
-  ReflectYeqNegX,
-  ReflectYeqNegXP1 // reflect across y = -x+3/2, fixing (0,0), instead of
-                   // y=-x+1/2, sending (0,0) to (-1,-1). Needed for D4x_1
-                   // symmetry.
+enum LinearTransform{
+  Rotate0=0,
+  Rotate90=1,// 90 here is clockwise, from x toward y.
+  Rotate180=2,
+  Rotate270=3,
+  FlipAcrossX = 4, // note that these are in clockwise order
+  FlipAcrossYEqX = 5, // angle of 45 degrees between each.
+  FlipAcrossY = 6,
+  FlipAcrossYEqNegXP1 =7
 };
+
+// warning: B here is the inner transformation, the one that applies first.
+LinearTransform LTCompose(const LinearTransform A, const LinearTransform B) {
+  if( A < 4 && B < 4){ // both rotations
+    return static_cast<LinearTransform>((A+B) % 4);
+  }
+  if (A >= 4 && B >= 4 ){ // both reflections => same as rotating by 2x angle between lines.
+    return static_cast<LinearTransform>((A-B+4) % 4);
+  }
+  if (A < 4 && B >= 4) { // reflection first => rotate the line by half of the angle
+    return static_cast<LinearTransform>((B+A) % 4 + 4);
+  }
+
+  if (A >= 4 && B < 4) { // reflection second => same as above but direction of rotation flips
+    return static_cast<LinearTransform>((A-B) % 4 + 4);
+  }
+}
+
+LinearTransform LTInverse(const LinearTransform A) {
+  if( A >= 4 || A == 0 ){
+    return A;
+  }
+  return static_cast<LinearTransform>(4-A);
+}
+std::pair<int,int> ApplyLinearTransform(const LinearTransform T, const std::pair<int,int> vec ) {
+  switch(T){
+    case Rotate0:
+      return vec;
+    case Rotate90:
+      return std::make_pair(-vec.second, vec.first);
+    case Rotate180:
+      return std::make_pair(-vec.first, -vec.second);
+    case Rotate270:
+      return std::make_pair(vec.second, -vec.first);
+    case FlipAcrossX:
+      return std::make_pair(vec.first, -vec.second);
+    case FlipAcrossY:
+      return std::make_pair(-vec.first, vec.second);
+    case FlipAcrossYEqX:
+      return std::make_pair(vec.second, vec.first);
+    case FlipAcrossYEqNegXP1:
+      return std::make_pair(-vec.second, -vec.first);
+  }
+}
+
+class AffineTransform {
+  public:
+    LinearTransform matrix;
+    std::pair<int,int> transl;
+  public:
+
+    AffineTransform() : matrix(LinearTransform::Rotate0), transl{0,0} {}
+    AffineTransform(LinearTransform T,int x0, int y0) : matrix(T), transl{x0, y0} {}
+    AffineTransform(LinearTransform T) : matrix(T), transl{0, 0} {}
+    AffineTransform(int x0, int y0) : matrix(LinearTransform::Rotate0), transl{x0,y0} {}
+
+    bool operator==(const AffineTransform & other) const {
+      return transl == other.transl && matrix == other.matrix;
+    }
+    
+    std::pair<int, int> ActOn(const std::pair<int, int> vec) const { // A*x + b.
+      return std::make_pair(ApplyLinearTransform(matrix, vec).first+transl.first,
+          ApplyLinearTransform(matrix, vec).second+transl.second);
+    }
+
+    AffineTransform Compose(const AffineTransform other) const { // A1(A2x+b2)+b1 = (A1 A2)x + (A1 b2 + b1)
+      LinearTransform newMatrix = LTCompose(matrix, other.matrix);
+      std::pair<int,int> matOfOtherTransl = ApplyLinearTransform(matrix, other.transl);
+
+      return AffineTransform(newMatrix, matOfOtherTransl.first+transl.first,
+                                            matOfOtherTransl.second+transl.second);
+    }
+
+    AffineTransform Inverse() const{
+      // y = Ax+b becomes x = A^{-1}y-A^{-1}b
+      LinearTransform inverseMat = LTInverse(matrix);
+      std::pair<int, int> negOfTransl = ApplyLinearTransform(inverseMat,transl); // this is A^{-1} b
+
+      return AffineTransform(inverseMat,-1*negOfTransl.first, -1*negOfTransl.second);
+    }
+
+    bool IsOrientationPreserving(){
+      return matrix < 4;
+    }
+
+    /*void Print() {
+      for( auto num : matrix ) {
+        std::cout << std::to_string( num ) << " ";
+      }
+      std::cout << std::to_string(transl[0]) << " " << std::to_string(transl[1]) << std::endl;
+    }*/
+
+    /*AffineTransform ShiftedBy(const std::array<int,2> & otherTransl){
+      return AffineTransform(matrix[0], matrix[1], matrix[2], matrix[3], transl[0] + otherTransl[0], trans[1]+otherTransl[1]);
+    }*/
+};
+
+enum StaticSymmetry {
+  C1,
+  D2AcrossX,
+  D2AcrossXEven,
+  D2AcrossY,
+  D2AcrossYEven,
+  D2negdiagodd,
+  D2diagodd,
+  C2,
+  C2even,
+  C2verticaleven,
+  C2horizontaleven,
+  C4,
+  C4even,
+  D4,
+  D4even,
+  D4verticaleven,
+  D4horizontaleven,
+  D4diag,
+  D4diageven,
+  D8,
+  D8even,
+};
+
+const AffineTransform Identity;
+const AffineTransform ReflectAcrossX(FlipAcrossX);
+const AffineTransform ReflectAcrossY(FlipAcrossY);
+const AffineTransform ReflectAcrossYeqX(FlipAcrossYEqX);
+const AffineTransform ReflectAcrossYeqNegXP1(FlipAcrossYEqNegXP1);
+const AffineTransform ReflectAcrossXEven(FlipAcrossX,0,-1);
+const AffineTransform ReflectAcrossYEven(FlipAcrossY,-1,0);
+const AffineTransform ReflectAcrossYeqNegX(FlipAcrossYEqNegXP1,-1,-1);
+const AffineTransform Rotate90Odd(Rotate90);
+const AffineTransform Rotate90Even(Rotate90,-1,0);
+const AffineTransform Rotate270Odd(Rotate270);
+const AffineTransform Rotate270Even(Rotate270,0,-1);
+const AffineTransform Rotate180OddBoth(Rotate180);
+const AffineTransform Rotate180EvenBoth(Rotate180,-1,-1);
+const AffineTransform Rotate180EvenHorizontal(Rotate180,-1,0); // horizontal bounding box dimension is even.
+const AffineTransform Rotate180EvenVertical(Rotate180,0,-1); // vertical bounding box dimension is even.
+
+
+std::vector<AffineTransform> SymmetryGroupFromEnum(const StaticSymmetry sym){
+
+  switch(sym) {
+    case StaticSymmetry::C1:
+      return {Identity};
+    case StaticSymmetry::D2AcrossX:
+      return {Identity, ReflectAcrossX};
+      // vertical/horizontal here refer to box dimensions, NOT axis of reflection
+    case StaticSymmetry::D2AcrossXEven:
+      return {Identity, ReflectAcrossXEven};
+    case StaticSymmetry::D2AcrossY:
+      return {Identity, ReflectAcrossY};
+    case StaticSymmetry::D2AcrossYEven:
+      return {Identity, ReflectAcrossYEven};
+    case StaticSymmetry::D2diagodd:
+      return {Identity, ReflectAcrossYeqX};
+    case StaticSymmetry::D2negdiagodd:
+      return {Identity, ReflectAcrossYeqNegXP1};
+    case StaticSymmetry::C2:
+      return {Identity, Rotate180OddBoth};
+    case StaticSymmetry::C2even:
+      return {Identity, Rotate180EvenBoth};
+    case StaticSymmetry::C2horizontaleven:
+      return {Identity, Rotate180EvenHorizontal};
+    case StaticSymmetry::C2verticaleven:
+      return {Identity, Rotate180EvenVertical};
+    case StaticSymmetry::C4:
+      return {Identity, Rotate90, Rotate180OddBoth, Rotate270};
+    case StaticSymmetry::C4even:
+      return {Identity, Rotate90Even, Rotate180EvenBoth, Rotate270Even};
+    case StaticSymmetry::D4:
+      return {Identity, ReflectAcrossX, Rotate180OddBoth, ReflectAcrossY};
+    case StaticSymmetry::D4even:
+      return {Identity, ReflectAcrossXEven, Rotate180EvenBoth, ReflectAcrossYEven};
+    case StaticSymmetry::D4horizontaleven:
+      return {Identity, ReflectAcrossYEven, Rotate180EvenHorizontal, ReflectAcrossX};
+    case StaticSymmetry::D4verticaleven:
+      return {Identity, ReflectAcrossXEven, Rotate180EvenVertical, ReflectAcrossY};
+    case StaticSymmetry::D4diag:
+      return {Identity, ReflectAcrossYeqX, Rotate180OddBoth, ReflectAcrossYeqNegXP1};
+    case StaticSymmetry::D4diageven:
+      return {Identity, ReflectAcrossYeqX, Rotate180EvenBoth, ReflectAcrossYeqNegX};
+    case StaticSymmetry::D8:
+      return {Identity, ReflectAcrossX, ReflectAcrossYeqX, ReflectAcrossY, \
+                        ReflectAcrossYeqNegXP1, Rotate90, Rotate270, Rotate180OddBoth};
+    case StaticSymmetry::D8even:
+      return {Identity, ReflectAcrossXEven, ReflectAcrossYeqX, ReflectAcrossYEven, \
+                        ReflectAcrossYeqNegX, Rotate90Even, Rotate270Even, Rotate180EvenBoth};
+  }
+}
+
+std::vector<AffineTransform> SymmetryChainFromEnum(const StaticSymmetry sym){
+
+  switch(sym) {
+    case StaticSymmetry::C1:
+      return {};
+    case StaticSymmetry::D2AcrossY:
+      return {ReflectAcrossY};
+    case StaticSymmetry::D2AcrossYEven:
+      return {ReflectAcrossYEven};
+    case StaticSymmetry::D2AcrossX:
+      return {ReflectAcrossX};
+    case StaticSymmetry::D2AcrossXEven:
+      return {ReflectAcrossXEven};
+    case StaticSymmetry::D2diagodd:
+      return {ReflectAcrossYeqX};
+    case StaticSymmetry::D2negdiagodd:
+      return {ReflectAcrossYeqNegXP1};
+    case StaticSymmetry::C2:
+      return {Rotate180OddBoth};
+    case StaticSymmetry::C2even:
+      return {Rotate180EvenBoth};
+    case StaticSymmetry::C2horizontaleven:
+      return {Rotate180EvenHorizontal};
+    case StaticSymmetry::C2verticaleven:
+      return {Rotate180EvenVertical};
+    case StaticSymmetry::C4:
+      return {Rotate90, Rotate90, Rotate90};
+    case StaticSymmetry::C4even:
+      return {Rotate90Even, Rotate90Even, Rotate90Even};
+    case StaticSymmetry::D4: // rotation = 2 reflections, so try to use reflections.
+      return {ReflectAcrossX, ReflectAcrossY, ReflectAcrossX};
+    case StaticSymmetry::D4even:
+      return {ReflectAcrossXEven, ReflectAcrossYEven, ReflectAcrossXEven};
+    case StaticSymmetry::D4horizontaleven:
+      return {ReflectAcrossYEven, ReflectAcrossX, ReflectAcrossYEven};
+    case StaticSymmetry::D4verticaleven:
+      return {ReflectAcrossXEven, ReflectAcrossY, ReflectAcrossXEven};
+    case StaticSymmetry::D4diag:
+      return {ReflectAcrossYeqX, ReflectAcrossYeqNegXP1, ReflectAcrossYeqX};
+    case StaticSymmetry::D4diageven:
+      return {ReflectAcrossYeqX, ReflectAcrossYeqNegX, ReflectAcrossYeqX};
+    case StaticSymmetry::D8: // reflect around in circle clockwise.
+      return {ReflectAcrossYeqX, ReflectAcrossY, ReflectAcrossYeqNegXP1,\
+                        ReflectAcrossX, ReflectAcrossYeqX, ReflectAcrossY, ReflectAcrossYeqNegXP1};
+    case StaticSymmetry::D8even:
+      return {ReflectAcrossYeqX, ReflectAcrossYEven, ReflectAcrossYeqNegX,\
+                        ReflectAcrossXEven, ReflectAcrossYeqX, ReflectAcrossYEven, ReflectAcrossYeqNegX};
+  }
+}
 
 inline uint64_t RotateLeft(uint64_t x, unsigned int k) {
   return __builtin_rotateleft64(x, k);
@@ -412,7 +641,7 @@ public:
   }
 
   void JoinWSymChain(const LifeState &state, int x, int y,
-                     const std::vector<SymmetryTransform> &symChain) {
+                     const StaticSymmetry symmetryGroup) {
     // instead of passing in the symmetry group {id, g_1, g_2,...g_n} and
     // applying each to default orientation we pass in a "chain" of symmetries
     // {h_1, ...h_n-1} that give the group when "chained together": g_j =
@@ -420,11 +649,11 @@ public:
     // LifeState for each symmetry.
 
     Join(state, x, y); // identity transformation
-    if (symChain.size() == 0)
+    if (symmetryGroup == StaticSymmetry::C1)
       return;
 
+    std::vector<AffineTransform> symChain(SymmetryChainFromEnum(symmetryGroup));
     LifeState transformed;
-
     transformed.Join(state, x, y);
     for (int i = 0; i < symChain.size(); ++i) {
       transformed.Transform(symChain[i]);
@@ -433,11 +662,12 @@ public:
   }
 
   void JoinWSymChain(const LifeState &state,
-                     const std::vector<SymmetryTransform> &symChain) {
+                     const StaticSymmetry symmetryGroup) {
     Join(state); // identity transformation
-    if (symChain.size() == 0)
+    if (symmetryGroup == StaticSymmetry::C1)
       return;
 
+    std::vector<AffineTransform> symChain(SymmetryChainFromEnum(symmetryGroup));
     LifeState transformed = state;
     for (int i = 0; i < symChain.size(); ++i) {
       transformed.Transform(symChain[i]);
@@ -588,10 +818,14 @@ public:
     }
   }
 
-  void FlipY() { // even reflection across y-axis, ie (0,0) maps to (0, -1)
-    Reverse(0, N - 1);
+  void FlipAcrossY() {
+    Reverse(0, N - 1); // (0,0) => (-1, 0)
+    Move(1,0); // now it fixes (0,0)
   }
 
+  // true: flip across main matrix diagonal, coordinates flip across y = -x
+  //       note that this doesn't fix (0,0)!
+  // false: flip other diagonal, coordinates flip across y=x
   void Transpose(bool whichDiagonal) {
     int j, k;
     uint64_t m, t;
@@ -608,19 +842,20 @@ public:
           state[k | j] ^= t;
         }
       }
-
-      RecalculateMinMax();
     }
   }
 
   void Transpose() { Transpose(true); }
 
-  // even reflection across x-axis, ie (0,0) maps to (0, -1)
-  void FlipX() { BitReverse(); }
+  void FlipAcrossX() { // flips across x-axis, fixing (0,0)
+    BitReverse(); // sends (0,0) to (0,-1)
+    Move(0,1); // now it fixes (0,0)
+  }
 
-  void Transform(SymmetryTransform transf);
+  void Transform(AffineTransform transf);
 
-  void Transform(int dx, int dy, SymmetryTransform transf) {
+  // here the shift applies BEFORE the affine transformation
+  void Transform(int dx, int dy, AffineTransform transf) {
     Move(dx, dy);
     Transform(transf);
     RecalculateMinMax();
@@ -808,8 +1043,10 @@ public:
     return Parse(state, rle, 0, 0);
   }
 
+  // with all versions of Parse with dx, dy, and transf,
+  // the shift by dx, dy applies BEFORE the affine transformation
   static int Parse(LifeState &state, const char *rle, int dx, int dy,
-                   SymmetryTransform transf) {
+                   AffineTransform transf) {
     int result = Parse(state, rle);
 
     if (result == SUCCESS)
@@ -819,10 +1056,10 @@ public:
   }
 
   static LifeState Parse(const char *rle, int dx, int dy,
-                         SymmetryTransform trans) {
+                         AffineTransform trans) {
     LifeState result;
     Parse(result, rle);
-    result.Transform(dx, dy, trans);
+    result.Transform(dx,dy,trans);
 
     return result;
   }
@@ -965,72 +1202,39 @@ void LifeState::Step() {
   gen++;
 }
 
-void LifeState::Transform(SymmetryTransform transf) {
-  switch (transf) {
-  case Identity:
-    break;
-  case ReflectXEven:
-    FlipX();
-    break;
-  case ReflectX:
-    FlipX();
-    Move(0, 1);
-    break;
-  case ReflectYEven:
-    FlipY();
-    break;
-  case ReflectY:
-    FlipY();
-    Move(1, 0);
-    break;
-  case Rotate180EvenBoth:
-    FlipX();
-    FlipY();
-    break;
-  case Rotate180EvenX:
-    FlipX();
-    FlipY();
-    Move(1, 0);
-    break;
-  case Rotate180EvenY:
-    FlipX();
-    FlipY();
-    Move(0, 1);
-    break;
-  case Rotate180OddBoth:
-    FlipX();
-    FlipY();
-    Move(1, 1);
-    break;
-  case ReflectYeqX:
+void LifeState::Transform(AffineTransform transform) {
+
+  // could re-write as switch.
+  if ( transform.matrix == 3 || transform.matrix == 5){
+    // rotate 270 and flipYEqX become ReflectX and Identity.
     Transpose(false);
-    break;
-  case ReflectYeqNegX:
-    Transpose(true);
-    break;
-  case ReflectYeqNegXP1:
-    Transpose(true);
-    Move(1, 1);
-    break;
-  case Rotate90Even:
-    FlipX();
-    Transpose(false);
-    break;
-  case Rotate90:
-    FlipX();
-    Transpose(false);
-    Move(1, 0);
-    break;
-  case Rotate270Even:
-    FlipY();
-    Transpose(false);
-    break;
-  case Rotate270:
-    FlipY();
-    Transpose(false);
-    Move(0, 1);
-    break;
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossYEqX));
+
+
+  } else if ( transform.matrix == 1 || transform.matrix == 7) {
+    //rotate 90 and flipYEqNegXP1 become ReflectY and Identity.
+    Transpose(true);// this is has [0, -1, -1, 0] as matrix, [-1, -1] for translation.
+    Move(1,1);
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossYEqNegXP1));
+
   }
+
+  if(transform.matrix == 4 || transform.matrix == 2 ) {
+    FlipAcrossX();
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossX));
+
+  }
+
+  if(transform.matrix == 6 ) {
+    FlipAcrossY();
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossY));
+
+  }
+
+  assert(transform.matrix == Rotate0);
+
+  Move(transform.transl.first, transform.transl.second);
+
 }
 
 void LifeState::Print() const {
@@ -1132,7 +1336,7 @@ public:
   }
 
   static int Parse(LifeTarget &target, const char *rle, int x, int y,
-                   SymmetryTransform transf) {
+                   AffineTransform transf) {
     LifeState Temp;
     int result = LifeState::Parse(Temp, rle, x, y, transf);
 
@@ -1146,14 +1350,14 @@ public:
   }
 
   static LifeTarget Parse(const char *rle, int x, int y,
-                          SymmetryTransform transf) {
+                          AffineTransform transf) {
     LifeTarget target;
     Parse(target, rle, x, y, transf);
     return target;
   }
 
   static LifeTarget Parse(const char *rle, int x, int y) {
-    return Parse(rle, x, y, Identity);
+    return Parse(rle, x, y, AffineTransform());
   }
 
   static LifeTarget Parse(const char *rle) { return Parse(rle, 0, 0); }
