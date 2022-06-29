@@ -920,30 +920,30 @@ void LifeState::Transform(AffineTransform transform) {
   if ( transform.matrix == 3 || transform.matrix == 5){
     // rotate 270 and flipYEqX become ReflectX and Identity.
     Transpose(false);
-    //transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossYEqX));
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossYEqX));
 
 
   } else if ( transform.matrix == 1 || transform.matrix == 7) {
     //rotate 90 and flipYEqNegXP1 become ReflectY and Identity.
     Transpose(true);// this is has [0, -1, -1, 0] as matrix, [-1, -1] for translation.
     Move(1,1);
-    //transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossYEqNegXP1));
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossYEqNegXP1));
 
   }
 
   if(transform.matrix == 4 || transform.matrix == 2 ) {
     FlipAcrossX();
-    //transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossX));
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossX));
 
   }
 
   if(transform.matrix == 6 ) {
     FlipAcrossY();
-    //transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossY));
+    transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossY));
 
   }
 
-  //assert(transform.matrix == Rotate0);
+  assert(transform.matrix == Rotate0);
 
   Move(transform.transl.first, transform.transl.second);
 
