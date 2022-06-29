@@ -78,9 +78,10 @@ checked if successful catalyst was found. Each filter will select
 for patterns matching the live cells in `rle` and dead cells in close
 proximity neighbourhood to the live cells in `rle`. Filters also
 accept a symmetry group: one of the transformed images of the
-`rle` must appear. (Intended for searching for oscillators that
-flip every half period: this way, one search and one filter covers
-both re-occurrance and the various the oscillator could flip.)
+`rle` must appear. See the symmetric searches section for syntax.
+(Intended for searching for oscillators that flip every half period:
+ this way, one search and one filter covers both re-occurrance
+ and the various the oscillator could flip.)
 
 **Stop After Catalysts Destroyed**: if the catalysts all recover,
 only check filters out to n generations after the first
