@@ -90,7 +90,8 @@ public:
   std::vector<StaticSymmetry> filterGroups;
   // number of generations: if catalysts are destroyed, filters must be met within this many generations afterward or earlier.
   int stopAfterCatsDestroyed; 
-
+  bool reportMatches;
+  bool quietMode;
 
   std::vector<std::pair<int, int>> filterGenRange;
 
@@ -123,6 +124,9 @@ public:
     
     filterGroups = {};
     stopAfterCatsDestroyed = -1;
+
+    quietMode = false;
+    reportMatches = false;
   }
 };
 
@@ -325,6 +329,8 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string alsoRequired = "also-required";
 
   std::string stopAfterCatsDestroyed = "stop-after-cats-destroyed";
+  std::string reportMatches = "report-matches";
+  std::string quiet = "quiet-mode";
 
   std::string line;
 
@@ -448,6 +454,15 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
       if (elems[0] == stopAfterCatsDestroyed){
         params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
+      }
+
+      if (elems[0] == reportMatches){
+        params.reportMatches = true;
+      }
+
+
+      if (elems[0] == quiet){
+        params.quietMode = true;
       }
 
     } catch (const std::exception &ex) {
@@ -1125,11 +1140,14 @@ public:
 
   int filterMaxGen{};
 
+  std::vector<int> matches;
+
   void Init(const char *inputFile, int nthreads) {
     begin = clock();
 
     std::vector<CatalystInput> inputcats;
     ReadParams(inputFile, inputcats, params);
+    std::cout << params.quietMode << std::endl;
     GenerateStates(inputcats, catalysts, requiredParts, catalystLocus, forbiddenTargets, maxMissing, transparent);
 
     pat = LifeState::Parse(params.pat.c_str(), params.xPat, params.yPat);
@@ -1366,8 +1384,19 @@ public:
         if (params.filterGen[k] == -1 &&
                 params.filterGenRange[k].first <= workspace.gen &&
                 params.filterGenRange[k].second >= workspace.gen){
+          bool prevMet = rangeValid[k];
           for(LifeTarget transformedTarget :targetFilterLists[k]){
             rangeValid[k] = rangeValid[k] | workspace.Contains(transformedTarget);
+          }
+          if ( ! prevMet && rangeValid[k] && params.reportMatches){
+            bool alreadyPresent = false;
+            for (int oldMatch : matches){
+              if(oldMatch == j)
+                alreadyPresent = true;
+            }
+            if (!alreadyPresent){
+              matches.push_back(j);
+            }
           }
         }
       }
@@ -1566,7 +1595,7 @@ public:
               // Do the placement
               auto newPlacement = newPlacements.FirstOn();
 
-              if (config.count == 0) {
+              if (config.count == 0 && !params.quietMode) {
                 std::cout << "Placing catalyst " << s << " at "
                           << newPlacement.first << ", " << newPlacement.second
                           << std::endl;
@@ -1701,9 +1730,18 @@ int main(int argc, char *argv[]) {
   searcher.Search();
   // Print report one final time (update files with the final results).
   searcher.Report();
-
   printf("\n\nFINISH\n");
   clock_t end = clock();
   printf("Total elapsed CPU time (not wallclock if nthreads>1): %f seconds\n",
          (double)(end - searcher.begin) / CLOCKS_PER_SEC);
+  if(searcher.matches.size() != 0){
+    std::cout << "Ranged filters matched at generations ";
+    for(int i = 0 ; i < searcher.matches.size(); ++i){
+      std::cout << searcher.matches[i];
+      if (i + 1 < searcher.matches.size()){
+        std::cout << " ";
+      }
+    }
+    std::cout << std::endl;
+  }
 }

@@ -51,6 +51,8 @@ The option delimiter is `" "` - i.e. space.
 | `symmetry`                  |                          | See below                                                              |
 | `stop-after-cats-destroyed` | `n`                      | Filters must be met n generations after catalyst destruction or sooner |
 | `also-required`             | `rle dx dy`              | Require pattern to be present in every generation.                     |
+| `quiet-mode`                | `true`                   | Omit "placed catalyst [] at []" messages.                              |
+| `report-matches`            | `true`                   | At end of search print what generation matched any gen range filters.  |
 
 
 
