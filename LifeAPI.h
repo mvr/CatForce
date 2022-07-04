@@ -376,6 +376,67 @@ const AffineTransform Rotate180EvenBoth(Rotate180,-1,-1);
 const AffineTransform Rotate180EvenHorizontal(Rotate180,-1,0); // horizontal bounding box dimension is even.
 const AffineTransform Rotate180EvenVertical(Rotate180,0,-1); // vertical bounding box dimension is even.
 
+StaticSymmetry SymmetryEnumFromString(const std::string & name){
+  std::string start = name.substr(0,2);
+  std::string rest = name.substr(2);
+    if (start == "D2"){
+    if (rest == "-" or rest == "vertical"){
+      return StaticSymmetry::D2AcrossX;
+    } else if (rest == "-even" or rest == "verticaleven"){
+      return StaticSymmetry::D2AcrossXEven;
+    } else if (rest == "|" or rest == "horizontal"){
+      return StaticSymmetry::D2AcrossY;
+    } else if (rest == "|even" or rest == "horizontaleven"){
+      return StaticSymmetry::D2AcrossYEven;
+    } else if ( rest == "/" or rest == "/odd") {
+      return StaticSymmetry::D2negdiagodd;
+    } else if ( rest == "\\" or rest == "\\odd") {
+      return StaticSymmetry::D2diagodd;
+    }
+  } else if (start == "C2") {
+    if (rest == "" or rest == "_1"){
+      return StaticSymmetry::C2;
+    } else if (rest == "even" or rest == "_4"){
+      return StaticSymmetry::C2even;
+    } else if (rest == "horizontaleven" or rest == "|even"){
+      return StaticSymmetry::C2horizontaleven;
+    } else if (rest == "verticaleven" or rest == "-even" or rest == "_2"){
+      return StaticSymmetry::C2verticaleven;
+    }
+  } else if (start == "C4"){
+    if (rest == "" or rest == "_1"){
+      return StaticSymmetry::C4;
+    } else if (rest == "even" or rest == "_4") {
+      return StaticSymmetry::C4even;
+    }
+  } else if (start == "D4"){
+    std::string evenOddInfo = rest.substr(1);
+    if (rest[0] == '+' or (rest.size() > 1 and rest[1] == '+')){
+      if(evenOddInfo == "" or rest == "_+1"){
+        return StaticSymmetry::D4;
+      } else if (evenOddInfo == "even" or rest == "_+4"){
+        return StaticSymmetry::D4even;
+      } else if (  evenOddInfo == "verticaleven" or evenOddInfo == "-even" or rest == "_+2") {
+        return StaticSymmetry::D4verticaleven;
+      } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even" ) {
+        return StaticSymmetry::D4horizontaleven;
+      }
+    } else if (rest[0] == 'x' or (rest.size() > 1 and rest[1] == 'x')) {
+      if (evenOddInfo == "" or rest == "_x1"){
+        return StaticSymmetry::D4diag;
+      } else if (evenOddInfo == "even" or rest == "_x4"){
+        return StaticSymmetry::D4diageven;
+      }
+    }
+  } else if (start == "D8") {
+    if (rest == "" or rest == "_1"){
+      return StaticSymmetry::D8;
+    } else if (rest == "even" or rest == "_4"){
+      return StaticSymmetry::D8even;
+    }
+  }
+  return StaticSymmetry::C1;
+}
 
 std::vector<AffineTransform> SymmetryGroupFromEnum(const StaticSymmetry sym){
 

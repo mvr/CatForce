@@ -92,6 +92,7 @@ public:
   int stopAfterCatsDestroyed; 
   bool reportMatches;
   bool quietMode;
+  bool firstTransparent;
 
   std::vector<std::pair<int, int>> filterGenRange;
 
@@ -127,6 +128,7 @@ public:
 
     quietMode = false;
     reportMatches = false;
+    firstTransparent = false;
   }
 };
 
@@ -197,68 +199,6 @@ public:
               << " " << symmType << std::endl;
   }
 };
-
-StaticSymmetry SymmetryEnumFromString(const std::string & name){
-  std::string start = name.substr(0,2);
-  std::string rest = name.substr(2);
-    if (start == "D2"){
-    if (rest == "-" or rest == "vertical"){
-      return StaticSymmetry::D2AcrossX;
-    } else if (rest == "-even" or rest == "verticaleven"){
-      return StaticSymmetry::D2AcrossXEven;
-    } else if (rest == "|" or rest == "horizontal"){
-      return StaticSymmetry::D2AcrossY;
-    } else if (rest == "|even" or rest == "horizontaleven"){
-      return StaticSymmetry::D2AcrossYEven;
-    } else if ( rest == "/" or rest == "/odd") {
-      return StaticSymmetry::D2negdiagodd;
-    } else if ( rest == "\\" or rest == "\\odd") {
-      return StaticSymmetry::D2diagodd;
-    }
-  } else if (start == "C2") {
-    if (rest == "" or rest == "_1"){
-      return StaticSymmetry::C2;
-    } else if (rest == "even" or rest == "_4"){
-      return StaticSymmetry::C2even;
-    } else if (rest == "horizontaleven" or rest == "|even"){
-      return StaticSymmetry::C2horizontaleven;
-    } else if (rest == "verticaleven" or rest == "-even" or rest == "_2"){
-      return StaticSymmetry::C2verticaleven;
-    }
-  } else if (start == "C4"){
-    if (rest == "" or rest == "_1"){
-      return StaticSymmetry::C4;
-    } else if (rest == "even" or rest == "_4") {
-      return StaticSymmetry::C4even;
-    }
-  } else if (start == "D4"){
-    std::string evenOddInfo = rest.substr(1);
-    if (rest[0] == '+' or (rest.size() > 1 and rest[1] == '+')){
-      if(evenOddInfo == "" or rest == "_+1"){
-        return StaticSymmetry::D4;
-      } else if (evenOddInfo == "even" or rest == "_+4"){
-        return StaticSymmetry::D4even;
-      } else if (  evenOddInfo == "verticaleven" or evenOddInfo == "-even" or rest == "_+2") {
-        return StaticSymmetry::D4verticaleven;
-      } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even" ) {
-        return StaticSymmetry::D4horizontaleven;
-      }
-    } else if (rest[0] == 'x' or (rest.size() > 1 and rest[1] == 'x')) {
-      if (evenOddInfo == "" or rest == "_x1"){
-        return StaticSymmetry::D4diag;
-      } else if (evenOddInfo == "even" or rest == "_x4"){
-        return StaticSymmetry::D4diageven;
-      }
-    }
-  } else if (start == "D8") {
-    if (rest == "" or rest == "_1"){
-      return StaticSymmetry::D8;
-    } else if (rest == "even" or rest == "_4"){
-      return StaticSymmetry::D8even;
-    }
-  }
-  return StaticSymmetry::C1;
-}
 
 void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
 
@@ -331,6 +271,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string stopAfterCatsDestroyed = "stop-after-cats-destroyed";
   std::string reportMatches = "report-matches";
   std::string quiet = "quiet-mode";
+  std::string firstTranps = "first-transparent";
 
   std::string line;
 
@@ -458,6 +399,11 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
       if (elems[0] == reportMatches){
         params.reportMatches = true;
+      }
+
+
+      if (elems[0] == firstTranps){
+        params.firstTransparent = true;
       }
 
 
@@ -1142,6 +1088,8 @@ public:
 
   std::vector<int> matches;
 
+  time_t lastReport;
+
   void Init(const char *inputFile, int nthreads) {
     begin = clock();
 
@@ -1224,6 +1172,8 @@ public:
     reportAll = params.fullReportFile.length() != 0;
 
     filterMaxGen = FilterMaxGen();
+
+    lastReport = time(NULL);
   }
 
   int FilterMaxGen() {
@@ -1529,7 +1479,7 @@ public:
 
     RecursiveSearch(config, history, required, masks, shiftedTargets,
                     std::array<int, MAX_CATALYSTS>(), std::array<int, MAX_CATALYSTS>(),
-                    std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
+                    std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>(), false);
   }
 
   void
@@ -1540,7 +1490,7 @@ public:
                   std::array<int, MAX_CATALYSTS> missingTime,
                   std::array<int, MAX_CATALYSTS> recoveredTime,
                   std::array<bool, MAX_CATALYSTS> hasReacted,
-                  std::array<bool, MAX_CATALYSTS> hasRecovered) {
+                  std::array<bool, MAX_CATALYSTS> hasRecovered, bool anyTransparent) {
 
     for (int g = config.state.gen; g < params.maxGen; g++) {
       if (config.count == 0 && g > params.lastGen)
@@ -1550,6 +1500,10 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
+      if (g == params.startGen + params.stableInterval && params.firstTransparent  && !anyTransparent){
+        return;
+      }
+
       if (!config.state.Contains(required))
         return;
 
@@ -1557,6 +1511,12 @@ public:
         // if (hasRecovered[i]) {
         //   continue;
         // }
+        if(g < params.startGen + params.stableInterval){
+          if( config.state.AreDisjoint(shiftedTargets[i].wanted) ){
+            anyTransparent = true;
+          }
+        }
+
         if (config.state.Contains(shiftedTargets[i])) {
           missingTime[i] = 0;
           recoveredTime[i] += 1;
@@ -1666,7 +1626,7 @@ public:
               }
 
               RecursiveSearch(newConfig, newHistory, newRequired, newMasks, shiftedTargets, newMissingTime,
-                              newRecoveredTime, newHasReacted, newHasRecovered);
+                              newRecoveredTime, newHasReacted, newHasRecovered, anyTransparent);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
               newPlacements.Erase(newPlacement.first, newPlacement.second);
@@ -1695,9 +1655,11 @@ public:
         }
       }
 
-      if (config.count == 0)
+      // save at least every 15 minutes or so
+      if (config.count == 0 || (config.count == 1 && difftime(time(NULL), lastReport) > 900) ){
         Report();
-
+        lastReport = time(NULL);
+      }
       history.Copy(config.state, OR);
       config.state.Step();
     }
@@ -1723,6 +1685,7 @@ int main(int argc, char *argv[]) {
   clock_t initialized = clock();
   printf("Total elapsed CPU time (not wallclock if nthreads>1): %f seconds\n",
          (double) (initialized - searcher.begin) / CLOCKS_PER_SEC);
+  
   std::cout << std::endl
             << "Initialization finished, searching..." << std::endl
             << std::endl;

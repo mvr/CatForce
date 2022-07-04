@@ -53,6 +53,7 @@ The option delimiter is `" "` - i.e. space.
 | `also-required`             | `rle dx dy`              | Require pattern to be present in every generation.                     |
 | `quiet-mode`                | `true`                   | Omit "placed catalyst [] at []" messages.                              |
 | `report-matches`            | `true`                   | At end of search print what generation matched any gen range filters.  |
+| `first-transparent`         | `true`                   | Only search reactions that have early-on transparent catalyses.        |
 
 
 
