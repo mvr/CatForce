@@ -305,6 +305,41 @@ public:
     }
   }
 
+#ifdef __AVX2__
+  void RecalculateMinMax() {
+    min = 0;
+    max = N - 1;
+
+    const char *p = (const char *)state;
+    size_t len = 8*N;
+    const char *p_init = p;
+    const char *endp = p + len;
+    do {
+      __m256i v1 = _mm256_loadu_si256((const __m256i*)p);
+      __m256i v2 = _mm256_loadu_si256((const __m256i*)(p+32));
+      __m256i vor = _mm256_or_si256(v1,v2);
+      if (!_mm256_testz_si256(vor, vor)) {
+        min = (p-p_init)/8;
+        break;
+      }
+      p += 64;
+    } while(p < endp);
+
+    p = endp-64;
+    do {
+      __m256i v1 = _mm256_loadu_si256((const __m256i*)p);
+      __m256i v2 = _mm256_loadu_si256((const __m256i*)(p+32));
+      __m256i vor = _mm256_or_si256(v1,v2);
+      if (!_mm256_testz_si256(vor, vor)) {
+        max = (p-p_init+64)/8;
+        break;
+      }
+      p -= 64;
+    } while(p >= p_init);
+
+    ExpandMinMax(min, max);
+  }
+#else
   void RecalculateMinMax() {
     min = 0;
     max = N - 1;
@@ -325,6 +360,7 @@ public:
 
     ExpandMinMax(min, max);
   }
+#endif
 
 public:
   void Print() const;
@@ -725,7 +761,8 @@ public:
       }
     }
 
-    result.RecalculateMinMax();
+    result.min = 0;
+    result.max = N - 1;
 
     return result;
   }
