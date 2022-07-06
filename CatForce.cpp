@@ -82,11 +82,11 @@ public:
   std::vector<int> filterdy;
   std::vector<int> filterGen;
 
-  //modification
+  // modification
   std::vector<StaticSymmetry> filterGroups;
-  // number of generations: if catalysts are destroyed, filters must be met within this many generations afterward or earlier.
-  int stopAfterCatsDestroyed; 
-
+  // number of generations: if catalysts are destroyed, filters must be met
+  // within this many generations afterward or earlier.
+  int stopAfterCatsDestroyed;
 
   std::vector<std::pair<int, int>> filterGenRange;
 
@@ -111,7 +111,7 @@ public:
     symmetryEnum = StaticSymmetry::C1;
     maxCatSize = -1;
     fullReportFile = "";
-    
+
     filterGroups = {};
     stopAfterCatsDestroyed = -1;
   }
@@ -150,8 +150,8 @@ public:
     while (argi + 3 < elems.size()) {
       if (elems[argi] == "forbidden") {
         forbiddenRLE.push_back(elems[argi + 1]);
-        forbiddenXY.emplace_back(
-            atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
+        forbiddenXY.emplace_back(atoi(elems[argi + 2].c_str()),
+                                 atoi(elems[argi + 3].c_str()));
 
         argi += 4;
       }
@@ -164,62 +164,63 @@ public:
   }
 };
 
-StaticSymmetry SymmetryEnumFromString(const std::string & name){
-  std::string start = name.substr(0,2);
+StaticSymmetry SymmetryEnumFromString(const std::string &name) {
+  std::string start = name.substr(0, 2);
   std::string rest = name.substr(2);
-    if (start == "D2"){
-    if (rest == "-" or rest == "vertical"){
+  if (start == "D2") {
+    if (rest == "-" or rest == "vertical") {
       return StaticSymmetry::D2AcrossX;
-    } else if (rest == "-even" or rest == "verticaleven"){
+    } else if (rest == "-even" or rest == "verticaleven") {
       return StaticSymmetry::D2AcrossXEven;
-    } else if (rest == "|" or rest == "horizontal"){
+    } else if (rest == "|" or rest == "horizontal") {
       return StaticSymmetry::D2AcrossY;
-    } else if (rest == "|even" or rest == "horizontaleven"){
+    } else if (rest == "|even" or rest == "horizontaleven") {
       return StaticSymmetry::D2AcrossYEven;
-    } else if ( rest == "/" or rest == "/odd") {
+    } else if (rest == "/" or rest == "/odd") {
       return StaticSymmetry::D2negdiagodd;
-    } else if ( rest == "\\" or rest == "\\odd") {
+    } else if (rest == "\\" or rest == "\\odd") {
       return StaticSymmetry::D2diagodd;
     }
   } else if (start == "C2") {
-    if (rest == "" or rest == "_1"){
+    if (rest == "" or rest == "_1") {
       return StaticSymmetry::C2;
-    } else if (rest == "even" or rest == "_4"){
+    } else if (rest == "even" or rest == "_4") {
       return StaticSymmetry::C2even;
-    } else if (rest == "horizontaleven" or rest == "|even"){
+    } else if (rest == "horizontaleven" or rest == "|even") {
       return StaticSymmetry::C2horizontaleven;
-    } else if (rest == "verticaleven" or rest == "-even" or rest == "_2"){
+    } else if (rest == "verticaleven" or rest == "-even" or rest == "_2") {
       return StaticSymmetry::C2verticaleven;
     }
-  } else if (start == "C4"){
-    if (rest == "" or rest == "_1"){
+  } else if (start == "C4") {
+    if (rest == "" or rest == "_1") {
       return StaticSymmetry::C4;
     } else if (rest == "even" or rest == "_4") {
       return StaticSymmetry::C4even;
     }
-  } else if (start == "D4"){
+  } else if (start == "D4") {
     std::string evenOddInfo = rest.substr(1);
-    if (rest[0] == '+' or (rest.size() > 1 and rest[1] == '+')){
-      if(evenOddInfo == "" or rest == "_+1"){
+    if (rest[0] == '+' or (rest.size() > 1 and rest[1] == '+')) {
+      if (evenOddInfo == "" or rest == "_+1") {
         return StaticSymmetry::D4;
-      } else if (evenOddInfo == "even" or rest == "_+4"){
+      } else if (evenOddInfo == "even" or rest == "_+4") {
         return StaticSymmetry::D4even;
-      } else if (  evenOddInfo == "verticaleven" or evenOddInfo == "-even" or rest == "_+2") {
+      } else if (evenOddInfo == "verticaleven" or evenOddInfo == "-even" or
+                 rest == "_+2") {
         return StaticSymmetry::D4verticaleven;
-      } else if ( evenOddInfo == "horizontaleven" or evenOddInfo == "|even" ) {
+      } else if (evenOddInfo == "horizontaleven" or evenOddInfo == "|even") {
         return StaticSymmetry::D4horizontaleven;
       }
     } else if (rest[0] == 'x' or (rest.size() > 1 and rest[1] == 'x')) {
-      if (evenOddInfo == "" or rest == "_x1"){
+      if (evenOddInfo == "" or rest == "_x1") {
         return StaticSymmetry::D4diag;
-      } else if (evenOddInfo == "even" or rest == "_x4"){
+      } else if (evenOddInfo == "even" or rest == "_x4") {
         return StaticSymmetry::D4diageven;
       }
     }
   } else if (start == "D8") {
-    if (rest == "" or rest == "_1"){
+    if (rest == "" or rest == "_1") {
       return StaticSymmetry::D8;
-    } else if (rest == "even" or rest == "_4"){
+    } else if (rest == "even" or rest == "_4") {
       return StaticSymmetry::D8even;
     }
   }
@@ -227,27 +228,27 @@ StaticSymmetry SymmetryEnumFromString(const std::string & name){
 }
 
 void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
-
-  if (ch == '.'){
+  if (ch == '.') {
     trans = SymmetryGroupFromEnum(StaticSymmetry::C1);
     return;
-  } if (ch == '|') {
-    trans =  SymmetryGroupFromEnum(StaticSymmetry::D2AcrossY);
+  }
+  if (ch == '|') {
+    trans = SymmetryGroupFromEnum(StaticSymmetry::D2AcrossY);
     return;
   }
 
   if (ch == '-') {
-    trans =  SymmetryGroupFromEnum(StaticSymmetry::D2AcrossX);
+    trans = SymmetryGroupFromEnum(StaticSymmetry::D2AcrossX);
     return;
   }
 
   if (ch == '+') {
-    trans =  SymmetryGroupFromEnum(StaticSymmetry::C4);
+    trans = SymmetryGroupFromEnum(StaticSymmetry::C4);
     return;
   }
 
   if (ch == '/') {
-    trans =  SymmetryGroupFromEnum(StaticSymmetry::D2negdiagodd);
+    trans = SymmetryGroupFromEnum(StaticSymmetry::D2negdiagodd);
     return;
   }
   // For 180 degree symetrical
@@ -260,7 +261,7 @@ void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
   }
 
   if (ch == '*') {
-    trans=SymmetryGroupFromEnum(StaticSymmetry::D8);
+    trans = SymmetryGroupFromEnum(StaticSymmetry::D8);
     return;
   }
 
@@ -272,8 +273,7 @@ void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
   }
 }
 
-
-void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
+void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
                 SearchParams &params) {
   std::ifstream infile;
   infile.open(fname.c_str(), std::ifstream::in);
@@ -387,13 +387,13 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
           if ( elems[5] == "C1" || SymmetryEnumFromString(elems[5]) != StaticSymmetry::C1){
             params.filterGroups.push_back(SymmetryEnumFromString(elems[5]));
           } else {
-            std::cout << "filter symmetry group " << elems[5] << " not understood." << std::endl;
+            std::cout << "filter symmetry group " << elems[5]
+                      << " not understood." << std::endl;
             exit(0);
           }
         } else {
           params.filterGroups.push_back(StaticSymmetry::C1);
         }
-
       }
 
       if (elems[0] == maxWH) {
@@ -410,19 +410,20 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         if ( elems[1] == "C1" || SymmetryEnumFromString(elems[1]) != StaticSymmetry::C1){
           params.symmetryEnum = SymmetryEnumFromString(elems[1]);
         } else {
-          std::cout << "Couldn't parse symmetry option " << elems[1] << std::endl;
+          std::cout << "Couldn't parse symmetry option " << elems[1]
+                    << std::endl;
           exit(0);
         }
       }
 
-      if (elems[0] == stopAfterCatsDestroyed){
+      if (elems[0] == stopAfterCatsDestroyed) {
         params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
       }
 
     } catch (const std::exception &ex) {
     }
   }
-  if(params.lastGen == -1)
+  if (params.lastGen == -1)
     params.lastGen = params.maxGen - 1;
 
   if (params.pat.length() == 0) {
@@ -463,7 +464,7 @@ struct Enumerator {
 
   const std::vector<LifeState> states;
   const std::vector<LifeTarget> targets;
-  const std::vector<std::vector<std::vector<int> > >  activations;
+  const std::vector<std::vector<std::vector<int>>> activations;
 
   std::vector<int> curx;
   std::vector<int> cury;
@@ -510,7 +511,7 @@ struct Enumerator {
       shiftedTargets[i].wanted.Copy(targets[curs[i]].wanted, curx[i], cury[i]);
       shiftedTargets[i].unwanted.Copy(targets[curs[i]].unwanted, curx[i], cury[i]);
       cumulative[i].Copy(shiftedTargets[i].wanted);
-      if(i < count-1)
+      if (i < count - 1)
         cumulative[i].Join(cumulative[i + 1]);
     }
   }
@@ -518,8 +519,8 @@ struct Enumerator {
   int Next(const int i) {
     while (true) {
       int n = NaiveNext(i);
-      if(n == FAIL) {
-        if(i == 0)
+      if (n == FAIL) {
+        if (i == 0)
           done = true;
         return FAIL;
       }
@@ -528,7 +529,7 @@ struct Enumerator {
 
       if (i == count - 1) {
         // Check collision time (only relevant condition)
-        if (thisactivation < startGen || thisactivation > lastGen){
+        if (thisactivation < startGen || thisactivation > lastGen) {
           continue;
         }
 
@@ -537,12 +538,12 @@ struct Enumerator {
         break;
       }
 
-      const int lastactivation = cumulActivation[i+1];
+      const int lastactivation = cumulActivation[i + 1];
 
-      if(thisactivation < lastactivation)
+      if (thisactivation < lastactivation)
         continue;
 
-      if(thisactivation == lastactivation) { // Then break the tie
+      if (thisactivation == lastactivation) { // Then break the tie
         if (curx[i] < curx[i + 1])
           continue;
         if (curx[i] == curx[i + 1]) {
@@ -558,14 +559,14 @@ struct Enumerator {
 
       // Check bounds
       if (maxW != -1)
-        if( curx[i] - cumulMinX[i+1] > maxW ||
-            cumulMaxX[i+1] - curx[i] > maxW ) {
+        if (curx[i] - cumulMinX[i + 1] > maxW ||
+            cumulMaxX[i + 1] - curx[i] > maxW) {
           continue;
         }
 
       if (maxH != -1) {
-        if( cury[i] - cumulMinY[i+1] > maxH ||
-            cumulMaxY[i+1] - cury[i] > maxH ) {
+        if (cury[i] - cumulMinY[i + 1] > maxH ||
+            cumulMaxY[i + 1] - cury[i] > maxH) {
           continue;
         }
       }
@@ -586,7 +587,7 @@ struct Enumerator {
 
     cumulActivation[i] = activations[curs[i]][(curx[i] + 64) % 64][(cury[i] + 64) % 64];
 
-    if(i == count-1) {
+    if (i == count - 1) {
       cumulMinX[i] = curx[i];
       cumulMaxX[i] = curx[i];
       cumulMinY[i] = cury[i];
@@ -595,8 +596,7 @@ struct Enumerator {
       cumulative[i].Copy(shiftedTargets[i].wanted);
     }
 
-
-    if(i < count-1) {
+    if (i < count - 1) {
       // Update bounds
       cumulMinX[i] = std::min(cumulMinX[i + 1], curx[i]);
       cumulMaxX[i] = std::max(cumulMaxX[i + 1], curx[i]);
@@ -612,7 +612,7 @@ struct Enumerator {
   }
 
   int NaiveNext(const int i) {
-    if(i == count)
+    if (i == count)
       return FAIL;
 
     curs[i]++;
@@ -630,19 +630,17 @@ struct Enumerator {
       return SUCCESS;
     curx[i] = x;
 
-    return Next(i+1);
+    return Next(i + 1);
   }
 
-  int Next() {
-    return Next(0);
-  }
+  int Next() { return Next(0); }
 
   Configuration GetConfiguration() {
     Configuration c;
     c.curx = curx;
     c.cury = cury;
     c.curs = curs;
-    c.minIter = cumulActivation[count-1];
+    c.minIter = cumulActivation[count - 1];
     c.state = cumulative[0];
     c.shiftedTargets = shiftedTargets;
     // for(int i = 0; i < enu.count; i++) {
@@ -656,7 +654,7 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
                     std::vector<LifeState> &states,
                     std::vector<std::vector<LifeTarget>> &forbidden,
                     std::vector<int> &maxSurvive) {
-  for (const auto & catalyst : catalysts) {
+  for (const auto &catalyst : catalysts) {
     std::vector<AffineTransform> trans;
     CharToTransVec(catalyst.symmType, trans);
 
@@ -665,7 +663,7 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
     int dy = catalyst.centerY;
     int maxDesapear = catalyst.maxDesapear;
 
-    for (auto & tran : trans) {
+    for (auto &tran : trans) {
       // here the shift applies BEFORE the transformation.
       states.push_back(LifeState::Parse(rle, dx, dy, tran));
       maxSurvive.push_back(maxDesapear);
@@ -683,7 +681,7 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
   }
 }
 
-void InitCatalysts(const std::string& fname, std::vector<LifeState> &states,
+void InitCatalysts(const std::string &fname, std::vector<LifeState> &states,
                    std::vector<std::vector<LifeTarget>> &forbidden,
                    std::vector<int> &maxSurvive, SearchParams &params) {
   std::vector<CatalystInput> catalysts;
@@ -818,7 +816,7 @@ std::string GetRLE(const std::vector<std::vector<int>> &life2d) {
     int last_val = -1;
     int run_count = 0;
 
-    for (const auto & i : life2d) {
+    for (const auto &i : life2d) {
       int val = i[j];
 
       // Flush linefeeds if we find a live cell
@@ -979,7 +977,7 @@ public:
   }
 
   void Print() {
-    for (auto & result : results)
+    for (auto &result : results)
       result.Print();
   }
 
@@ -1032,8 +1030,7 @@ public:
   }
 
   void Add(LifeState &init, LifeState &afterCatalyst, LifeState &catalysts,
-           const Configuration &conf, int firstGenSurvive,
-           int genSurvive) {
+           const Configuration &conf, int firstGenSurvive, int genSurvive) {
     LifeState result;
 
     result.Copy(afterCatalyst);
@@ -1046,7 +1043,7 @@ public:
     result.Copy(afterCatalyst);
     result.Copy(catalysts, XOR);
 
-    for (auto & category: categories) {
+    for (auto &category : categories) {
       if (category->BelongsTo(result, hash)) {
         if (category->results[0].params.size() == 3 * conf.curs.size()) {
           SearchResult r(init, conf, firstGenSurvive, genSurvive);
@@ -1065,25 +1062,24 @@ public:
   }
 
   void Sort() {
-    for (auto & category: categories)
+    for (auto &category : categories)
       category->Sort();
   }
 
   void Print() {
-    for (auto & category: categories)
+    for (auto &category : categories)
       category->Print();
   }
 
   std::string CategoriesRLE(int maxCatSize) {
     std::stringstream ss;
-    for (auto & category: categories) {
+    for (auto &category : categories) {
       ss << category->RLE(maxCatSize);
     }
 
     return ss.str();
   }
 };
-
 
 class CatalystSearcher {
 public:
@@ -1095,12 +1091,12 @@ public:
   int numIters{};
   Enumerator *enu;
 
-  //modification
+  // modification
   std::vector<bool> transparent;
-  
-  //std::vector<LifeTarget> targetFilter;
+
+  // std::vector<LifeTarget> targetFilter;
   std::vector<std::vector<LifeTarget>> targetFilterLists;
-  
+
   std::vector<LifeTarget> targets;
   std::vector<std::vector<LifeTarget>> forbiddenTargets;
   std::vector<std::vector<std::vector<int>>> statexyGen;
@@ -1132,11 +1128,11 @@ public:
     categoryContainer = new CategoryContainer(params.maxGen);
     fullCategoryContainer = new CategoryContainer(params.maxGen);
 
-    for (auto & state : states)
+    for (auto &state : states)
       targets.push_back(LifeTarget(state));
 
     // modification
-    for (int i = 0; i < params.targetFilter.size(); i++){
+    for (int i = 0; i < params.targetFilter.size(); i++) {
       targetFilterLists.push_back(std::vector<LifeTarget>({}));
       for ( AffineTransform trans : SymmetryGroupFromEnum(params.filterGroups[i])){
         targetFilterLists[i].push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
@@ -1209,7 +1205,7 @@ public:
     return maxGen;
   }
 
-  void Report(const std::string& suffix) {
+  void Report(const std::string &suffix) {
     std::string temp = params.outputFile;
     params.outputFile = params.outputFile + suffix + std::string(".rle");
     Report();
@@ -1227,11 +1223,11 @@ public:
 
     std::cout << std::setprecision(1) << std::fixed << percent << "%,"
               << idx / 1000000 << "M/" << total
-              << "M, cats/total: " << categoryContainer->categories.size() << "/"
-              << found;
+              << "M, cats/total: " << categoryContainer->categories.size()
+              << "/" << found;
     if (params.fullReportFile.length() != 0) {
-      std::cout << ", unfiltered: " << fullCategoryContainer->categories.size() << "/"
-                << fullfound;
+      std::cout << ", unfiltered: " << fullCategoryContainer->categories.size()
+                << "/" << fullfound;
     }
     std::cout << ", now: ";
     PrintTime(sec);
@@ -1277,7 +1273,7 @@ public:
       idx += 65536;
 
       if (idx % (1048576) == 0) {
-        if ((double) (clock() - current) / CLOCKS_PER_SEC > 10) {
+        if ((double)(clock() - current) / CLOCKS_PER_SEC > 10) {
           current = clock();
           Report(saveFile);
         }
@@ -1329,12 +1325,13 @@ public:
 
   bool FilterForCurrentGenFail(LifeState &workspace) {
     for (int j = 0; j < targetFilterLists.size(); j++) {
-      if (workspace.gen == params.filterGen[j] ){
+      if (workspace.gen == params.filterGen[j]) {
         bool anyMet = false;
-        for( auto filter : targetFilterLists[j]){
+        for (auto filter : targetFilterLists[j]) {
           anyMet = anyMet | workspace.Contains(filter);
         }
-        if(!anyMet) return true;
+        if (!anyMet)
+          return true;
       }
     }
 
@@ -1366,32 +1363,33 @@ public:
 
     // stop early if catalysts are destroyed
     int stopAt = params.maxGen;
-    if (params.stopAfterCatsDestroyed > 0 ){
+    if (params.stopAfterCatsDestroyed > 0) {
       stopAt = catsDestroyedGen + params.stopAfterCatsDestroyed;
     }
-    
+
     for (int k = 0; k < params.filterGen.size(); k++)
       if (params.filterGen[k] >= 0)
         rangeValid[k] = true;
-        // we return false early below if a single-generation filter
-        // isn't met, so we don't need to keep track of those
-        // via our vector rangeValid.
+    // we return false early below if a single-generation filter
+    // isn't met, so we don't need to keep track of those
+    // via our vector rangeValid.
 
     for (int j = 0; j <= std::min(filterMaxGen, stopAt); j++) {
       for (int k = 0; k < params.filterGen.size(); k++) {
-        if (workspace.gen == params.filterGen[k]){
+        if (workspace.gen == params.filterGen[k]) {
           bool anyMet = false;
-          for ( auto filter : targetFilterLists[k] ){
-            anyMet = anyMet |  workspace.Contains(filter);
+          for (auto filter : targetFilterLists[k]) {
+            anyMet = anyMet | workspace.Contains(filter);
           }
-          if(!anyMet)
+          if (!anyMet)
             return false;
         }
         if (params.filterGen[k] == -1 &&
-                params.filterGenRange[k].first <= workspace.gen &&
-                params.filterGenRange[k].second >= workspace.gen){
-          for(LifeTarget transformedTarget :targetFilterLists[k]){
-            rangeValid[k] = rangeValid[k] | workspace.Contains(transformedTarget);
+            params.filterGenRange[k].first <= workspace.gen &&
+            params.filterGenRange[k].second >= workspace.gen) {
+          for (LifeTarget transformedTarget : targetFilterLists[k]) {
+            rangeValid[k] =
+                rangeValid[k] | workspace.Contains(transformedTarget);
           }
         }
       }
@@ -1407,7 +1405,7 @@ public:
   }
 
   int TestConfiguration(Configuration &conf) {
-    if(conf.minIter == -1)
+    if (conf.minIter == -1)
       return -1; // Temporary fix
 
     LifeState workspace;
@@ -1437,8 +1435,7 @@ public:
 
       if (IsAllActivated()) {
         surviveCount += MAIN_STEP;
-      }
-      else
+      } else
         surviveCount = 0;
 
       // If everything was actuvated and stable for stableInterval then report.
@@ -1449,7 +1446,7 @@ public:
     return -1;
   }
 
-  void ReportSolution(Configuration &conf, int successtime){
+  void ReportSolution(Configuration &conf, int successtime) {
     LifeState init;
     LifeState afterCatalyst;
     LifeState catalysts;
@@ -1474,7 +1471,7 @@ public:
 
     // modification
     int catsDestroyedGen = params.maxGen;
-    if (params.stopAfterCatsDestroyed > 0){
+    if (params.stopAfterCatsDestroyed > 0) {
 
       LifeState checkCatsDestroyed;
       checkCatsDestroyed.JoinWSymChain(conf.state, params.symmetryEnum);
@@ -1482,21 +1479,22 @@ public:
       checkCatsDestroyed.Step(successtime);
       int absence = 0;
       
-      while(checkCatsDestroyed.gen < params.maxGen+10 && absence < 10){ // 10 here more or less arbitrary.
+
+      while (checkCatsDestroyed.gen < params.maxGen + 10 &&
+             absence < 10) { // 10 here more or less arbitrary.
         bool allPresent = true;
-        for (auto target : conf.shiftedTargets){
+        for (auto target : conf.shiftedTargets) {
           if (!checkCatsDestroyed.Contains(target))
             allPresent = false;
         }
-        if(!allPresent){
+        if (!allPresent) {
           ++absence;
         } else {
           absence = 0;
         }
         checkCatsDestroyed.Step();
       }
-      catsDestroyedGen = checkCatsDestroyed.gen-absence;
-      
+      catsDestroyedGen = checkCatsDestroyed.gen - absence;
     }
 
     // If has filter validate them;
@@ -1530,7 +1528,7 @@ public:
     while (!enu->done) {
       c = enu->GetConfiguration();
       int result = TestConfiguration(c);
-      if(result != -1) {
+      if (result != -1) {
         ReportSolution(c, result);
       }
       IncreaseIndexAndReport();
@@ -1557,7 +1555,7 @@ int main(int argc, char *argv[]) {
 
   clock_t initialized = clock();
   printf("Total elapsed CPU time (not wallclock if nthreads>1): %f seconds\n",
-         (double) (initialized - searcher.begin) / CLOCKS_PER_SEC);
+         (double)(initialized - searcher.begin) / CLOCKS_PER_SEC);
   std::cout << std::endl
             << "Initialization finished, searching..." << std::endl
             << std::endl;
