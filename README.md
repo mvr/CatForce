@@ -60,7 +60,7 @@ the immediate neighbourhood of the catalyst.
 applied to the catalyst:
 - `|` mirror by y.
 - `-` mirror by x.
-- `+` all 90 degree rotations, for D2- or D2/ invariant catalysts (eg boat).
+- `+` or `@` all 90 degree rotations, for D2- or D2/ invariant catalysts (eg boat).
 - `/` diagonal mirror
 - `x` for 180 degree symmetrical catalysts.
 - `*` all 8 transformations.

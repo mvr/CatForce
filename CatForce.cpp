@@ -242,7 +242,7 @@ void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
     return;
   }
 
-  if (ch == '+') {
+  if (ch == '+' || ch == '@') {
     trans = SymmetryGroupFromEnum(StaticSymmetry::C4);
     return;
   }
@@ -262,13 +262,6 @@ void CharToTransVec(char ch, std::vector<AffineTransform> &trans) {
 
   if (ch == '*') {
     trans = SymmetryGroupFromEnum(StaticSymmetry::D8);
-    return;
-  }
-
-  if (ch == '@') {
-    trans.push_back(Rotate90);
-    trans.push_back(Rotate180OddBoth);
-    trans.push_back(Rotate270);
     return;
   }
 }
