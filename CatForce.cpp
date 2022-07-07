@@ -1,6 +1,6 @@
 // CatForce - Catalyst search utility based on LifeAPI using brute force.
 // Written by Michael Simkin 2015
-#include "LifeAPI.h"
+#include "LifeAPI_depth_first_osc_search.h"
 #include <algorithm>
 #include <ctime>
 #include <fstream>
@@ -421,10 +421,10 @@ struct Configuration {
   // int minIter;
   LifeState state;
   LifeState catalystsState;
-  // debugging purposes (work in progress)
+  // debugging purposes
   LifeState catsPostSymmetry;
   LifeState catsPreSymmetry;
-  // end debugging purposes (work in progress)
+  // end debugging purposes
   bool postSymmetry;
   std::pair<int,int> loneOffset;
   // std::vector<LifeTarget> shiftedTargets;
