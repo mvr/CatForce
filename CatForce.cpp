@@ -421,12 +421,10 @@ struct Configuration {
   // int minIter;
   LifeState state;
   LifeState catalystsState;
-
   // debugging purposes (work in progress)
   LifeState catsPostSymmetry;
   LifeState catsPreSymmetry;
   // end debugging purposes (work in progress)
-
   bool postSymmetry;
   std::pair<int,int> loneOffset;
   // std::vector<LifeTarget> shiftedTargets;
@@ -1508,7 +1506,7 @@ public:
                 LifeState rotatedCatMask = masks[rotatedS];
                 rotatedCatMask.Move(newPlacement.first-rotatedX0, newPlacement.second-rotatedY0);
                 offsetCatValid.Copy(rotatedCatMask, ANDNOT);
-                if (offsetCatValid.IsEmpty()){ // none worked.
+                if (offsetCatValid.IsEmpty()){
                   masks[s].Set(newPlacement.first, newPlacement.second);
                   newPlacements.Erase(newPlacement.first, newPlacement.second);
                   continue;
@@ -1599,10 +1597,19 @@ public:
                 }
               }
 
-              // continue searching for the offsets for which the placement is valid
-              // (if postSymmetry, then offsetCatValid = curOffset is a single cell at config.loneOffset )
               RecursiveSearch(newConfig, newHistory, offsetCatValid, newRequired, newMasks, shiftedTargets, missingTime,
                               recoveredTime, hasReacted, hasRecovered);
+              
+              /*   RecursiveSearch(Configuration config, LifeState history, 
+                  LifeState curOffsets,
+                  const LifeState required,
+                  std::vector<LifeState> masks,
+                  std::vector<LifeTarget> &shiftedTargets, // This can be shared
+
+                  std::array<int, MAX_CATALYSTS> missingTime,
+                  std::array<int, MAX_CATALYSTS> recoveredTime,
+                  std::array<bool, MAX_CATALYSTS> hasReacted,
+                  std::array<bool, MAX_CATALYSTS> hasRecovered)*/
 
               masks[s].Set(newPlacement.first, newPlacement.second); 
               newPlacements.Erase(newPlacement.first, newPlacement.second); // is there a reason why this
@@ -1633,8 +1640,7 @@ public:
         }
       }
 
-      // save at least every 15 minutes or so, and don't save
-      // more than every 10 seconds.
+      // save at least every 15 minutes or so
       if ( (config.count == 0 && difftime(time(NULL), lastReport) > 10) || \
               (config.count == 1 && difftime(time(NULL), lastReport) > 900) ){
         Report();
