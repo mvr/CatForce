@@ -1,6 +1,6 @@
 // CatForce - Catalyst search utility based on LifeAPI using brute force.
 // Written by Michael Simkin 2015
-#include "LifeAPI_depth_first_osc_search.h"
+#include "LifeAPI.h"
 #include <algorithm>
 #include <ctime>
 #include <fstream>
