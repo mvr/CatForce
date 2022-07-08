@@ -422,8 +422,8 @@ struct Configuration {
   LifeState state;
   LifeState catalystsState;
   // debugging purposes
-  LifeState catsPostSymmetry;
-  LifeState catsPreSymmetry;
+  LifeState catalystsPreSymmetry;
+  int firstSymInt;
   // end debugging purposes
   bool postSymmetry;
   std::pair<int,int> loneOffset;
@@ -625,17 +625,19 @@ class SearchResult {
 public:
   // Saved for the report
   LifeState init;
-
+  LifeState preSymInit;
   // iters state in form of integers
   // std::vector<int> params;
   int maxGenSurvive;
   int firstGenSurvive;
+  int firstSymInt;
 
-  SearchResult(LifeState &initState, const Configuration &conf,
-               int firstGenSurviveIn, int genSurvive) {
+  SearchResult(LifeState &initState, LifeState &preSymInitState, const Configuration &conf,
+               int firstGenSurviveIn, int genSurvive, int startSymInteraction) {
     init.Copy(initState);
     maxGenSurvive = genSurvive;
     firstGenSurvive = firstGenSurviveIn;
+    firstSymInt = startSymInteraction;
   }
 
   void Print() {
@@ -695,8 +697,9 @@ public:
   }
 
   static bool CompareSearchResult(SearchResult &a, SearchResult &b) {
-    return (a.maxGenSurvive - a.firstGenSurvive) >
-           (b.maxGenSurvive - b.firstGenSurvive);
+    //return (a.maxGenSurvive - a.firstGenSurvive) >
+    //       (b.maxGenSurvive - b.firstGenSurvive);
+    return a.firstSymInt > b.firstSymInt;
   }
 
   void Sort() {
@@ -713,18 +716,10 @@ public:
     const int Dist = 36 + 64;
 
     int width = Dist * results.size();
-    int height = Dist;
+    // int height = Dist;
+    int height = 2*Dist;
 
-    std::vector<std::vector<int>> vec;
-
-    for (int i = 0; i < width; i++) {
-      std::vector<int> temp;
-
-      for (int j = 0; j < height; j++)
-        temp.push_back(0);
-
-      vec.push_back(temp);
-    }
+    std::vector<std::vector<int>> vec(width, std::vector<int>(height, 0));
 
     int howmany = results.size();
 
@@ -735,6 +730,12 @@ public:
       for (int j = 0; j < N; j++)
         for (int i = 0; i < N; i++)
           vec[Dist * l + i][j] = results[l].init.GetCell(i - 32, j - 32);
+
+    // display pre-symmetry state below.
+    for (int l = 0; l < howmany; l++)
+      for (int j = 0; j < N; j++)
+        for (int i = 0; i < N; i++)
+          vec[Dist * l + i][j+Dist] = results[l].preSymInit.GetCell(i - 32, j - 32);
 
     return GetRLE(vec);
   }
@@ -756,9 +757,8 @@ public:
     maxgen = maxGen + catDelta;
   }
 
-  void Add(LifeState &init, LifeState &afterCatalyst, LifeState &catalysts,
-           const Configuration &conf, int firstGenSurvive,
-           int genSurvive) {
+  void Add(LifeState &init, LifeState &preSymInit, LifeState &afterCatalyst, LifeState &catalysts,
+           const Configuration &conf, int firstGenSurvive, int genSurvive) {
     LifeState result;
 
     result.Copy(afterCatalyst);
@@ -774,7 +774,7 @@ public:
     // see if it fits in an existing category.
     for (auto & category: categories) {
       if (category->BelongsTo(result, hash)) {
-          SearchResult r(init, conf, firstGenSurvive, genSurvive);
+          SearchResult r(init, preSymInit, conf, firstGenSurvive, genSurvive, conf.firstSymInt);
           category->Add(r);
           return;
       }
@@ -785,7 +785,7 @@ public:
     categoryKey.Copy(afterCatalyst);
     categoryKey.Copy(catalysts, XOR);
 
-    SearchResult r(init, conf, firstGenSurvive, genSurvive);
+    SearchResult r(init, preSymInit, conf, firstGenSurvive, genSurvive, conf.firstSymInt);
     categories.push_back(new Category(categoryKey, r, catDelta, maxgen));
   }
 
@@ -1087,8 +1087,8 @@ public:
     std::cout << ", " << std::setprecision(1) << std::fixed << checkPerSecond
               << "K/sec" << std::endl;
 
-    // categoryContainer->Sort();
-    // fullCategoryContainer->Sort();
+    categoryContainer->Sort();
+    fullCategoryContainer->Sort();
 
     if (saveFile) {
       std::cout << "Saving " << params.outputFile << "... " << std::flush;
@@ -1240,7 +1240,10 @@ public:
 
       fullfound++;
 
-      fullCategoryContainer->Add(init, afterCatalyst, conf.catalystsState, conf,
+      LifeState preSymState = activeRegion;
+      preSymState.Join(conf.catalystsPreSymmetry);
+
+      fullCategoryContainer->Add(init, preSymState, afterCatalyst, conf.catalystsState, conf,
                                  successtime - params.stableInterval + 2, 0);
       // arguments are: (LifeState &init, LifeState &afterCatalyst, LifeState &catalysts,
       //     const Configuration &conf, int firstGenSurvive,
@@ -1299,7 +1302,10 @@ public:
     workspace.Step(successtime - params.stableInterval + 2);
     afterCatalyst.Copy(workspace);
 
-    categoryContainer->Add(init, afterCatalyst, conf.catalystsState, conf,
+    LifeState preSymInit = activeRegion;
+    preSymInit.Join(conf.catalystsPreSymmetry);
+
+    categoryContainer->Add(init, preSymInit, afterCatalyst, conf.catalystsState, conf,
                            successtime - params.stableInterval + 2, 0);
     found++;
   }
@@ -1307,6 +1313,7 @@ public:
   void Search() {
     Configuration config;
     config.count = 0;
+    config.firstSymInt = -1;
     config.prePostCount = std::make_pair(0,0);
     config.transparentCount = 0;
     config.state.Join(activeRegion);
@@ -1401,70 +1408,70 @@ public:
 
         // remove those offsets that interact
         curOffsets.Copy(offsetsThatInteract, ANDNOT);
-        
-        while( !offsetsThatInteract.IsEmpty()){
-          std::pair<int,int> offset = offsetsThatInteract.FirstOn();
-          offsetsThatInteract.Erase(offset.first, offset.second);
 
-          // could do a brief lookahead to see if required cells will die soon.
-          if(config.prePostCount.first > 0 ){
-            LifeState lookahead = config.state;
-            lookahead.Transform(Rotate180OddBoth);
-            lookahead.Move(offset.first, offset.second);
-            lookahead.Join(config.state);
-            lookahead.Step();
-            lookahead.Step();
-            lookahead.Step();
-            lookahead.Step();
-            if(!lookahead.Contains(required)){
-              continue; // is this continue a problem?
-              // it shouldn't be, because we erase first thing.
+        if (g >= params.startSymInteraction){ // if it isn't too early, send them off into post-symemtry mode
+          while( !offsetsThatInteract.IsEmpty()){
+            std::pair<int,int> offset = offsetsThatInteract.FirstOn();
+            offsetsThatInteract.Erase(offset.first, offset.second);
+
+            // could do a brief lookahead to see if required cells will die soon.
+            if(config.prePostCount.first > 0 ){
+              LifeState lookahead = config.state;
+              lookahead.Transform(Rotate180OddBoth);
+              lookahead.Move(offset.first, offset.second);
+              lookahead.Join(config.state);
+              lookahead.Step();
+              lookahead.Step();
+              lookahead.Step();
+              lookahead.Step();
+              if(!lookahead.Contains(required)){
+                continue; // is this continue a problem?
+                // it shouldn't be, because we erase first thing.
+              }
             }
-          }
 
-          Configuration newConfig = config;
-          newConfig.postSymmetry = true;
-          newConfig.loneOffset = offset;
-          newConfig.state.Transform(Rotate180OddBoth);
-          newConfig.state.Move(offset.first, offset.second);
-          newConfig.state.Join(config.state);
+            Configuration newConfig = config;
+            newConfig.postSymmetry = true;
+            newConfig.loneOffset = offset;
+            newConfig.state.Transform(Rotate180OddBoth);
+            newConfig.state.Move(offset.first, offset.second);
+            newConfig.state.Join(config.state);
 
-          newConfig.catalystsState.Transform(Rotate180OddBoth);
-          newConfig.catalystsState.Move(offset.first, offset.second);
-          newConfig.catalystsState.Join(config.catalystsState);
+            newConfig.catalystsState.Transform(Rotate180OddBoth);
+            newConfig.catalystsState.Move(offset.first, offset.second);
+            newConfig.catalystsState.Join(config.catalystsState);
 
-          newConfig.catsPreSymmetry.Transform(Rotate180OddBoth);
-          newConfig.catsPreSymmetry.Move(offset.first, offset.second);
-          newConfig.catsPreSymmetry.Join(config.catsPreSymmetry);
+            LifeState newHistory = history;
+            newHistory.Transform(Rotate180OddBoth);
+            newHistory.Move(offset.first, offset.second);
+            newHistory.Join(history);
 
-          LifeState newHistory = history;
-          newHistory.Transform(Rotate180OddBoth);
-          newHistory.Move(offset.first, offset.second);
-          newHistory.Join(history);
+            std::vector<LifeState> newMasks = masks;
+            for (int i = 0; i < masks.size(); ++i ){
+              // if you're placing catalysts[s] at (x,y), the rotated image would be
+              // catalysts[rotatedS] at (rotatedX0-x, rotatedY0-y), which then becomes
+              // (offsetX + rotatedX0-x, offsetY + rotatedY0-y) after applying offset
+              // ie masks[s] should be combined with {masks[rotatedS],
+              // shifted by -rotatedX0-offsetX, -rotatedY0-offsetY, rotated by 180 }
+              int rotatedS = rotatedCatalystMatches[i][0];
+              int rotatedX0 = rotatedCatalystMatches[i][1];
+              int rotatedY0 = rotatedCatalystMatches[i][2];
+              LifeState transformedMask = masks[rotatedS];
+              transformedMask.Transform(-rotatedX0-offset.first, -rotatedY0-offset.second, Rotate180OddBoth);
+              // prohibited by either => prohibited, so this really is OR not AND
+              newMasks[i].Copy(transformedMask, OR); 
+            }
+            
+            LifeState newOffsets = LifeState::SolidRect(offset.first, offset.second, 1,1);
 
-          std::vector<LifeState> newMasks = masks;
-          for (int i = 0; i < masks.size(); ++i ){
-            // if you're checking masks[s] at (x,y), you should check
-            // masks[rotatedS] at (rotatedX0-x,rotatedY0-y) too.
-            // ie masks[s] should be combined with {masks[rotatedS],
-            // shifted by -rotatedX0, -rotatedY0, rotated by 180 }
-            int rotatedS = rotatedCatalystMatches[i][0];
-            int rotatedX0 = rotatedCatalystMatches[i][1];
-            int rotatedY0 = rotatedCatalystMatches[i][2];
-            LifeState transformedMask = masks[rotatedS];
-            transformedMask.Transform(-rotatedX0, -rotatedY0, Rotate180OddBoth);
-            // prohibited by either => prohibited, so this really is OR not AND
-            newMasks[i].Copy(transformedMask, OR); 
-          }
+            // don't need to change targets or required.
+            RecursiveSearch(newConfig, newHistory, newOffsets, required, newMasks,
+                      shiftedTargets, missingTime, recoveredTime, hasReacted,
+                      hasRecovered);
+          } // end of going thru offsets that interact.
           
-          LifeState newOffsets = LifeState::SolidRect(offset.first, offset.second, 1,1);
-
-          // don't need to change targets or required.
-          RecursiveSearch(newConfig, newHistory, newOffsets, required, newMasks,
-                    shiftedTargets, missingTime, recoveredTime, hasReacted,
-                    hasRecovered);
-        
-        } // end of going thru offsets that interact.
+          
+        } 
 
       } // end of checking which interact
 
@@ -1543,7 +1550,7 @@ public:
                 newConfig.state.Join(shiftedCatalyst);
                 newHistory.Join(shiftedCatalyst);
 
-                newConfig.catsPreSymmetry.Join(shiftedCatalyst);
+                newConfig.catalystsPreSymmetry.Join(shiftedCatalyst);
               } else {
                 assert(config.loneOffset == curOffsets.FirstOn());
                 LifeState symCatalyst = shiftedCatalyst;
@@ -1553,8 +1560,6 @@ public:
                 newConfig.catalystsState.Join(symCatalyst);
                 newConfig.state.Join(symCatalyst);
                 newHistory.Join(symCatalyst);
-
-                newConfig.catsPostSymmetry.Join(symCatalyst);
               }
 
               LifeState newRequired = required;
