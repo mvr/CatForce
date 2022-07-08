@@ -119,6 +119,7 @@ public:
   std::string locusRLE;
   std::pair<int, int> locusXY;
   bool transparent;
+  bool mustInclude;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems;
@@ -139,6 +140,7 @@ public:
     symmType = elems[5].at(0);
 
     transparent = false;
+    mustInclude = false;
 
     int argi = 6;
 
@@ -159,6 +161,9 @@ public:
         argi += 4;
       } else if (elems[argi] == "transparent") {
         transparent = true;
+        argi += 1;
+      } else if (elems[argi] == "mustinclude") {
+        mustInclude = true;
         argi += 1;
       } else {
         std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
@@ -464,6 +469,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 struct Configuration {
   int count;
   int transparentCount;
+  int mustIncludeCount;
   std::array<int, MAX_CATALYSTS> curx;
   std::array<int, MAX_CATALYSTS> cury;
   std::array<int, MAX_CATALYSTS> curs;
@@ -532,8 +538,9 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
                     std::vector<LifeState> &locus,
                     std::vector<std::vector<LifeTarget>> &forbidden,
                     std::vector<int> &maxMissing,
-                    std::vector<bool> &transparent) {
+                    std::vector<bool> &transparent, std::vector<bool> &mustInclude) {
 
+  bool hasMustInclude = false;
   for (const auto & catalyst : catalysts) {
     std::vector<SymmetryTransform> trans;
     CharToTransVec(catalyst.symmType, trans);
@@ -577,7 +584,14 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
       locus.push_back(catlocus);
 
       transparent.push_back(catalyst.transparent);
+      mustInclude.push_back(catalyst.mustInclude);
+      if(catalyst.mustInclude)
+        hasMustInclude = true;
     }
+  }
+
+  if(!hasMustInclude) {
+    std::fill(mustInclude.begin(), mustInclude.end(), true);
   }
 }
 
@@ -873,6 +887,7 @@ public:
   std::vector<LifeState> catalystLocusReactionMasks;
   std::vector<LifeState> catalystAvoidMasks;
   std::vector<bool>      transparent;
+  std::vector<bool>      mustInclude;
   clock_t current{};
   long long idx{};
   int found{};
@@ -895,7 +910,7 @@ public:
 
     std::vector<CatalystInput> inputcats;
     ReadParams(inputFile, inputcats, params);
-    GenerateStates(inputcats, catalysts, requiredParts, catalystLocus, forbiddenTargets, maxMissing, transparent);
+    GenerateStates(inputcats, catalysts, requiredParts, catalystLocus, forbiddenTargets, maxMissing, transparent, mustInclude);
 
     pat = LifeState::Parse(params.pat.c_str(), params.xPat, params.yPat);
     numIters = params.numCatalysts;
@@ -1169,6 +1184,7 @@ public:
     Configuration config;
     config.count = 0;
     config.transparentCount = 0;
+    config.mustIncludeCount = 0;
     config.state.JoinWSymChain(pat, params.symmetryChain);
     LifeState history = config.state;
 
@@ -1242,7 +1258,9 @@ public:
           // }
 
           for (int s = 0; s < catalysts.size(); s++) {
-            if (transparent[s] && config.transparentCount == params.numTransparent)
+            if (config.transparentCount == params.numTransparent && transparent[s])
+              continue;
+            if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !mustInclude[s])
               continue;
 
             LifeState newPlacements = catalystReactionMasks[s].Convolve(newcells);
@@ -1266,6 +1284,8 @@ public:
               newConfig.curs[config.count] = s;
               if (transparent[s])
                 newConfig.transparentCount++;
+              if (mustInclude[s])
+                newConfig.mustIncludeCount++;
 
               LifeState shiftedCatalyst = catalysts[s];
               shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
