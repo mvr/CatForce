@@ -120,6 +120,7 @@ public:
   std::pair<int, int> locusXY;
   bool transparent;
   bool mustInclude;
+  int period;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems;
@@ -141,6 +142,7 @@ public:
 
     transparent = false;
     mustInclude = false;
+    period = 1;
 
     int argi = 6;
 
@@ -165,6 +167,9 @@ public:
       } else if (elems[argi] == "mustinclude") {
         mustInclude = true;
         argi += 1;
+      } else if (elems[argi] == "period") {
+        period = atoi(elems[argi + 1].c_str());
+        argi += 2;
       } else {
         std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
         exit(1);
@@ -480,7 +485,7 @@ struct Configuration {
 };
 
 // Fix a, what positions of b causes a collision?
-LifeState CollisionMask(const LifeState &a, const LifeState &b) {
+LifeState CollisionMask(const LifeState &a, const LifeState &b, int period) {
   int popsum = a.GetPop() + b.GetPop();
 
   LifeState mask;
@@ -495,7 +500,8 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b) {
         continue;
       }
 
-      state.Step();
+      for(int i = 0; i < period; i++)
+        state.Step();
 
       if (!state.Contains(a) || !state.Contains(b, x, y)) {
         mask.Set(x, y);
@@ -509,7 +515,7 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b) {
 
 std::string GetRLE(const LifeState &s);
 
-LifeState LoadCollisionMask(const LifeState &a, const LifeState &b) {
+LifeState LoadCollisionMask(const LifeState &a, const LifeState &b, int period) {
   std::stringstream ss;
   ss << "masks/mask-" << a.GetHash() << "-" << b.GetHash();
   std::string fname = ss.str();
@@ -517,7 +523,7 @@ LifeState LoadCollisionMask(const LifeState &a, const LifeState &b) {
   std::ifstream infile;
   infile.open(fname.c_str(), std::ifstream::in);
   if (!infile.good()) {
-    LifeState mask = CollisionMask(a, b);
+    LifeState mask = CollisionMask(a, b, period);
     std::ofstream outfile;
     outfile.open(fname.c_str(), std::ofstream::out);
     outfile << GetRLE(mask);
@@ -584,6 +590,7 @@ void GenerateStates(const std::vector<CatalystInput> &catalysts,
       locus.push_back(catlocus);
 
       transparent.push_back(catalyst.transparent);
+      period.push_back(catalyst.period);
       mustInclude.push_back(catalyst.mustInclude);
       if(catalyst.mustInclude)
         hasMustInclude = true;
@@ -888,6 +895,7 @@ public:
   std::vector<LifeState> catalystAvoidMasks;
   std::vector<bool>      transparent;
   std::vector<bool>      mustInclude;
+  std::vector<int>       period;
   clock_t current{};
   long long idx{};
   int found{};
@@ -910,7 +918,7 @@ public:
 
     std::vector<CatalystInput> inputcats;
     ReadParams(inputFile, inputcats, params);
-    GenerateStates(inputcats, catalysts, requiredParts, catalystLocus, forbiddenTargets, maxMissing, transparent, mustInclude);
+    GenerateStates(inputcats, catalysts, requiredParts, catalystLocus, forbiddenTargets, maxMissing, transparent, period, mustInclude);
 
     pat = LifeState::Parse(params.pat.c_str(), params.xPat, params.yPat);
     numIters = params.numCatalysts;
@@ -945,7 +953,7 @@ public:
       catalystLocusReactionMasks[s].Copy(catalystAvoidMasks[s], ANDNOT);
 
       for (int t = 0; t < catalysts.size(); t++) {
-        catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
+        catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t], period[s] * period[t]);
       }
     }
 
@@ -1194,7 +1202,7 @@ public:
 
     std::vector<LifeState> masks(catalysts.size());
     for (int s = 0; s < catalysts.size(); s++) {
-      masks[s] = pat.Convolve(catalystReactionMasks[s]);
+      masks[s] = config.state.Convolve(catalystReactionMasks[s]);
       masks[s].Copy(bounds, ORNOT);
     }
 
@@ -1230,12 +1238,15 @@ public:
         // if (hasRecovered[i]) {
         //   continue;
         // }
+        if (config.state.gen % period[config.curs[i]] != 0)
+          continue;
+
         if (config.state.Contains(shiftedTargets[i])) {
           missingTime[i] = 0;
-          recoveredTime[i] += 1;
+          recoveredTime[i] += period[config.curs[i]];
         } else {
           hasReacted[i] = true;
-          missingTime[i] += 1;
+          missingTime[i] += period[config.curs[i]];
           recoveredTime[i] = 0;
         }
         if (hasReacted[i] && recoveredTime[i] > params.stableInterval)
@@ -1250,6 +1261,7 @@ public:
       if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
         LifeState newcells = config.state;
         newcells.Copy(history, ANDNOT);
+        newcells.Copy(config.catalystsState, ANDNOT);
 
         if (!newcells.IsEmpty()) {
           // for (int s = 0; s < catalysts.size(); s++) {
@@ -1377,6 +1389,7 @@ public:
 
       history.Copy(config.state, OR);
       config.state.Step();
+      config.catalystsState.Step();
     }
   }
 };
