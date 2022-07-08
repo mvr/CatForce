@@ -1,0 +1,26 @@
+active-region b2o$obo$o2bo$b2o$2bo!
+search-area -30 -30 60 60
+offsets -7 -2 2 2
+
+cat 2o$o$b3o$3bo! 15 -2 -2 * required bo$o$b3o$3bo! -2 -2 locus 2o$o! -2 -2
+cat 2o$2o! 20 0 0 / required o!
+
+stop-after-cats-destroyed 15
+
+
+num-cats-pre-sym 2
+num-cats-post-sym 1
+
+start-gen 5
+last-gen 20
+max-gen 100
+
+start-sym-interaction 15
+last-sym-interaction 30
+
+stable-interval 18
+
+object-reoccurs 1-50
+
+output p37_R_hassler_test.rle
+full-report p37_R_hassler_test_full.rle
