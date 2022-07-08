@@ -1,12 +1,11 @@
 # CatForce
-GOL Catalyst search utility based on LifeAPI library.
+GOL oscillator search based on symmetric, depth-first CatForce. The idea came from a bash
+ script: it fed CatForce different inputs of active region, placement, and symmetry,
+with a "object should reoccur" filter. However, this is inefficient: there's a lot of 
+overlap between the different searches, in the period before the different active
+ regions overlap.
 
-The main advantage of CatForce is that it doesn't make any assumptions
-about the nature of the interaction. As long as the catalysts are back
-in place in a given number of generations, they all could be destroyed
-and reappear several times.
-
-It uses brute force search in an area rather than a tree search.
+Currently the program is in the debugging phase.
 
 <!-- The torus centre is `(0, 0)` and left upper corner is `(-32, -->
 <!-- -32)` and lower right corner is `(31,31)`. It has the same Y axis as -->
@@ -31,10 +30,14 @@ The option delimiter is `" "` - i.e. space.
 | `max-gen`                   | `n`                      | Overall maximum generation                                             |
 | `start-gen`                 | `n`                      | The min gen the first encounter must happen by                         |
 | `last-gen`                  | `n`                      | The max gen the _first_ encounter is allowed                           |
-| `num-catalyst`              | `n`                      | The number of catalyst to place                                        |
+| `start-sym-interaction`     | `n`                      | Symmetric images should interact no earlier than this generation       |
+| `last-sym-interaction`      | `n`                      | Symmetric images should start interacting by this generation           |
+| `num-cats-pre-sym`          | `n`                      | The max number of catalyst to place before the regions interact        |
+| `num-cats-post-sym`         | `n`                      | The number of catalyst to place after the regions interact             |
 | `stable-interval`           | `n`                      | Gens the catalysts must remain untouched to be considered stable       |
+| `offsets`                   | `x y w h`                | Displacements of the rotated active region to search [see offsets]     |
 | `search-area`               | `x y w h`                | Search area                                                            |
-| `pat`                       | `rle`                    | The active pattern                                                     |
+| `active-region`             | `rle`                    | The active region                                                      |
 |                             | `(dx dy)`                | Optional offset                                                        |
 | `cat `                      | `rle`                    | A catalyst                                                             |
 |                             | `max-active`             | Number of generations in a row the catalyst may be missing             |
@@ -45,14 +48,19 @@ The option delimiter is `" "` - i.e. space.
 | `filter`                    | `gen rle dx dy`          | Filter that must be matched for the solution to be accepted            |
 | `filter`                    | `min-max rle dx dy`      | Filter in a range of generations.                                      |
 | `filter`                    | `min-max rle dx dy sym`  | Filter with symmetry (see below)                                       |
+| `object-reoccurs`           | `min-max`                | Filter for the active object reoccuring in the same spot.              |
 | `full-report`               | `filename`               | Output filename for solutions ignoring all pattern filters             |
 | `max-category-size`         | `n`                      | Maximum output row length before more solutions are dropped            |
 | `fit-in-width-height`       | `w h`                    | Only allow solutions where all catalysts fit in a `w` by `h` rectangle |
-| `symmetry`                  |                          | See below                                                              |
 | `stop-after-cats-destroyed` | `n`                      | Filters must be met n generations after catalyst destruction or sooner |
-| `also-required`             | `rle dx dy`              | Require pattern to be present in every generation.                     |
 
+**Symmetries**: right now, only C2 symmetries are implemented.
 
+**Offsets**: Instead of working in terms of C2_1 vs C2_2 vs C2_2, this program works in 
+terms of the displacement vector. Take the active pattern, rotate it by 180 about (0,0),
+then translate it by a vector. That vector is referred to as the offset of the pattern.
+The offsets are given as bounding boxes, one per line. The program then searches the 
+C2 symmetric combinations for all offsets in one of those bounding boxes.
 
 **Encounter**: An active cell from the input pattern is present in
 the immediate neighbourhood of the catalyst.
