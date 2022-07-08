@@ -466,6 +466,69 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   }
 }
 
+class CatalystData {
+public:
+  LifeState state;
+  // LifeTarget target;
+  LifeState reactionMask;
+  int maxDisappear;
+  std::vector<LifeTarget> forbidden;
+  LifeState required;
+  LifeState locus;
+  bool transparent;
+  bool mustInclude;
+
+  static std::vector<CatalystData> FromInput(CatalystInput &input);
+};
+
+std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
+  std::vector<SymmetryTransform> trans;
+  CharToTransVec(input.symmType, trans);
+
+  const char *rle = input.rle.c_str();
+
+  std::vector<CatalystData> results;
+
+  for (auto &tran : trans) {
+    LifeState pat = LifeState::Parse(rle, input.centerX, input.centerY, tran);
+
+    CatalystData result;
+
+    result.state = pat;
+    result.reactionMask = pat.BigZOI();
+    result.reactionMask.Transform(Rotate180OddBoth);
+
+    // result.target = LifeTarget(pat);
+    result.maxDisappear = input.maxDisappear;
+
+    for (int k = 0; k < input.forbiddenRLE.size(); k++) {
+      result.forbidden.push_back(LifeTarget::Parse(input.forbiddenRLE[k].c_str(),
+                                                   input.forbiddenXY[k].first,
+                                                   input.forbiddenXY[k].second, tran));
+    }
+
+    if (input.requiredRLE != "") {
+      result.required = LifeState::Parse(input.requiredRLE.c_str(),
+                                         input.requiredXY.first,
+                                         input.requiredXY.second, tran);
+    }
+
+    if (input.locusRLE != "") {
+      result.locus = LifeState::Parse(input.locusRLE.c_str(),
+                                      input.locusXY.first,
+                                      input.locusXY.second, tran);
+    } else {
+      result.locus = pat;
+    }
+
+    result.transparent = input.transparent;
+    result.mustInclude = input.mustInclude;
+
+    results.push_back(result);
+  }
+  return results;
+}
+
 struct Configuration {
   int count;
   int transparentCount;
@@ -476,6 +539,7 @@ struct Configuration {
   // int minIter;
   LifeState state;
   LifeState catalystsState;
+  LifeState startingCatalysts;
   // std::vector<LifeTarget> shiftedTargets;
 };
 
@@ -509,15 +573,15 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b) {
 
 std::string GetRLE(const LifeState &s);
 
-LifeState LoadCollisionMask(const LifeState &a, const LifeState &b) {
+LifeState LoadCollisionMask(const CatalystData &a, const CatalystData &b) {
   std::stringstream ss;
-  ss << "masks/mask-" << a.GetHash() << "-" << b.GetHash();
+  ss << "masks/mask-" << a.state.GetHash() << "-" << b.state.GetHash();
   std::string fname = ss.str();
 
   std::ifstream infile;
   infile.open(fname.c_str(), std::ifstream::in);
   if (!infile.good()) {
-    LifeState mask = CollisionMask(a, b);
+    LifeState mask = CollisionMask(a.state, b.state);
     std::ofstream outfile;
     outfile.open(fname.c_str(), std::ofstream::out);
     outfile << GetRLE(mask);
@@ -529,69 +593,6 @@ LifeState LoadCollisionMask(const LifeState &a, const LifeState &b) {
     LifeState result = LifeState::Parse(rle.c_str());
     result.Move(-32, -32);
     return result;
-  }
-}
-
-void GenerateStates(const std::vector<CatalystInput> &catalysts,
-                    std::vector<LifeState> &states,
-                    std::vector<LifeState> &required,
-                    std::vector<LifeState> &locus,
-                    std::vector<std::vector<LifeTarget>> &forbidden,
-                    std::vector<int> &maxMissing,
-                    std::vector<bool> &transparent, std::vector<bool> &mustInclude) {
-
-  bool hasMustInclude = false;
-  for (const auto & catalyst : catalysts) {
-    std::vector<SymmetryTransform> trans;
-    CharToTransVec(catalyst.symmType, trans);
-
-    const char *rle = catalyst.rle.c_str();
-    int dx = catalyst.centerX;
-    int dy = catalyst.centerY;
-    int maxDisappear = catalyst.maxDisappear;
-
-    for (auto & tran : trans) {
-      LifeState pat = LifeState::Parse(rle, dx, dy, tran);
-      states.push_back(pat);
-      maxMissing.push_back(maxDisappear);
-
-      std::vector<LifeTarget> forbidTarg;
-
-      for (int k = 0; k < catalyst.forbiddenRLE.size(); k++) {
-        forbidTarg.push_back(LifeTarget::Parse(catalyst.forbiddenRLE[k].c_str(),
-                                               catalyst.forbiddenXY[k].first,
-                                               catalyst.forbiddenXY[k].second, tran));
-      }
-
-      forbidden.push_back(forbidTarg);
-
-      LifeState catrequired;
-      if (catalyst.requiredRLE != "") {
-        catrequired = LifeState::Parse(catalyst.requiredRLE.c_str(),
-                                       catalyst.requiredXY.first,
-                                       catalyst.requiredXY.second, tran);
-      }
-      required.push_back(catrequired);
-
-      LifeState catlocus;
-      if (catalyst.locusRLE != "") {
-        catlocus = LifeState::Parse(catalyst.locusRLE.c_str(),
-                                       catalyst.locusXY.first,
-                                       catalyst.locusXY.second, tran);
-      } else {
-        catlocus = pat;
-      }
-      locus.push_back(catlocus);
-
-      transparent.push_back(catalyst.transparent);
-      mustInclude.push_back(catalyst.mustInclude);
-      if(catalyst.mustInclude)
-        hasMustInclude = true;
-    }
-  }
-
-  if(!hasMustInclude) {
-    std::fill(mustInclude.begin(), mustInclude.end(), true);
   }
 }
 
@@ -816,7 +817,7 @@ public:
     maxgen = maxGen + catDelta;
   }
 
-  void Add(LifeState &init, LifeState &afterCatalyst, LifeState &catalysts,
+  void Add(LifeState &init, const LifeState &afterCatalyst, const LifeState &catalysts,
            const Configuration &conf, int firstGenSurvive,
            int genSurvive) {
     LifeState result;
@@ -871,33 +872,21 @@ public:
 class CatalystSearcher {
 public:
   clock_t begin{};
-  std::vector<LifeState> catalysts;
-  std::vector<int> maxMissing;
   SearchParams params;
   LifeState pat;
-  int numIters{};
-  // Enumerator *enu;
+  std::vector<CatalystData> catalysts;
   std::vector<LifeTarget> targetFilter;
-  std::vector<LifeTarget> targets;
-  std::vector<std::vector<LifeTarget>> forbiddenTargets;
-  std::vector<LifeState> requiredParts;
   std::vector<std::vector<LifeState>> catalystCollisionMasks;
-  std::vector<LifeState> catalystReactionMasks;
-  std::vector<LifeState> catalystLocus;
-  std::vector<LifeState> catalystLocusReactionMasks;
-  std::vector<LifeState> catalystAvoidMasks;
-  std::vector<bool>      transparent;
-  std::vector<bool>      mustInclude;
+
   clock_t current{};
   long long idx{};
   int found{};
   int fullfound{};
   long long total{};
   unsigned short int counter{};
+
   CategoryContainer *categoryContainer{};
   CategoryContainer *fullCategoryContainer{};
-
-  // flags and memeber for the search
 
   bool hasFilter{};
   bool reportAll{};
@@ -910,15 +899,25 @@ public:
 
     std::vector<CatalystInput> inputcats;
     ReadParams(inputFile, inputcats, params);
-    GenerateStates(inputcats, catalysts, requiredParts, catalystLocus, forbiddenTargets, maxMissing, transparent, mustInclude);
+
+    for (auto &input : inputcats) {
+      std::vector<CatalystData> newcats = CatalystData::FromInput(input);
+      catalysts.insert(catalysts.end(), newcats.begin(), newcats.end());
+    }
+    bool hasMustInclude = false;
+    for (auto &cat : catalysts) {
+      hasMustInclude = hasMustInclude || cat.mustInclude;
+    }
+
+    if (!hasMustInclude) {
+      for (auto &cat : catalysts) {
+        cat.mustInclude = true;
+      }
+    }
 
     pat = LifeState::Parse(params.pat.c_str(), params.xPat, params.yPat);
-    numIters = params.numCatalysts;
     categoryContainer = new CategoryContainer(params.maxGen);
     fullCategoryContainer = new CategoryContainer(params.maxGen);
-
-    for (auto & state : catalysts)
-      targets.push_back(LifeTarget(state));
 
     for (int i = 0; i < params.targetFilter.size(); i++)
       targetFilter.push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
@@ -926,23 +925,17 @@ public:
 
     catalystCollisionMasks = std::vector<std::vector<LifeState>>(
         catalysts.size(), std::vector<LifeState>(catalysts.size()));
-    catalystReactionMasks = std::vector<LifeState>(catalysts.size());
-    catalystLocusReactionMasks = std::vector<LifeState>(catalysts.size());
-    catalystAvoidMasks = std::vector<LifeState>(catalysts.size());
 
     for (int s = 0; s < catalysts.size(); s++) {
-      catalystReactionMasks[s] = catalysts[s].BigZOI();
-      catalystReactionMasks[s].Transform(Rotate180OddBoth);
+      // LifeState nonLocus = catalysts[s];
+      // nonLocus.Copy(catalystLocus[s], ANDNOT);
 
-      LifeState nonLocus = catalysts[s];
-      nonLocus.Copy(catalystLocus[s], ANDNOT);
+      // catalystAvoidMasks[s] = nonLocus.BigZOI();
+      // catalystAvoidMasks[s].Transform(Rotate180OddBoth);
 
-      catalystAvoidMasks[s] = nonLocus.BigZOI();
-      catalystAvoidMasks[s].Transform(Rotate180OddBoth);
-
-      catalystLocusReactionMasks[s] = catalystLocus[s].BigZOI();
-      catalystLocusReactionMasks[s].Transform(Rotate180OddBoth);
-      catalystLocusReactionMasks[s].Copy(catalystAvoidMasks[s], ANDNOT);
+      // catalystLocusReactionMasks[s] = catalystLocus[s].BigZOI();
+      // catalystLocusReactionMasks[s].Transform(Rotate180OddBoth);
+      // catalystLocusReactionMasks[s].Copy(catalystAvoidMasks[s], ANDNOT);
 
       for (int t = 0; t < catalysts.size(); t++) {
         catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
@@ -959,7 +952,7 @@ public:
 
     int fact = 1;
 
-    for (int i = 0; i < numIters; i++) {
+    for (int i = 0; i < catalysts.size(); i++) {
       total *= params.searchArea[2];
       total *= params.searchArea[3];
       total *= catalysts.size();
@@ -1074,14 +1067,14 @@ public:
 
   bool HasForbidden(Configuration &conf, int curIter) {
     LifeState workspace;
-    workspace.Join(conf.catalystsState);
+    workspace.Join(conf.startingCatalysts);
     workspace.JoinWSymChain(pat, params.symmetryChain);
 
     for (int i = 0; i <= curIter + 1; i++) {
-      for (int j = 0; j < numIters; j++) {
-        for (int k = 0; k < forbiddenTargets[conf.curs[j]].size(); k++) {
-          if (workspace.Contains(forbiddenTargets[conf.curs[j]][k],
-                       conf.curx[j], conf.cury[j]) == true)
+      for (int j = 0; j < catalysts.size(); j++) {
+        for (int k = 0; k < catalysts[conf.curs[j]].forbidden.size(); k++) {
+          if (workspace.Contains(catalysts[conf.curs[j]].forbidden[k],
+                                 conf.curx[j], conf.cury[j]))
             return true;
         }
       }
@@ -1105,7 +1098,7 @@ public:
   bool ValidateFilters(Configuration &conf) {
     LifeState workspace;
     workspace.JoinWSymChain(pat, params.symmetryChain);
-    workspace.Join(conf.catalystsState);
+    workspace.Join(conf.startingCatalysts);
 
     std::vector<bool> rangeValid(params.filterGen.size(), false);
 
@@ -1144,7 +1137,7 @@ public:
     LifeState workspace;
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
-      workspace.Join(conf.catalystsState);
+      workspace.Join(conf.startingCatalysts);
       workspace.JoinWSymChain(pat, params.symmetryChain);
       init.Copy(workspace);
 
@@ -1153,7 +1146,7 @@ public:
 
       fullfound++;
 
-      fullCategoryContainer->Add(init, afterCatalyst, conf.catalystsState, conf,
+      fullCategoryContainer->Add(init, afterCatalyst, conf.startingCatalysts, conf,
                                  successtime - params.stableInterval + 2, 0);
     }
 
@@ -1169,13 +1162,13 @@ public:
     // If all filters validated update results
     workspace.Clear();
     workspace.JoinWSymChain(pat, params.symmetryChain);
-    workspace.Join(conf.catalystsState);
+    workspace.Join(conf.startingCatalysts);
     init.Copy(workspace);
 
     workspace.Step(successtime - params.stableInterval + 2);
     afterCatalyst.Copy(workspace);
 
-    categoryContainer->Add(init, afterCatalyst, conf.catalystsState, conf,
+    categoryContainer->Add(init, afterCatalyst, conf.startingCatalysts, conf,
                            successtime - params.stableInterval + 2, 0);
     found++;
   }
@@ -1194,7 +1187,7 @@ public:
 
     std::vector<LifeState> masks(catalysts.size());
     for (int s = 0; s < catalysts.size(); s++) {
-      masks[s] = pat.Convolve(catalystReactionMasks[s]);
+      masks[s] = config.state.Convolve(catalysts[s].reactionMask);
       masks[s].Copy(bounds, ORNOT);
     }
 
@@ -1230,6 +1223,7 @@ public:
         // if (hasRecovered[i]) {
         //   continue;
         // }
+
         if (config.state.Contains(shiftedTargets[i])) {
           missingTime[i] = 0;
           recoveredTime[i] += 1;
@@ -1241,10 +1235,9 @@ public:
         if (hasReacted[i] && recoveredTime[i] > params.stableInterval)
           hasRecovered[i] = true;
 
-        if (missingTime[i] > maxMissing[config.curs[i]])
+        if (missingTime[i] > catalysts[config.curs[i]].maxDisappear)
           return;
       }
-
 
       // Try adding a catalyst
       if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
@@ -1258,12 +1251,12 @@ public:
           // }
 
           for (int s = 0; s < catalysts.size(); s++) {
-            if (config.transparentCount == params.numTransparent && transparent[s])
+            if (config.transparentCount == params.numTransparent && catalysts[s].transparent)
               continue;
-            if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !mustInclude[s])
+            if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
               continue;
 
-            LifeState newPlacements = catalystReactionMasks[s].Convolve(newcells);
+            LifeState newPlacements = catalysts[s].reactionMask.Convolve(newcells);
             newPlacements.Copy(masks[s], ANDNOT);
 
             while (!newPlacements.IsEmpty()) {
@@ -1274,7 +1267,6 @@ public:
                 std::cout << "Placing catalyst " << s << " at "
                           << newPlacement.first << ", " << newPlacement.second
                           << std::endl;
-                // newPlacements.Print();
               }
 
               Configuration newConfig = config;
@@ -1282,15 +1274,18 @@ public:
               newConfig.curx[config.count] = newPlacement.first;
               newConfig.cury[config.count] = newPlacement.second;
               newConfig.curs[config.count] = s;
-              if (transparent[s])
+              if (catalysts[s].transparent)
                 newConfig.transparentCount++;
-              if (mustInclude[s])
+              if (catalysts[s].mustInclude)
                 newConfig.mustIncludeCount++;
 
-              LifeState shiftedCatalyst = catalysts[s];
+              LifeState shiftedCatalyst = catalysts[s].state;
               shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
+              shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
+
               LifeState symCatalyst;
               symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
+              newConfig.startingCatalysts.Join(symCatalyst);
               newConfig.catalystsState.Join(symCatalyst);
               newConfig.state.Join(symCatalyst);
 
@@ -1298,7 +1293,7 @@ public:
               newHistory.Join(symCatalyst);
 
               LifeState newRequired = required;
-              newRequired.Join(requiredParts[s], newPlacement.first, newPlacement.second);
+              newRequired.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
 
               if (newConfig.count != params.numCatalysts) {
                 LifeState lookahead = newConfig.state;
@@ -1314,13 +1309,6 @@ public:
               }
 
               std::vector<LifeState> newMasks = masks;
-
-              shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
-
-              std::array<int, MAX_CATALYSTS> newMissingTime = missingTime;
-              std::array<int, MAX_CATALYSTS> newRecoveredTime = recoveredTime;
-              std::array<bool, MAX_CATALYSTS> newHasReacted = hasReacted;
-              std::array<bool, MAX_CATALYSTS> newHasRecovered = hasRecovered;
 
               LifeState bounds;
               if (params.maxW != -1) {
@@ -1342,8 +1330,8 @@ public:
                 }
               }
 
-              RecursiveSearch(newConfig, newHistory, newRequired, newMasks, shiftedTargets, newMissingTime,
-                              newRecoveredTime, newHasReacted, newHasRecovered);
+              RecursiveSearch(newConfig, newHistory, newRequired, newMasks, shiftedTargets, missingTime,
+                              recoveredTime, hasReacted, hasRecovered);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
               newPlacements.Erase(newPlacement.first, newPlacement.second);
@@ -1355,7 +1343,7 @@ public:
       // Still block the locations that are hit too early
       if (config.state.gen < params.startGen) {
         for (int s = 0; s < catalysts.size(); s++) {
-          LifeState hitLocations = config.state.Convolve(catalystReactionMasks[s]);
+          LifeState hitLocations = config.state.Convolve(catalysts[s].reactionMask);
           masks[s].Join(hitLocations);
         }
       }
