@@ -635,6 +635,7 @@ public:
   SearchResult(LifeState &initState, LifeState &preSymInitState, const Configuration &conf,
                int firstGenSurviveIn, int genSurvive, int startSymInteraction) {
     init.Copy(initState);
+    preSymInit.Copy(preSymInitState);
     maxGenSurvive = genSurvive;
     firstGenSurvive = firstGenSurviveIn;
     firstSymInt = startSymInteraction;
