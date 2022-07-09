@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <set>
 
 const int MAX_CATALYSTS = 5;
 
@@ -631,6 +632,7 @@ public:
   int maxGenSurvive;
   int firstGenSurvive;
   int firstSymInt;
+  std::pair<int,int> offset;
 
   SearchResult(LifeState &initState, LifeState &preSymInitState, const Configuration &conf,
                int firstGenSurviveIn, int genSurvive, int startSymInteraction) {
@@ -639,6 +641,7 @@ public:
     maxGenSurvive = genSurvive;
     firstGenSurvive = firstGenSurviveIn;
     firstSymInt = startSymInteraction;
+    offset = conf.loneOffset;
   }
 
   void Print() {
@@ -700,7 +703,11 @@ public:
   static bool CompareSearchResult(SearchResult &a, SearchResult &b) {
     //return (a.maxGenSurvive - a.firstGenSurvive) >
     //       (b.maxGenSurvive - b.firstGenSurvive);
-    return a.firstSymInt > b.firstSymInt;
+    // return a.firstSymInt > b.firstSymInt;
+    if (a.offset.first != b.offset.first){
+      return a.offset.first < b.offset.first;
+    }
+    return a.offset.second < b.offset.second;
   }
 
   void Sort() {
@@ -814,6 +821,11 @@ public:
 class CatalystSearcher {
 public:
   clock_t begin{};
+  clock_t beginSearch{};
+  clock_t beginPostSym{};
+  double postSymmetryTime{};
+  //std::set<std::string> missed;
+  //std::set<std::string> extra;
 
   SearchParams params;
 
@@ -835,7 +847,6 @@ public:
   std::vector<bool>      transparent;
 
   std::vector<std::array<int,3>> rotatedCatalystMatches;
-  std::vector<LinearTransform> catTransformations;
   
   clock_t current{};
   time_t lastReport{};
@@ -884,6 +895,7 @@ public:
   }
 
   void ComputeCatalystTransformationData(std::vector<CatalystInput> & catInput){
+    std::vector<LinearTransform> catTransformations;
     for(auto catData : catInput){
       std::vector<AffineTransform> whichTransforms;
       CharToTransVec(catData.symmType, whichTransforms);
@@ -922,8 +934,6 @@ public:
             std::array<int,3> toPushBack({i,xDiff, yDiff});
             rotatedCatalystMatches.push_back(toPushBack);
             break;
-          } else {
-            std::cout << "catalysts matched up but their required parts didn't." << std::endl;
           }
         }
         if ( i + 1 == std::min(size_t(defaultCatIndex+8), catalysts.size())){
@@ -949,8 +959,15 @@ public:
     activeRegion = LifeState::Parse(params.activeRegion.c_str(), params.xActiveRegion, params.yActiveRegion);
     GenerateOffsets();
 
-    searchArea = LifeState::SolidRect(params.searchArea[0], params.searchArea[1],
+    if(params.searchArea[2] >= 64 && params.searchArea[3] >= 64){
+      searchArea.Clear();
+      searchArea.Inverse();
+    } else {
+      searchArea = LifeState::SolidRect(params.searchArea[0], params.searchArea[1],
                                         params.searchArea[2], params.searchArea[3]);
+    }
+
+    
     
     maxNumCatalysts = params.numCatalystsPrePost.first+params.numCatalystsPrePost.second;
     
@@ -959,8 +976,6 @@ public:
 
     for (auto & state : catalysts)
       targets.push_back(LifeTarget(state));
-    
-    std::cout << "last gen is " << params.lastGen << std::endl;
 
     // object reoccurs
     if(params.objReoccurs != std::make_pair(0,0)){
@@ -1004,6 +1019,7 @@ public:
       catalystLocusReactionMasks[s].Copy(catalystAvoidMasks[s], ANDNOT);
 
       for (int t = 0; t < catalysts.size(); t++) {
+        // fix catalysts[s]
         catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
       }
     }
@@ -1070,23 +1086,27 @@ public:
     int estimation = 0;
     int checkPerSecond = idx / (sec * 1000);
 
-    if (percent > 0)
-      estimation = (sec * 100) / percent;
+    //if (percent > 0)
+    //  estimation = (sec * 100) / percent;
 
-    std::cout << std::setprecision(1) << std::fixed << percent << "%,"
-              << idx / 1000000 << "M/" << total
-              << "M, cats/total: " << categoryContainer->categories.size() << "/"
+    //std::cout << std::setprecision(1) << std::fixed << percent << "%,"
+    //          << idx / 1000000 << "M/" << total
+    std::cout << "cats/total: " << categoryContainer->categories.size() << "/"
               << found;
     if (params.fullReportFile.length() != 0) {
       std::cout << ", unfiltered: " << fullCategoryContainer->categories.size() << "/"
                 << fullfound;
     }
+    double percentInPostSym = 100*postSymmetryTime/(double(clock()- beginSearch)/CLOCKS_PER_SEC);
+
     std::cout << ", now: ";
     PrintTime(sec);
-    std::cout << ", est: ";
-    PrintTime(estimation);
-    std::cout << ", " << std::setprecision(1) << std::fixed << checkPerSecond
-              << "K/sec" << std::endl;
+    std::cout << ", " << std::setprecision(1) << std::fixed << percentInPostSym << "%";
+    std::cout << " spent searching individual offsets." << std::endl;
+    //std::cout << ", : ";
+    //PrintTime(estimation);
+    //std::cout << ", " << std::setprecision(1) << std::fixed << checkPerSecond
+   //           << "K/sec" << std::endl;
 
     categoryContainer->Sort();
     fullCategoryContainer->Sort();
@@ -1110,6 +1130,24 @@ public:
         std::cout << "Done!" << std::endl;
       }
     }
+    // debugging purposes: record RLEs where convolution and join-and-iterate
+    // give different results
+    /*std::ofstream missedOffsets;
+    missedOffsets.open("missedInteractions.txt");
+    for(auto item : missed){
+      missedOffsets << item << std::endl;
+    }
+    missedOffsets.close();
+
+
+    std::ofstream extraOffsets;
+    extraOffsets.open("extraInteractions.txt");
+    for(auto item : extra){
+      extraOffsets << item << std::endl;
+    }
+    extraOffsets.close();*/
+    // end debugging stuff.
+
   }
 
   static void PrintTime(int sec) {
@@ -1335,9 +1373,12 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(maxNumCatalysts);
 
+    beginSearch = clock();
+    postSymmetryTime = 0;
+
     RecursiveSearch(config, history, offsets, required, masks, shiftedTargets,
                     std::array<int, MAX_CATALYSTS>(), std::array<int, MAX_CATALYSTS>(),
-                    std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
+                    std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>(), false);
   }
 
   void
@@ -1345,12 +1386,12 @@ public:
                   LifeState curOffsets,
                   const LifeState required,
                   std::vector<LifeState> masks,
-                  std::vector<LifeTarget> &shiftedTargets, // This can be shared
+                  std::vector<LifeTarget> shiftedTargets, // This can be shared
 
                   std::array<int, MAX_CATALYSTS> missingTime,
                   std::array<int, MAX_CATALYSTS> recoveredTime,
                   std::array<bool, MAX_CATALYSTS> hasReacted,
-                  std::array<bool, MAX_CATALYSTS> hasRecovered) {
+                  std::array<bool, MAX_CATALYSTS> hasRecovered, bool hasPrinted) {
     for (int g = config.state.gen; g < params.maxGen; g++) {
       if (config.count == 0 && g > params.lastGen){
         return;
@@ -1360,18 +1401,25 @@ public:
         return;
       }
 
-      // alternative: config.count == 0
-      if (config.prePostCount.first == 0){
-        if(config.postSymmetry){
+      if (config.count == 0){
+        if(config.postSymmetry && !params.quietMode){
           std::cout << "      Collision at gen " << g << std::endl;
-        } else {
+        } else if ( ! config.postSymmetry ){
           std::cout << "Collision at gen " << g << std::endl;
         }
       }
-        
+      
 
       if (!config.state.Contains(required))
         return;
+
+      if (params.numCatalystsPrePost.second == config.prePostCount.second && !hasPrinted){
+        //std::cout << "catalyst state" << std::endl;
+        //config.catalystsState.Print();
+        //std::cout << "required state" << std::endl;
+        //required.Print();
+        hasPrinted = true;
+      }
 
       for (int i = 0; i < config.count; i++) {
         // if (hasRecovered[i]) {
@@ -1398,16 +1446,67 @@ public:
         LifeState offsetsThatInteract = curOffsets;
         
         // eliminate what you can based off of bounding boxes [worth doing?]
-        std::array<int,4> xyBounds = config.state.XYBounds();
+        /*std::array<int,4> xyBounds = config.state.XYBounds();
         LifeState box = LifeState::SolidRect(2*xyBounds[0]-2,2*xyBounds[1]-2, 2*xyBounds[2]-2*xyBounds[0]+4,
                     2*xyBounds[3]-2*xyBounds[1]+4);
-        offsetsThatInteract.Copy(box, AND);
+        offsetsThatInteract.Copy(box, AND);*/
 
         
         LifeState neighborhood = config.state.Convolve(LifeState::SolidRect(-1,-1,3,3));
         offsetsThatInteract.Copy(neighborhood.Convolve(neighborhood), AND);
 
+        //debugging purposes: the slow check, see how they compare.
+        /*
+        LifeState offsetCopy = curOffsets;
+        LifeState offsetsThatInteract2;
+        while(!offsetCopy.IsEmpty()){
+          auto offsetToTest = offsetCopy.FirstOn();
+          offsetCopy.Erase(offsetToTest.first, offsetToTest.second);
+          LifeState joinThenIterate = config.state;
+          joinThenIterate.Transform(Rotate180OddBoth);
+          joinThenIterate.Move(offsetToTest.first, offsetToTest.second);
+          joinThenIterate.Join(config.state);
+          joinThenIterate.Step();
+          LifeState iterate = config.state;
+          iterate.Step();
+          LifeState iterateThenJoin = iterate;
+          iterateThenJoin.Transform(Rotate180OddBoth);
+          iterateThenJoin.Move(offsetToTest.first, offsetToTest.second);
+          iterateThenJoin.Join(iterate);
+          if(!joinThenIterate.Contains(iterateThenJoin) || ! iterateThenJoin.Contains(joinThenIterate)){
+            offsetsThatInteract2.Set(offsetToTest.first, offsetToTest.second);
+          }
+        }
+        assert(offsetsThatInteract.Contains(offsetsThatInteract2));
+        LifeState missedOffsets = offsetsThatInteract2;
+        missedOffsets.Copy(offsetsThatInteract, ANDNOT);
+        while(!missedOffsets.IsEmpty()){
+          auto bad = missedOffsets.FirstOn();
+          missedOffsets.Erase(bad.first, bad.second);
+          LifeState postSym = config.state;
+          postSym.Transform(Rotate180OddBoth);
+          postSym.Move(bad.first, bad.second);
+          postSym.Join(config.state);
+          missed.insert(GetRLE(postSym));
+        }
+
+
+        LifeState extraOffsets = offsetsThatInteract;
+        extraOffsets.Copy(offsetsThatInteract2, ANDNOT);
+        while(!extraOffsets.IsEmpty()){
+          auto bad = extraOffsets.FirstOn();
+          extraOffsets.Erase(bad.first, bad.second);
+          LifeState postSym = config.state;
+          postSym.Transform(Rotate180OddBoth);
+          postSym.Move(bad.first, bad.second);
+          postSym.Join(config.state);
+          extra.insert(GetRLE(postSym));
+        }*/
+        // end debugging stuff: convolution picks up a few extras as expected
+        //     but doesn't miss any.
+
         // remove those offsets that interact
+        // (well, might interact: possible that they just come very close)
         curOffsets.Copy(offsetsThatInteract, ANDNOT);
 
         if (g >= params.startSymInteraction){ // if it isn't too early, send them off into post-symemtry mode
@@ -1466,9 +1565,11 @@ public:
             LifeState newOffsets = LifeState::SolidRect(offset.first, offset.second, 1,1);
 
             // don't need to change targets or required.
+            beginPostSym = clock();
             RecursiveSearch(newConfig, newHistory, newOffsets, required, newMasks,
                       shiftedTargets, missingTime, recoveredTime, hasReacted,
-                      hasRecovered);
+                      hasRecovered, hasPrinted);
+            postSymmetryTime += double(clock() - beginPostSym)/CLOCKS_PER_SEC;
           } // end of going thru offsets that interact.
           
           
@@ -1498,7 +1599,10 @@ public:
 
             LifeState newPlacements = catalystReactionMasks[s].Convolve(newcells);
             newPlacements.Copy(masks[s], ANDNOT);
-            newPlacements.Copy(searchArea, AND);
+            if (params.searchArea[2] < 64 || params.searchArea[3] < 64){
+              newPlacements.Copy(searchArea, AND);
+            }
+            
 
             while (!newPlacements.IsEmpty()) {
               // Do the placement
@@ -1507,6 +1611,8 @@ public:
               LifeState offsetCatValid = curOffsets;
               if( !config.postSymmetry ){
                 // rotatedCatalystMatches[s] := rotatedS, rotatedX, rotatedY
+                // catalysts[s] @ newPlaceVec -> catalysts[rotatedS] @ rotVec-newPlaceVec [rotate]
+                //                    -> catalysts[rotatedS] @ rotVec-newPlaceVec + v [offset]
                 // want all v's such that placing catalysts[rotatedS] @ rotVec-newPlaceVec+v is ok.
                 int rotatedS = rotatedCatalystMatches[s][0];
                 int rotatedX0 = rotatedCatalystMatches[s][1];
@@ -1514,6 +1620,18 @@ public:
                 LifeState rotatedCatMask = masks[rotatedS];
                 rotatedCatMask.Move(newPlacement.first-rotatedX0, newPlacement.second-rotatedY0);
                 offsetCatValid.Copy(rotatedCatMask, ANDNOT);
+                // for what offsets will the rotated/offset image intefere with catalysts we've placed so far?
+                // we also end up with catalysts[rotS] @ (offsetX+rotX0-placeX0, offsetY+rotY0-placeY0)
+                // that inteferes if and only if there's a previous S such that
+                // catalystCollisionMasks[prevS][rotS] at (offsetX+rotX0-placeX0, offsetY+rotY0-placeY0) is 1.
+                for(int i = 0; i < config.prePostCount.first; ++i ){
+                  auto rotCatData = rotatedCatalystMatches[config.curs[i]];
+                  int placeX0 = config.curx[i];
+                  int placeY0 = config.cury[i];
+                  LifeState intefereMask = catalystCollisionMasks[i][rotCatData[0]];
+                  intefereMask.Move(-rotCatData[1]+placeX0, -rotCatData[2]+placeY0);
+                  offsetCatValid.Copy(intefereMask, ANDNOT);
+                }
                 if (offsetCatValid.IsEmpty()){
                   masks[s].Set(newPlacement.first, newPlacement.second);
                   newPlacements.Erase(newPlacement.first, newPlacement.second);
@@ -1553,7 +1671,7 @@ public:
 
                 newConfig.catalystsPreSymmetry.Join(shiftedCatalyst);
               } else {
-                assert(config.loneOffset == curOffsets.FirstOn());
+                assert(config.loneOffset == curOffsets.FirstOn() && curOffsets.GetPop() == 1);
                 LifeState symCatalyst = shiftedCatalyst;
                 symCatalyst.Transform(Rotate180OddBoth);
                 symCatalyst.Move(config.loneOffset.first, config.loneOffset.second);
@@ -1566,6 +1684,7 @@ public:
               LifeState newRequired = required;
               newRequired.Join(requiredParts[s], newPlacement.first, newPlacement.second);
 
+              // does this lookahead make sense and work, regardless of pre vs post symmetry?
               if (newConfig.prePostCount.second != params.numCatalystsPrePost.second) {
                 LifeState lookahead = newConfig.state;
                 lookahead.Step();
@@ -1594,17 +1713,33 @@ public:
               // If we just placed the last catalyst, don't bother
               if (newConfig.prePostCount.second != params.numCatalystsPrePost.second) {
                 for (int t = 0; t < catalysts.size(); t++) {
+                  // catalystCollisionMask[s][t]: place catalyst[s], what positions of catalysts[t] collide?
                   newMasks[t].Join(catalystCollisionMasks[s][t],
                                    newPlacement.first, newPlacement.second);
-
+                  // we're essentially also placing catalysts[rotatedS] at -newPlaceX+rotatedX0, -newPlaceY+rotatedY0.
+                  // then apply offset.
+                  if(config.postSymmetry){
+                    int rotatedS = rotatedCatalystMatches[s][0];
+                    int rotatedX0 = rotatedCatalystMatches[s][1];
+                    int rotatedY0 = rotatedCatalystMatches[s][2];
+                    newMasks[t].Join(catalystCollisionMasks[rotatedS][t], rotatedX0-newPlacement.first+config.loneOffset.first,
+                                      rotatedY0-newPlacement.second+config.loneOffset.second);
+                  }
                   if (params.maxW != -1) {
                     newMasks[t].Copy(bounds, ORNOT);
                   }
                 }
               }
 
+              // shouldn't be necessary (they're all initialized to these values,
+              // and we haven't the config.count catalyst in prior [shallow-er?] calls) 
+              missingTime[config.count] = 0;
+              recoveredTime[config.count] = 0;
+              hasReacted[config.count] = false;
+              hasRecovered[config.count] = false;
+
               RecursiveSearch(newConfig, newHistory, offsetCatValid, newRequired, newMasks, shiftedTargets, missingTime,
-                              recoveredTime, hasReacted, hasRecovered);
+                              recoveredTime, hasReacted, hasRecovered, hasPrinted);
               
               /*   RecursiveSearch(Configuration config, LifeState history, 
                   LifeState curOffsets,
@@ -1633,6 +1768,7 @@ public:
           masks[s].Join(hitLocations);
         }
       }
+      
       if (config.prePostCount.second == params.numCatalystsPrePost.second) {
         bool allRecovered = true;
         for (int i = 0; i < config.count; i++) {
@@ -1646,9 +1782,10 @@ public:
         }
       }
 
-      // save at least every 15 minutes or so
-      if ( (config.count == 0 && difftime(time(NULL), lastReport) > 10) || \
-              (config.count == 1 && difftime(time(NULL), lastReport) > 900) ){
+      // debugging purposes: report at least every minute.
+      if ( difftime(time(NULL), lastReport) > 60) {
+      // if ( (config.count == 0 && difftime(time(NULL), lastReport) > 10) || \
+      //        (config.count == 1 && difftime(time(NULL), lastReport) > 900) ){
         Report();
         lastReport = time(NULL);
       }
