@@ -836,16 +836,13 @@ public:
   void Add(LifeState &init, const LifeState &afterCatalyst, const LifeState &catalysts,
            const Configuration &conf, int firstGenSurvive,
            int genSurvive) {
-    LifeState result;
-
-    result.Copy(afterCatalyst);
+    LifeState result = afterCatalyst;
     result.Copy(catalysts, XOR);
 
     result.Step(maxgen - result.gen);
     uint64_t hash = result.GetHash();
 
-    result.Clear();
-    result.Copy(afterCatalyst);
+    result = afterCatalyst;
     result.Copy(catalysts, XOR);
 
     for (auto & category: categories) {
@@ -856,8 +853,7 @@ public:
       }
     }
 
-    LifeState categoryKey;
-    categoryKey.Copy(afterCatalyst);
+    LifeState categoryKey = afterCatalyst;
     categoryKey.Copy(catalysts, XOR);
 
     SearchResult r(init, conf, firstGenSurvive, genSurvive);
@@ -1146,23 +1142,21 @@ public:
   }
 
   void ReportSolution(Configuration &conf, int successtime){
-    LifeState init;
-    LifeState afterCatalyst;
-    LifeState catalysts;
+    LifeState workspace = conf.startingCatalysts;
+    workspace.JoinWSymChain(pat, params.symmetryChain);
 
-    LifeState workspace;
+    LifeState init = workspace;
+
+    workspace.Step(successtime - params.stableInterval + 2);
+
+    LifeState steppedCatalysts = conf.startingCatalysts;
+    steppedCatalysts.Step(successtime - params.stableInterval + 2);
+
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
-      workspace.Join(conf.startingCatalysts);
-      workspace.JoinWSymChain(pat, params.symmetryChain);
-      init.Copy(workspace);
-
-      workspace.Step(successtime - params.stableInterval + 2);
-      afterCatalyst.Copy(workspace);
-
       fullfound++;
 
-      fullCategoryContainer->Add(init, afterCatalyst, conf.startingCatalysts, conf,
+      fullCategoryContainer->Add(init, workspace, steppedCatalysts, conf,
                                  successtime - params.stableInterval + 2, 0);
     }
 
@@ -1176,15 +1170,7 @@ public:
     //   return;
 
     // If all filters validated update results
-    workspace.Clear();
-    workspace.JoinWSymChain(pat, params.symmetryChain);
-    workspace.Join(conf.startingCatalysts);
-    init.Copy(workspace);
-
-    workspace.Step(successtime - params.stableInterval + 2);
-    afterCatalyst.Copy(workspace);
-
-    categoryContainer->Add(init, afterCatalyst, conf.startingCatalysts, conf,
+    categoryContainer->Add(init, workspace, steppedCatalysts, conf,
                            successtime - params.stableInterval + 2, 0);
     found++;
   }
