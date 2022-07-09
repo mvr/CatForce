@@ -773,24 +773,15 @@ public:
     // 36 is extra margin to get 100
     const int Dist = 36 + 64;
 
-    int width = Dist * results.size();
-    int height = Dist;
-
-    std::vector<std::vector<int>> vec;
-
-    for (int i = 0; i < width; i++) {
-      std::vector<int> temp;
-
-      for (int j = 0; j < height; j++)
-        temp.push_back(0);
-
-      vec.push_back(temp);
-    }
-
     int howmany = results.size();
 
     if (maxCatSize != -1)
       howmany = std::min(howmany, maxCatSize);
+
+    int width = Dist * howmany;
+    int height = Dist;
+
+    std::vector<std::vector<int>> vec(width, std::vector<int>(height));
 
     for (int l = 0; l < howmany; l++)
       for (int j = 0; j < N; j++)
