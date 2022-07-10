@@ -881,7 +881,6 @@ public:
 
   bool hasFilter{};
   bool reportAll{};
-  bool hasFilterDontReportAll{};
 
   int filterMaxGen{};
 
@@ -934,29 +933,7 @@ public:
     }
 
     current = clock();
-    idx = 0;
     found = 0;
-    total = 1;
-    counter = 0;
-
-    fullfound = 0;
-
-    int fact = 1;
-
-    for (int i = 0; i < catalysts.size(); i++) {
-      total *= params.searchArea[2];
-      total *= params.searchArea[3];
-      total *= catalysts.size();
-      fact *= (i + 1);
-    }
-
-    total /= fact;
-
-    std::cout << "Approximated Total: " << total << std::endl;
-    total = total / 1000000;
-
-    if (total == 0)
-      total++;
 
     hasFilter = !params.targetFilter.empty();
     reportAll = params.fullReportFile.length() != 0;
@@ -986,17 +963,10 @@ public:
   }
 
   void Report(bool saveFile = true) const {
-    float percent = ((float)idx / 10000) / (total * 1.0);
     int sec = (clock() - begin) / CLOCKS_PER_SEC + 1;
-    int estimation = 0;
-    int checkPerSecond = idx / (sec * 1000);
+    // int checkPerSecond = idx / (sec * 1000);
 
-    if (percent > 0)
-      estimation = (sec * 100) / percent;
-
-    std::cout << std::setprecision(1) << std::fixed << percent << "%,"
-              << idx / 1000000 << "M/" << total
-              << "M, cats/total: " << categoryContainer->categories.size() << "/"
+    std::cout << "results: " << categoryContainer->categories.size() << "/"
               << found;
     if (params.fullReportFile.length() != 0) {
       std::cout << ", unfiltered: " << fullCategoryContainer->categories.size() << "/"
@@ -1004,13 +974,9 @@ public:
     }
     std::cout << ", now: ";
     PrintTime(sec);
-    std::cout << ", est: ";
-    PrintTime(estimation);
-    std::cout << ", " << std::setprecision(1) << std::fixed << checkPerSecond
-              << "K/sec" << std::endl;
-
-    // categoryContainer->Sort();
-    // fullCategoryContainer->Sort();
+    std::cout << std::endl;
+    // std::cout << ", " << std::setprecision(1) << std::fixed << checkPerSecond
+    //           << "K/sec" << std::endl;
 
     if (saveFile) {
       std::cout << "Saving " << params.outputFile << "... " << std::flush;
@@ -1040,21 +1006,6 @@ public:
     std::cout << std::setfill('0');
     std::cout << hr << ":" << std::setw(2) << min << ":" << std::setw(2) << secs;
  }
-
-  void IncreaseIndexAndReport(bool saveFile = true) {
-    counter++;
-
-    if (counter == 0) {
-      idx += 65536;
-
-      if (idx % (1048576) == 0) {
-        if ((double) (clock() - current) / CLOCKS_PER_SEC > 10) {
-          current = clock();
-          Report(saveFile);
-        }
-      }
-    }
-  }
 
   bool HasForbidden(Configuration &conf, int curIter) {
     LifeState workspace;
