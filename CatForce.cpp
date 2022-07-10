@@ -436,6 +436,9 @@ struct Configuration {
   // int minIter;
   LifeState state;
   LifeState catalystsState;
+  int firstReaction;
+  bool anyTransparent;
+
   // std::vector<LifeTarget> shiftedTargets;
 };
 
@@ -1089,7 +1092,6 @@ public:
   std::vector<int> matches;
 
   time_t lastReport;
-
   void Init(const char *inputFile, int nthreads) {
     begin = clock();
 
@@ -1448,6 +1450,8 @@ public:
 
   void Search() {
     Configuration config;
+    config.firstReaction = 1000; // large number.
+    config.anyTransparent = false;
     config.count = 0;
     config.transparentCount = 0;
     config.state.JoinWSymChain(pat, params.symmetryEnum);
@@ -1479,7 +1483,7 @@ public:
 
     RecursiveSearch(config, history, required, masks, shiftedTargets,
                     std::array<int, MAX_CATALYSTS>(), std::array<int, MAX_CATALYSTS>(),
-                    std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>(), false);
+                    std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
   }
 
   void
@@ -1490,7 +1494,7 @@ public:
                   std::array<int, MAX_CATALYSTS> missingTime,
                   std::array<int, MAX_CATALYSTS> recoveredTime,
                   std::array<bool, MAX_CATALYSTS> hasReacted,
-                  std::array<bool, MAX_CATALYSTS> hasRecovered, bool anyTransparent) {
+                  std::array<bool, MAX_CATALYSTS> hasRecovered) {
 
     for (int g = config.state.gen; g < params.maxGen; g++) {
       if (config.count == 0 && g > params.lastGen)
@@ -1500,20 +1504,33 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      if (g == params.startGen + params.stableInterval && params.firstTransparent  && !anyTransparent){
+      if (g == config.firstReaction + params.stableInterval && params.firstTransparent  && !config.anyTransparent){
         return;
       }
 
       if (!config.state.Contains(required))
         return;
+      
+      // if we've placed all the catalysts and none are marked as transparent, return.
+      if (params.firstTransparent && config.count == params.numCatalysts){
+        bool anyTransparent = false;
+        for(int i = 0; i < config.count; ++i){
+          anyTransparent = anyTransparent | transparent[config.curs[i]];
+        }
+        if (!anyTransparent){
+          return;
+        }
+      }
 
       for (int i = 0; i < config.count; i++) {
         // if (hasRecovered[i]) {
         //   continue;
         // }
-        if(g < params.startGen + params.stableInterval){
-          if( config.state.AreDisjoint(shiftedTargets[i].wanted) ){
-            anyTransparent = true;
+
+        if(params.firstTransparent && transparent[config.curs[i]]){
+           if(config.firstReaction < params.maxGen && g < config.firstReaction + params.stableInterval
+                                                    && config.state.AreDisjoint(shiftedTargets[i].wanted) ){
+            config.anyTransparent = true;
           }
         }
 
@@ -1613,6 +1630,9 @@ public:
                                               2 * params.maxH - 1);
               }
 
+              if(config.count == 0)
+                newConfig.firstReaction = g;
+
               // If we just placed the last catalyst, don't bother
               if (newConfig.count != params.numCatalysts) {
                 for (int t = 0; t < catalysts.size(); t++) {
@@ -1626,7 +1646,7 @@ public:
               }
 
               RecursiveSearch(newConfig, newHistory, newRequired, newMasks, shiftedTargets, newMissingTime,
-                              newRecoveredTime, newHasReacted, newHasRecovered, anyTransparent);
+                              newRecoveredTime, newHasReacted, newHasRecovered);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
               newPlacements.Erase(newPlacement.first, newPlacement.second);
