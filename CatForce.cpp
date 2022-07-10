@@ -13,43 +13,6 @@
 
 const int MAX_CATALYSTS = 5;
 
-const int MAIN_STEP = 1;
-__attribute__((flatten)) void MainRun(LifeState &state) {
-  state.Step();
-}
-
-// const int MAIN_STEP = 2;
-// __attribute__((flatten)) void MainChunk(LifeState &state) {
-//   state.Step();
-// }
-// void MainRun(LifeState &state) {
-//   MainChunk(state);
-//   MainChunk(state);
-// }
-
-// const int MAIN_STEP = 4;
-// __attribute__((flatten)) void MainChunk(LifeState &state) {
-//   state.Step();
-//   state.Step();
-// }
-// void MainRun(LifeState &state) {
-//   MainChunk(state);
-//   MainChunk(state);
-// }
-
-// const int MAIN_STEP = 8;
-// __attribute__((flatten)) void MainChunk() {
-//   state.Step();
-//   state.Step();
-// }
-
-// void MainRun() {
-//   MainChunk();
-//   MainChunk();
-//   MainChunk();
-//   MainChunk();
-// }
-
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
   std::string item;
@@ -142,7 +105,7 @@ public:
     transparent = false;
     mustInclude = false;
 
-    int argi = 6;
+    unsigned argi = 6;
 
     while (argi < elems.size()) {
       if (elems[argi] == "forbidden") {
@@ -304,7 +267,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
       if (elems[0] == outputFile) {
         params.outputFile = elems[1];
 
-        for (int i = 2; i < elems.size(); i++) {
+        for (unsigned i = 2; i < elems.size(); i++) {
           params.outputFile.append(" ");
           params.outputFile.append(elems[i]);
         }
@@ -313,7 +276,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
       if (elems[0] == fullReport) {
         params.fullReportFile = elems[1];
 
-        for (int i = 2; i < elems.size(); i++) {
+        for (unsigned i = 2; i < elems.size(); i++) {
           params.fullReportFile.append(" ");
           params.fullReportFile.append(elems[i]);
         }
@@ -501,7 +464,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     // result.target = LifeTarget(pat);
     result.maxDisappear = input.maxDisappear;
 
-    for (int k = 0; k < input.forbiddenRLE.size(); k++) {
+    for (unsigned k = 0; k < input.forbiddenRLE.size(); k++) {
       result.forbidden.push_back(LifeTarget::Parse(input.forbiddenRLE[k].c_str(),
                                                    input.forbiddenXY[k].first,
                                                    input.forbiddenXY[k].second, tran));
@@ -548,8 +511,8 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b) {
   int popsum = a.GetPop() + b.GetPop();
 
   LifeState mask;
-  for (int x = 0; x < N; x++) {
-    for (int y = 0; y < 64; y++) {
+  for (unsigned x = 0; x < N; x++) {
+    for (unsigned y = 0; y < 64; y++) {
       LifeState state = a;
       state.Join(b, x, y);
 
@@ -603,13 +566,11 @@ std::string GetRLE(const std::vector<std::vector<int>> &life2d) {
   if (life2d[0].empty())
     return "";
 
-  int h = life2d[0].size();
-
   std::stringstream result;
 
   int eol_count = 0;
 
-  for (int j = 0; j < h; j++) {
+  for (unsigned j = 0; j < life2d[0].size(); j++) {
     int last_val = -1;
     int run_count = 0;
 
@@ -672,8 +633,8 @@ std::string GetRLE(const std::vector<std::vector<int>> &life2d) {
 std::string GetRLE(const LifeState &s) {
   std::vector<std::vector<int>> vec(N, std::vector<int>(N));
 
-  for (int j = 0; j < N; j++)
-    for (int i = 0; i < N; i++)
+  for (unsigned j = 0; j < N; j++)
+    for (unsigned i = 0; i < N; i++)
       vec[i][j] = s.GetCell(i - 32, j - 32);
 
   return GetRLE(vec);
@@ -884,7 +845,7 @@ public:
 
   int filterMaxGen{};
 
-  void Init(const char *inputFile, int nthreads) {
+  void Init(const char *inputFile) {
     begin = clock();
 
     std::vector<CatalystInput> inputcats;
@@ -909,14 +870,14 @@ public:
     categoryContainer = new CategoryContainer(params.maxGen);
     fullCategoryContainer = new CategoryContainer(params.maxGen);
 
-    for (int i = 0; i < params.targetFilter.size(); i++)
+    for (unsigned i = 0; i < params.targetFilter.size(); i++)
       targetFilter.push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
                                                params.filterdx[i], params.filterdy[i]));
 
     catalystCollisionMasks = std::vector<std::vector<LifeState>>(
         catalysts.size(), std::vector<LifeState>(catalysts.size()));
 
-    for (int s = 0; s < catalysts.size(); s++) {
+    for (unsigned s = 0; s < catalysts.size(); s++) {
       // LifeState nonLocus = catalysts[s];
       // nonLocus.Copy(catalystLocus[s], ANDNOT);
 
@@ -927,7 +888,7 @@ public:
       // catalystLocusReactionMasks[s].Transform(Rotate180OddBoth);
       // catalystLocusReactionMasks[s].Copy(catalystAvoidMasks[s], ANDNOT);
 
-      for (int t = 0; t < catalysts.size(); t++) {
+      for (unsigned t = 0; t < catalysts.size(); t++) {
         catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
       }
     }
@@ -944,7 +905,7 @@ public:
   int FilterMaxGen() {
     int maxGen = -1;
 
-    for (int j = 0; j < targetFilter.size(); j++) {
+    for (unsigned j = 0; j < targetFilter.size(); j++) {
       if (params.filterGen[j] > maxGen)
         maxGen = params.filterGen[j];
 
@@ -1013,8 +974,8 @@ public:
     workspace.JoinWSymChain(pat, params.symmetryChain);
 
     for (int i = 0; i <= curIter + 1; i++) {
-      for (int j = 0; j < catalysts.size(); j++) {
-        for (int k = 0; k < catalysts[conf.curs[j]].forbidden.size(); k++) {
+      for (unsigned j = 0; j < catalysts.size(); j++) {
+        for (unsigned k = 0; k < catalysts[conf.curs[j]].forbidden.size(); k++) {
           if (workspace.Contains(catalysts[conf.curs[j]].forbidden[k],
                                  conf.curx[j], conf.cury[j]))
             return true;
@@ -1027,7 +988,7 @@ public:
   }
 
   bool FilterForCurrentGenFail(LifeState &workspace) {
-    for (int j = 0; j < targetFilter.size(); j++) {
+    for (unsigned j = 0; j < targetFilter.size(); j++) {
       if (workspace.gen == params.filterGen[j] &&
           workspace.Contains(targetFilter[j]) == false) {
         return true;
@@ -1044,12 +1005,12 @@ public:
 
     std::vector<bool> rangeValid(params.filterGen.size(), false);
 
-    for (int k = 0; k < params.filterGen.size(); k++)
+    for (unsigned k = 0; k < params.filterGen.size(); k++)
       if (params.filterGen[k] >= 0)
         rangeValid[k] = true;
 
     for (int j = 0; j <= filterMaxGen; j++) {
-      for (int k = 0; k < params.filterGen.size(); k++) {
+      for (unsigned k = 0; k < params.filterGen.size(); k++) {
         if (workspace.gen == params.filterGen[k] &&
             workspace.Contains(targetFilter[k]) == false)
           return false;
@@ -1064,7 +1025,7 @@ public:
       workspace.Step();
     }
 
-    for (int k = 0; k < params.filterGen.size(); k++)
+    for (unsigned k = 0; k < params.filterGen.size(); k++)
       if (!rangeValid[k])
         return false;
 
@@ -1128,7 +1089,7 @@ public:
                              params.searchArea[2], params.searchArea[3]);
 
     std::vector<LifeState> masks(catalysts.size());
-    for (int s = 0; s < catalysts.size(); s++) {
+    for (unsigned s = 0; s < catalysts.size(); s++) {
       masks[s] = config.state.Convolve(catalysts[s].reactionMask);
       masks[s].Copy(bounds, ORNOT);
     }
@@ -1192,7 +1153,7 @@ public:
           //   masks[s].Join(hitLocations);
           // }
 
-          for (int s = 0; s < catalysts.size(); s++) {
+          for (unsigned s = 0; s < catalysts.size(); s++) {
             if (config.transparentCount == params.numTransparent && catalysts[s].transparent)
               continue;
             if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
@@ -1262,7 +1223,7 @@ public:
 
               // If we just placed the last catalyst, don't bother
               if (newConfig.count != params.numCatalysts) {
-                for (int t = 0; t < catalysts.size(); t++) {
+                for (unsigned t = 0; t < catalysts.size(); t++) {
                   newMasks[t].Join(catalystCollisionMasks[s][t],
                                    newPlacement.first, newPlacement.second);
 
@@ -1284,7 +1245,7 @@ public:
 
       // Still block the locations that are hit too early
       if (config.state.gen < params.startGen) {
-        for (int s = 0; s < catalysts.size(); s++) {
+        for (unsigned s = 0; s < catalysts.size(); s++) {
           LifeState hitLocations = config.state.Convolve(catalysts[s].reactionMask);
           masks[s].Join(hitLocations);
         }
@@ -1313,22 +1274,18 @@ public:
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cout << "Usage CatForce.exe <in file> <nthreads>" << std::endl;
+    std::cout << "Usage CatForce.exe <in file>" << std::endl;
     exit(0);
   }
-  int nthreads = 1;
-  if (argc > 2) {
-    nthreads = atoi(argv[2]);
-  }
-  // omp_set_num_threads(nthreads);
+
   std::cout << "Input: " << argv[1] << std::endl
             << "Initializing please wait..." << std::endl;
 
   CatalystSearcher searcher;
-  searcher.Init(argv[1], nthreads);
+  searcher.Init(argv[1]);
 
   clock_t initialized = clock();
-  printf("Total elapsed CPU time (not wallclock if nthreads>1): %f seconds\n",
+  printf("Total elapsed time: %f seconds\n",
          (double) (initialized - searcher.begin) / CLOCKS_PER_SEC);
   std::cout << std::endl
             << "Initialization finished, searching..." << std::endl
@@ -1340,6 +1297,6 @@ int main(int argc, char *argv[]) {
 
   printf("\n\nFINISH\n");
   clock_t end = clock();
-  printf("Total elapsed CPU time (not wallclock if nthreads>1): %f seconds\n",
+  printf("Total elapsed time: %f seconds\n",
          (double)(end - searcher.begin) / CLOCKS_PER_SEC);
 }
