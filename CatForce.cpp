@@ -1181,7 +1181,7 @@ public:
       if (params.firstTransparent && config.count == params.numCatalysts){
         bool anyTransparent = false;
         for(int i = 0; i < config.count; ++i){
-          anyTransparent = anyTransparent | catalysts[i].transparent;
+          anyTransparent = anyTransparent | catalysts[config.curs[i]].transparent;
         }
         if (!anyTransparent){
           return;
@@ -1193,7 +1193,7 @@ public:
         //   continue;
         // }
 
-        if(params.firstTransparent && catalysts[i].transparent){
+        if(params.firstTransparent && catalysts[config.curs[i]].transparent){
            if(config.firstReaction < params.maxGen && g < config.firstReaction + params.stableInterval
                                                     && config.state.AreDisjoint(shiftedTargets[i].wanted) ){
             config.anyTransparent = true;
