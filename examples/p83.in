@@ -1,0 +1,15 @@
+start-gen 0
+last-gen 20
+max-gen 100
+stable-interval 10
+num-catalyst 4
+
+symmetry C2
+search-area -20 -3 40 20
+pat bo$b2o$o2bo$bobo$b2o! 2 -1
+filter 1-100 bo$b2o$o2bo$bobo$b2o! 2 -1
+output p83.rle
+full-report p83-full.rle
+
+cat 2o$2o! 30 -1 -1 / required o! -1 -1
+cat 2o$o$b3o$3bo! 10 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6 required bo$o$b3o$3bo! -2 -2
