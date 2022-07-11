@@ -1,0 +1,22 @@
+==Setup==
+max-gen 100
+start-gen 0
+num-catalyst 2
+stable-interval 10
+
+search-area -20 -20 40 40
+pat 2b2o$2bobo$4bo4b2o$4ob2o2bo2bo$o2bobobobob2o$3bobobobo$4b2obobo$8bo5$3b3o$2bo3bo$bo5bo$2bo3bo$3b3o! -4 -14
+output orfiltertest.rle
+
+orfilter 1-100 2o$2o! -1 -4
+orfilter 1-100 2o$2o! 0 -4
+orfilter 1-100 2o$2o! -1 3
+orfilter 1-100 2o$2o! 0 3
+orfilter 1-100 2o$2o! -4 -1
+orfilter 1-100 2o$2o! -4 0
+orfilter 1-100 2o$2o! 3 -1
+orfilter 1-100 2o$2o! 3 0
+
+=True Spartan=
+cat 2o$2o 10 0 0 . forbidden obo$b2o$bo2$2o$2o! 0 -4 forbidden 2o3bo$2ob2o$4b2o! 0 0 forbidden b2o$b2o2$bo$2o$obo! -1 0 forbidden 2o$b2ob2o$o3b2o! -4 -1 forbidden o3b2o$b2ob2o$2o! -4 0 forbidden obo$2o$bo2$b2o$b2o! -1 -4 forbidden 4b2o$2ob2o$2o3bo! 0 -1 forbidden 2o$2o2$bo$b2o$obo! 0 0 
+cat 2o$o$b3o$3bo! 4 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6 required bo$o$b3o$3bo! -2 -2 

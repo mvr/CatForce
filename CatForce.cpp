@@ -21,6 +21,11 @@ void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   }
 }
 
+enum FilterType {
+  ANDFILTER,
+  ORFILTER,
+};
+
 class SearchParams {
 public:
   unsigned maxGen;
@@ -43,6 +48,7 @@ public:
   std::vector<int> filterdy;
   std::vector<int> filterGen;
   std::vector<std::pair<int, int>> filterGenRange;
+  std::vector<FilterType> filterType;
 
   int maxCatSize;
 
@@ -209,6 +215,8 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string pat = "pat";
   std::string outputFile = "output";
   std::string filter = "filter";
+  std::string andfilter = "andfilter";
+  std::string orfilter = "orfilter";
   std::string maxWH = "fit-in-width-height";
   std::string maxCatSize = "max-category-size";
   std::string fullReport = "full-report";
@@ -285,7 +293,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         }
       }
 
-      if (elems[0] == filter) {
+      if (elems[0] == filter || elems[0] == orfilter || elems[0] == andfilter) {
         std::vector<std::string> rangeElems;
         split(elems[1], '-', rangeElems);
 
@@ -303,6 +311,11 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         params.targetFilter.push_back(elems[2]);
         params.filterdx.push_back(atoi(elems[3].c_str()));
         params.filterdy.push_back(atoi(elems[4].c_str()));
+        if(elems[0] == filter || elems[0] == orfilter) {
+          params.filterType.push_back(ORFILTER);
+        } else {
+          params.filterType.push_back(ANDFILTER);
+        }
       }
 
       if (elems[0] == maxWH) {
@@ -1005,30 +1018,47 @@ public:
     workspace.JoinWSymChain(pat, params.symmetryChain);
     workspace.Join(conf.startingCatalysts);
 
-    std::vector<bool> rangeValid(params.filterGen.size(), false);
+    std::vector<bool> filterPassed(params.filterGen.size(), false);
 
-    for (unsigned k = 0; k < params.filterGen.size(); k++)
-      if (params.filterGen[k] >= 0)
-        rangeValid[k] = true;
-
-    for (unsigned j = 0; j <= filterMaxGen; j++) {
+    for (unsigned g = 0; g <= filterMaxGen; g++) {
       for (unsigned k = 0; k < params.filterGen.size(); k++) {
-        if (workspace.gen == params.filterGen[k] &&
-            workspace.Contains(targetFilter[k]) == false)
-          return false;
+        if (filterPassed[k])
+          continue; // No need to check it again.
 
-        if (params.filterGen[k] == -1 &&
-            params.filterGenRange[k].first <= workspace.gen &&
-            params.filterGenRange[k].second >= workspace.gen &&
-            workspace.Contains(targetFilter[k]) == true)
-          rangeValid[k] = true;
+        bool singlePassed = workspace.gen == params.filterGen[k] &&
+                            workspace.Contains(targetFilter[k]);
+        bool rangePassed = params.filterGen[k] == -1 &&
+                           params.filterGenRange[k].first <= workspace.gen &&
+                           params.filterGenRange[k].second >= workspace.gen &&
+                           workspace.Contains(targetFilter[k]);
+
+        if (singlePassed || rangePassed) {
+          filterPassed[k] = true;
+
+          // If this was an OR filter, consider all the other OR filters passed
+          // too.
+          if (params.filterType[k] == ORFILTER) {
+            for (unsigned j = 0; j < params.filterGen.size(); j++) {
+              if (params.filterType[j] == ORFILTER) {
+                filterPassed[j] = true;
+              }
+            }
+          }
+        }
+
+        // Bail early
+        if (workspace.gen == params.filterGen[k] &&
+            params.filterType[k] == ANDFILTER &&
+            !workspace.Contains(targetFilter[k])
+            )
+          return false;
       }
 
       workspace.Step();
     }
 
     for (unsigned k = 0; k < params.filterGen.size(); k++)
-      if (!rangeValid[k])
+      if (!filterPassed[k])
         return false;
 
     return true;
