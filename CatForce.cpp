@@ -1174,17 +1174,7 @@ public:
 
       if (!config.state.Contains(required))
         return;
-      
-      // if we've placed all the catalysts and none are marked as transparent, return.
-      if (params.firstTransparent && config.count == params.numCatalysts){
-        bool anyTransparent = false;
-        for(int i = 0; i < config.count; ++i){
-          anyTransparent = anyTransparent | catalysts[config.curs[i]].transparent;
-        }
-        if (!anyTransparent){
-          return;
-        }
-      }
+    
 
       for (unsigned i = 0; i < config.count; i++) {
         // if (hasRecovered[i]) {
@@ -1229,6 +1219,17 @@ public:
               continue;
             if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
               continue;
+            
+            // if want first to be transparent, and we're 
+            if (params.firstTransparent && config.count == params.numCatalysts - 1 && !catalysts[s].transparent){
+              bool anyTransparent = false;
+              for(int i = 0; i < config.count; ++i){
+                anyTransparent = anyTransparent | catalysts[config.curs[i]].transparent;
+              }
+              if (!anyTransparent){
+                continue;
+              }
+            }
 
             LifeState newPlacements = catalysts[s].reactionMask.Convolve(newcells);
             newPlacements.Copy(masks[s], ANDNOT);
