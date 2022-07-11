@@ -954,10 +954,9 @@ public:
     workspace.JoinWSymChain(pat, params.symmetryEnum);
 
     for (unsigned i = 0; i <= curIter + 1; i++) {
-      for (unsigned j = 0; j < catalysts.size(); j++) {
+      for (unsigned j = 0; j < params.numCatalysts; j++) {
         for (unsigned k = 0; k < catalysts[conf.curs[j]].forbidden.size(); k++) {
-          if (workspace.Contains(catalysts[conf.curs[j]].forbidden[k],
-                                 conf.curx[j], conf.cury[j]))
+          if (workspace.Contains(catalysts[conf.curs[j]].forbidden[k], conf.curx[j], conf.cury[j]))
             return true;
         }
       }
@@ -1042,9 +1041,11 @@ public:
   }
 
   void ReportSolution(Configuration &conf, unsigned successtime, std::vector<LifeTarget> & shiftedTargets){
+    if (HasForbidden(conf, successtime + 3))
+      return;
+
     LifeState init;
     LifeState afterCatalyst;
-    LifeState catalysts;
 
     LifeState workspace;
     // if reportAll - ignore filters and update fullReport
@@ -1095,9 +1096,6 @@ public:
         return;
     }
     // end modifications
-
-    // if (HasForbidden(conf, successtime + 3))
-    //   return;
 
     // If all filters validated update results
     workspace.Clear();
