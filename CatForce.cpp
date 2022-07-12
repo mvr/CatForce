@@ -1324,7 +1324,7 @@ public:
               newHistory.Join(symCatalyst);
 
               LifeState newRequired = required;
-              newRequired.Join(requiredParts[s], newPlacement.first, newPlacement.second);
+              newRequired.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
 
               if (newConfig.count != params.numCatalysts) {
                 LifeState lookahead = newConfig.state;
