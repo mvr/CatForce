@@ -1007,7 +1007,7 @@ public:
 
     for (unsigned g = 0; g <= std::min(filterMaxGen, stopAt); g++) {
       for (unsigned k = 0; k < params.filterGen.size(); k++) {
-        if (filterPassed[k])
+        if (filterPassed[k] && !params.reportMatches)
           continue; // No need to check it again.
 
         bool singlePassed = false;
@@ -1024,14 +1024,15 @@ public:
           for(LifeTarget transformedTarget :targetFilterLists[k]){
             rangePassed = rangePassed | workspace.Contains(transformedTarget);
           }
-          if ( !prevMet && filterPassed[k] && params.reportMatches){
+          if ( !prevMet && rangePassed && params.reportMatches){
             bool alreadyPresent = false;
             for (unsigned oldMatch : matches){
-              if(oldMatch == j)
+              if(oldMatch == g){
                 alreadyPresent = true;
+              }
             }
             if (!alreadyPresent){
-              matches.push_back(j);
+              matches.push_back(g);
             }
           }
         }
