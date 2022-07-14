@@ -311,7 +311,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         params.targetFilter.push_back(elems[2]);
         params.filterdx.push_back(atoi(elems[3].c_str()));
         params.filterdy.push_back(atoi(elems[4].c_str()));
-        if(elems[0] == filter || elems[0] == orfilter) {
+        if(elems[0] == orfilter) {
           params.filterType.push_back(ORFILTER);
         } else {
           params.filterType.push_back(ANDFILTER);
