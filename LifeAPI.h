@@ -462,8 +462,8 @@ public:
     LifeState transformed;
 
     transformed.Join(state, x, y);
-    for (int i = 0; i < symChain.size(); ++i) {
-      transformed.Transform(symChain[i]);
+    for (auto sym : symChain) {
+      transformed.Transform(sym);
       Join(transformed);
     }
   }
@@ -475,14 +475,14 @@ public:
       return;
 
     LifeState transformed = state;
-    for (int i = 0; i < symChain.size(); ++i) {
-      transformed.Transform(symChain[i]);
+    for (auto sym : symChain) {
+      transformed.Transform(sym);
       Join(transformed);
     }
   }
 
-  int GetPop() const {
-    int pop = 0;
+  unsigned GetPop() const {
+    unsigned pop = 0;
 
     for (int i = min; i <= max; i++) {
       pop += __builtin_popcountll(state[i]);
