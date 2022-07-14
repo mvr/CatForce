@@ -21,6 +21,11 @@ void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   }
 }
 
+enum FilterType {
+  ANDFILTER,
+  ORFILTER,
+};
+
 class SearchParams {
 public:
   unsigned maxGen;
@@ -53,6 +58,7 @@ public:
   bool firstTransparent;
 
   std::vector<std::pair<int, int>> filterGenRange;
+  std::vector<FilterType> filterType;
 
 
   std::tuple<std::string, int, int> alsoRequired;
@@ -224,6 +230,8 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string pat = "pat";
   std::string outputFile = "output";
   std::string filter = "filter";
+  std::string andfilter = "andfilter";
+  std::string orfilter = "orfilter";
   std::string maxWH = "fit-in-width-height";
   std::string maxCatSize = "max-category-size";
   std::string fullReport = "full-report";
@@ -304,7 +312,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         }
       }
 
-      if (elems[0] == filter) {
+      if (elems[0] == filter || elems[0] == orfilter || elems[0] == andfilter) {
         std::vector<std::string> rangeElems;
         split(elems[1], '-', rangeElems);
 
@@ -334,7 +342,11 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         } else {
           params.filterGroups.push_back(StaticSymmetry::C1);
         }
-
+        if(elems[0] == orfilter) {
+          params.filterType.push_back(ORFILTER);
+        } else {
+          params.filterType.push_back(ANDFILTER);
+        }
       }
 
       if (elems[0] == maxWH) {
@@ -984,40 +996,35 @@ public:
     LifeState workspace;
     workspace.JoinWSymChain(pat, params.symmetryEnum);
     workspace.Join(conf.catalystsState);
-
-    std::vector<bool> rangeValid(params.filterGen.size(), false);
-
+    
+    std::vector<bool> filterPassed(params.filterGen.size(), false);
+    
     // stop early if catalysts are destroyed
     int stopAt = params.maxGen;
     if (params.stopAfterCatsDestroyed > 0 ){
       stopAt = catsDestroyedGen + params.stopAfterCatsDestroyed;
     }
-    
-    for (unsigned k = 0; k < params.filterGen.size(); k++)
-      if (params.filterGen[k] >= 0)
-        rangeValid[k] = true;
-        // we return false early below if a single-generation filter
-        // isn't met, so we don't need to keep track of those
-        // via our vector rangeValid.
 
-    for (unsigned j = 0; j <= std::min(filterMaxGen, stopAt); j++) {
+    for (unsigned g = 0; g <= std::min(filterMaxGen, stopAt); g++) {
       for (unsigned k = 0; k < params.filterGen.size(); k++) {
+        if (filterPassed[k])
+          continue; // No need to check it again.
+
+        bool singlePassed = false;
         if (workspace.gen == params.filterGen[k]){
-          bool anyMet = false;
           for ( auto filter : targetFilterLists[k] ){
-            anyMet = anyMet |  workspace.Contains(filter);
+            singlePassed = singlePassed |  workspace.Contains(filter);
           }
-          if(!anyMet)
-            return false;
         }
-        if (params.filterGen[k] == -1 &&
-                params.filterGenRange[k].first <= workspace.gen &&
-                params.filterGenRange[k].second >= workspace.gen){
-          bool prevMet = rangeValid[k];
+        bool rangePassed = false;
+        bool prevMet = filterPassed[k];
+        if(params.filterGen[k] == -1 &&
+                           params.filterGenRange[k].first <= workspace.gen &&
+                           params.filterGenRange[k].second >= workspace.gen){
           for(LifeTarget transformedTarget :targetFilterLists[k]){
-            rangeValid[k] = rangeValid[k] | workspace.Contains(transformedTarget);
+            rangePassed = rangePassed | workspace.Contains(transformedTarget);
           }
-          if ( ! prevMet && rangeValid[k] && params.reportMatches){
+          if ( !prevMet && filterPassed[k] && params.reportMatches){
             bool alreadyPresent = false;
             for (unsigned oldMatch : matches){
               if(oldMatch == j)
@@ -1028,13 +1035,37 @@ public:
             }
           }
         }
+
+        if (singlePassed || rangePassed) {
+          filterPassed[k] = true;
+
+          // If this was an OR filter, consider all the other OR filters passed
+          // too.
+          if (params.filterType[k] == ORFILTER) {
+            for (unsigned j = 0; j < params.filterGen.size(); j++) {
+              if (params.filterType[j] == ORFILTER) {
+                filterPassed[j] = true;
+              }
+            }
+          }
+        }
+
+        // Bail early
+        if (workspace.gen == params.filterGen[k] && params.filterType[k] == ANDFILTER){
+          bool anyMet = false;
+          for(LifeTarget transformedTarget :targetFilterLists[k]){
+            anyMet = anyMet | workspace.Contains(transformedTarget);
+          }
+          if(!anyMet)
+            return false;
+        }
       }
 
       workspace.Step();
     }
 
     for (unsigned k = 0; k < params.filterGen.size(); k++)
-      if (!rangeValid[k])
+      if (!filterPassed[k])
         return false;
 
     return true;
