@@ -1181,7 +1181,6 @@ public:
     config.transparentCount = 0;
     config.mustIncludeCount = 0;
     config.state.JoinWSymChain(pat, params.symmetryChain);
-    LifeState history = config.state;
 
     LifeState bounds =
         LifeState::SolidRect(params.searchArea[0], params.searchArea[1],
@@ -1195,13 +1194,13 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, history, LifeState(), masks, shiftedTargets,
+    RecursiveSearch(config, LifeState(), masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>(),
                     std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
   }
 
   void
-  RecursiveSearch(Configuration config, LifeState history, const LifeState required,
+  RecursiveSearch(Configuration config, const LifeState required,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
@@ -1246,10 +1245,6 @@ public:
 
       // Try adding a catalyst
       if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
-        LifeState newcells = config.state;
-        newcells.Copy(history, ANDNOT);
-
-        if (!newcells.IsEmpty()) {
           // for (unsigned s = 0; s < catalysts.size(); s++) {
           //   LifeState hitLocations = newcells.Convolve(catalystAvoidMasks[s]);
           //   masks[s].Join(hitLocations);
@@ -1261,7 +1256,7 @@ public:
             if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
               continue;
 
-            LifeState newPlacements = catalysts[s].reactionMask.Convolve(newcells);
+            LifeState newPlacements = catalysts[s].reactionMask.Convolve(config.state);
             newPlacements.Copy(masks[s], ANDNOT);
 
             while (!newPlacements.IsEmpty()) {
@@ -1312,9 +1307,6 @@ public:
                   continue;
                 }
               }
-
-              LifeState newHistory = history;
-              newHistory.Join(symCatalyst);
 
               LifeState newRequired = required;
               newRequired.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
@@ -1368,14 +1360,15 @@ public:
                 }
               }
 
-              RecursiveSearch(newConfig, newHistory, newRequired, newMasks, shiftedTargets, missingTime,
-                              recoveredTime, hasReacted, hasRecovered);
+              RecursiveSearch(newConfig, newRequired, newMasks,
+                              shiftedTargets, missingTime, recoveredTime,
+                              hasReacted, hasRecovered);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
               newPlacements.Erase(newPlacement.first, newPlacement.second);
             }
           }
-        }
+
       }
 
       // Still block the locations that are hit too early
@@ -1401,7 +1394,6 @@ public:
       if (config.count == 0)
         Report();
 
-      history.Copy(config.state, OR);
       config.state = next;
     }
   }
