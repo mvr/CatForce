@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string.h>
 #include <vector>
+#include <array>
 
 #include <immintrin.h>
 #include <assert.h> //clang C++-11 reasons.
@@ -752,7 +753,7 @@ public:
     std::vector<AffineTransform> symChain(SymmetryChainFromEnum(symmetryGroup));
     LifeState transformed;
     transformed.Join(state, x, y);
-    for (int i = 0; i < symChain.size(); ++i) {
+    for (size_t i = 0; i < symChain.size(); ++i) {
       transformed.Transform(symChain[i]);
       Join(transformed);
     }
@@ -766,7 +767,7 @@ public:
 
     std::vector<AffineTransform> symChain(SymmetryChainFromEnum(symmetryGroup));
     LifeState transformed = state;
-    for (int i = 0; i < symChain.size(); ++i) {
+    for (size_t i = 0; i < symChain.size(); ++i) {
       transformed.Transform(symChain[i]);
       Join(transformed);
     }
@@ -1126,6 +1127,38 @@ public:
     }
   }
 
+  std::array<int,4> XYBounds(){
+    // may need to rethink this with things being centered differently.
+    int minCol = -32;
+    int maxCol = 31;
+
+    for (int i = -32; i <= 31; i++) {
+      if (state[(i+64) % 64] != 0) {
+        minCol = i;
+        break;
+      }
+    }
+
+    for (int i = 31; i >= -32; i--) {
+      if (state[(i+64) % 64] != 0) {
+        maxCol = i;
+        break;
+      }
+    }
+
+    uint64_t orOfCols(0);
+    for (int i = minCol; i <= maxCol; ++i){
+        orOfCols = orOfCols | state[(i+64)%64];
+    }
+    if (orOfCols == 0ULL){
+        return std::array<int,4>({0,0,0,0});
+    }
+    orOfCols = __builtin_rotateright64(orOfCols, 32);
+    int topMargin = __builtin_ctzll(orOfCols);
+    int bottomMargin = __builtin_clzll(orOfCols);
+    return std::array<int,4>({minCol, topMargin-32, maxCol, 31-bottomMargin});
+  }
+
   static int Parse(LifeState &state, const char *rle, int starti);
 
   static int Parse(LifeState &state, const char *rle, int dx, int dy) {
@@ -1229,11 +1262,16 @@ public:
 
   static LifeState SolidRect(int x, int y, int w, int h) {
     uint64_t column = RotateLeft(((uint64_t)1 << h) - 1, y);
+    if( h >= 64)
+      column = 0xffffffff;
     unsigned int start = (x + N) % N;
     unsigned int end = (x + w + N) % N;
 
     LifeState result;
-    if(end > start) {
+    if( w >= 64){
+      for(unsigned int i = 0; i < 64; i++)
+        result.state[i] = column;
+    } else if(end > start) {
       for(unsigned int i = start; i < end; i++)
         result.state[i] = column;
     } else {
@@ -1244,7 +1282,33 @@ public:
     }
     return result;
   }
+  static LifeState SolidDiagonalRect(int x0, int y0, int diagWidth, int diagHeight){
+    // create diagonal rectangle: diagWidth is dimension along axis pointing
+    // toward <1,1>, diagHeight towards <1,-1>
+    // this is only used when setting up masks, so doesn't need to be fast
+
+    LifeState result;
+    if(x0 < 0)
+      x0 = (x0 + N) % N ;
+    if(y0 < 0)
+      y0 = (y0 + N ) % N;
+    // region is x0 - y0 <= x - y < x0 - y0 + h and x0 + y0 <= x + y < x0 + y0 + w
+    // I would like to set u = (x+y)/2 and v = (x-y)/2, but those may not be
+    // integers...so i'll work in terms of 2u (twiceU) and 2v (twiceV)
+    for(int twiceU = 2*x0 + 2*y0; twiceU < 2*x0+2*y0+2*diagWidth-1; ++twiceU){
+      for(int twiceV = 2*x0 - 2*y0; twiceV <  2*x0+2*y0+2*diagHeight-1; ++twiceV){
+        if( twiceU % 2 == twiceV % 2){
+          result.SetCell((twiceU+twiceV)/2, (twiceU-twiceV)/2, 1);
+        }
+      }
+    }
+    return result;
+
+  }
+
 };
+
+
 
 void LifeState::Step() {
   uint64_t tempxor[N];

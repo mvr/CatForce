@@ -54,6 +54,7 @@ The option delimiter is `" "` - i.e. space.
 | `quiet-mode`                | `true`                   | Omit "placed catalyst [] at []" messages.                              |
 | `report-matches`            | `true`                   | At end of search print what generation matched any gen range filters.  |
 | `first-transparent`         | `true`                   | Only search reactions that have early-on transparent catalyses.        |
+| `correct-for-symmetry`      | `true`                   | Use symmetry group to decrease search area.                            |
 
 
 

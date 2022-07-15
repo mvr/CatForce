@@ -56,6 +56,12 @@ public:
   bool reportMatches;
   bool quietMode;
   bool firstTransparent;
+  bool correctForSymmetry;
+
+  unsigned numClusters;
+  unsigned clusterSize;
+  unsigned clusterWidth;
+  unsigned clusterHeight;
 
   std::vector<std::pair<int, int>> filterGenRange;
   std::vector<FilterType> filterType;
@@ -93,6 +99,11 @@ public:
     quietMode = false;
     reportMatches = false;
     firstTransparent = false;
+
+    numClusters = 0;
+    clusterSize = 1;
+    clusterWidth = 0;
+    clusterHeight = 0;
   }
 };
 
@@ -244,6 +255,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string quiet = "quiet-mode";
   std::string firstTranps = "first-transparent";
 
+  std::string clusterParams = "cluster-parameters";
+  std::string correctForSym = "correct-for-symmetry";
+
   std::string line;
   bool hasLastGen = false;
 
@@ -362,6 +376,14 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         params.alsoRequired = std::make_tuple(elems[1], atoi(elems[2].c_str()), atoi(elems[3].c_str()));
       }
 
+      if (elems[0] == clusterParams){
+        params.numClusters = atoi(elems[1].c_str());
+        params.clusterSize = atoi(elems[2].c_str());
+        params.clusterWidth = atoi(elems[3].c_str());
+        params.clusterHeight = atoi(elems[4].c_str());
+
+      }
+
       if (elems[0] == symmetry) {
         if ( elems[1] == "C1" || SymmetryEnumFromString(elems[1]) != StaticSymmetry::C1){
           params.symmetryEnum = SymmetryEnumFromString(elems[1]);
@@ -370,6 +392,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
           exit(0);
         }
       }
+
+      if (elems[0] == correctForSym)
+        params.correctForSymmetry = true;
 
       if (elems[0] == stopAfterCatsDestroyed){
         params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
@@ -470,11 +495,14 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
 struct Configuration {
   unsigned count;
+  unsigned clusterCount;
   unsigned transparentCount;
   unsigned mustIncludeCount;
   std::array<int, MAX_CATALYSTS> curx;
   std::array<int, MAX_CATALYSTS> cury;
   std::array<int, MAX_CATALYSTS> curs;
+  std::array<int, MAX_CATALYSTS> clusterSizes;
+
   // int minIter;
   LifeState state;
   LifeState catalystsState;
@@ -892,6 +920,8 @@ public:
     filterMaxGen = FilterMaxGen();
 
     lastReport = time(NULL);
+    if (params.clusterSize == 0 || params.clusterSize == 1)
+      params.numClusters = params.numCatalysts;
   }
 
   int FilterMaxGen() {
@@ -1013,7 +1043,7 @@ public:
         bool singlePassed = false;
         if (workspace.gen == params.filterGen[k]){
           for ( auto filter : targetFilterLists[k] ){
-            singlePassed = singlePassed |  workspace.Contains(filter);
+            singlePassed = singlePassed ||  workspace.Contains(filter);
           }
         }
         bool rangePassed = false;
@@ -1022,7 +1052,7 @@ public:
                            params.filterGenRange[k].first <= workspace.gen &&
                            params.filterGenRange[k].second >= workspace.gen){
           for(LifeTarget transformedTarget :targetFilterLists[k]){
-            rangePassed = rangePassed | workspace.Contains(transformedTarget);
+            rangePassed = rangePassed || workspace.Contains(transformedTarget);
           }
           if ( !prevMet && rangePassed && params.reportMatches){
             bool alreadyPresent = false;
@@ -1148,6 +1178,7 @@ public:
     config.firstReaction = 1000; // large number.
     config.anyTransparent = false;
     config.count = 0;
+    config.clusterCount = 0;
     config.transparentCount = 0;
     config.mustIncludeCount = 0;
     config.state.JoinWSymChain(pat, params.symmetryEnum);
@@ -1162,6 +1193,28 @@ public:
       masks[s] = config.state.Convolve(catalysts[s].reactionMask);
       masks[s].Copy(bounds, ORNOT);
     }
+    if (params.correctForSymmetry){
+      for (unsigned s = 0; s < catalysts.size(); s++) {
+        if(params.symmetryEnum == D2diagodd){
+          masks[s].Copy(LifeState::SolidDiagonalRect(0,-2,64,36), ORNOT);
+        } else if (params.symmetryEnum == D2negdiagodd){
+          masks[s].Copy(LifeState::SolidDiagonalRect(-2,0,36,64), ORNOT);
+        } else if(params.symmetryEnum == D2AcrossY || params.symmetryEnum == D2AcrossYEven){
+          masks[s].Copy(LifeState::SolidRect(-2, -32, 36, 64), ORNOT);
+        } else if(SymmetryGroupFromEnum(params.symmetryEnum).size() == 2){
+          masks[s].Copy(LifeState::SolidRect(-32, -2, 64, 36), ORNOT);
+        } else if (params.symmetryEnum == D4diag || params.symmetryEnum == D4diageven){
+          masks[s].Copy(LifeState::SolidDiagonalRect(-2,-2,36,36), ORNOT);
+        } else if (SymmetryGroupFromEnum(params.symmetryEnum).size() == 4){
+          masks[s].Copy(LifeState::SolidRect(-2, -2, 36, 36), ORNOT);
+        } else if (params.symmetryEnum == D8 || params.symmetryEnum == D8even){
+          masks[s].Copy(LifeState::SolidDiagonalRect(-2,-2,36,36), ORNOT);
+          masks[s].Copy(LifeState::SolidRect(-2, -2, 36, 36), ORNOT);
+        }
+      }
+    }
+    
+
 
     LifeState required = LifeState();
     if(std::get<0>(params.alsoRequired) != ""){
@@ -1177,16 +1230,20 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, history, required, masks, shiftedTargets,
+    std::vector<LifeState> clusterMasks(params.numClusters);
+
+    RecursiveSearch(config, history, required,
+                    masks, clusterMasks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>(),
                     std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
   }
 
   void
-  RecursiveSearch(Configuration config, LifeState history, const LifeState required,
+  RecursiveSearch(Configuration config, LifeState history,
+                  const LifeState required,
                   std::vector<LifeState> masks,
+                  std::vector<LifeState> clusterMasks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
-
                   std::array<unsigned, MAX_CATALYSTS> missingTime,
                   std::array<unsigned, MAX_CATALYSTS> recoveredTime,
                   std::array<bool, MAX_CATALYSTS> hasReacted,
@@ -1200,9 +1257,8 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      if (g == config.firstReaction + params.stableInterval && params.firstTransparent  && !config.anyTransparent){
+      if (g == config.firstReaction + params.stableInterval && params.firstTransparent  && !config.anyTransparent)
         return;
-      }
 
       if (!config.state.Contains(required))
         return;
@@ -1246,26 +1302,33 @@ public:
           //   masks[s].Join(hitLocations);
           // }
 
+          LifeState unionOfClusters;
+          if(params.clusterSize > 1 && config.clusterCount == params.numClusters){
+            for (unsigned i = 0 ; i < config.clusterCount; ++i)
+              unionOfClusters.Join(clusterMasks[i]);
+          }
+
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if (config.transparentCount == params.numTransparent && catalysts[s].transparent)
               continue;
             if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
               continue;
             
-            // if want first to be transparent, and we're 
             if (params.firstTransparent && config.count == params.numCatalysts - 1 && !catalysts[s].transparent){
               bool anyTransparent = false;
-              for(int i = 0; i < config.count; ++i){
+              for(unsigned i = 0; i < config.count; ++i){
                 anyTransparent = anyTransparent | catalysts[config.curs[i]].transparent;
               }
-              if (!anyTransparent){
+              if (!anyTransparent)
                 continue;
-              }
             }
 
             LifeState newPlacements = catalysts[s].reactionMask.Convolve(newcells);
             newPlacements.Copy(masks[s], ANDNOT);
 
+            if (params.clusterSize > 1 && config.clusterCount == params.numClusters)
+              newPlacements.Copy(unionOfClusters, AND);
+            
             while (!newPlacements.IsEmpty()) {
               // Do the placement
               auto newPlacement = newPlacements.FirstOn();
@@ -1314,7 +1377,6 @@ public:
                   continue;
                 }
               }
-
               std::vector<LifeState> newMasks = masks;
 
               LifeState bounds;
@@ -1325,11 +1387,35 @@ public:
                                               2 * params.maxH - 1);
               }
 
-              if(config.count == 0)
-                newConfig.firstReaction = g;
+              std::vector<LifeState> newClusterMasks = clusterMasks;
 
               // If we just placed the last catalyst, don't bother
               if (newConfig.count != params.numCatalysts) {
+                if (params.clusterSize > 1){
+                  int inWhichCluster = -1;
+                  for(unsigned i = 0; i < config.clusterCount; ++i){
+                    if(clusterMasks[i].Get(newPlacement.first, newPlacement.second)
+                            && config.clusterSizes[i] < params.clusterSize){
+                      inWhichCluster = i;
+                    }
+                  }
+                  LifeState clusterBounds;
+                  clusterBounds.JoinWSymChain(LifeState::SolidRect(newPlacement.first - params.clusterWidth,
+                                            newPlacement.second - params.clusterHeight, 2*params.clusterWidth+1,
+                                            2*params.clusterHeight + 1), params.symmetryEnum);
+                  if (inWhichCluster == -1){ // new cluster.
+                    newClusterMasks[config.clusterCount].Copy(clusterBounds);
+                    newConfig.clusterSizes[config.clusterCount] = 1;
+                    newConfig.clusterCount += 1;
+                  } else if (config.clusterSizes[inWhichCluster] < params.clusterSize-1){
+                    newClusterMasks[inWhichCluster].Copy(clusterBounds, AND);
+                    newConfig.clusterSizes[inWhichCluster] += 1;
+                  } else { // cluster is now full!
+                    newClusterMasks[inWhichCluster].Clear();
+                    newConfig.clusterSizes[inWhichCluster] += 1;
+                  }
+                }
+                
                 for (unsigned t = 0; t < catalysts.size(); t++) {
                   newMasks[t].Join(catalystCollisionMasks[s][t],
                                    newPlacement.first, newPlacement.second);
@@ -1339,8 +1425,10 @@ public:
                   }
                 }
               }
+              if(config.count == 0)
+                newConfig.firstReaction = g;
 
-              RecursiveSearch(newConfig, newHistory, newRequired, newMasks, shiftedTargets, missingTime,
+              RecursiveSearch(newConfig, newHistory, newRequired, newMasks, newClusterMasks, shiftedTargets, missingTime,
                               recoveredTime, hasReacted, hasRecovered);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
@@ -1410,7 +1498,7 @@ int main(int argc, char *argv[]) {
          (double)(end - searcher.begin) / CLOCKS_PER_SEC);
   if(searcher.matches.size() != 0){
     std::cout << "Ranged filters matched at generations ";
-    for(int i = 0 ; i < searcher.matches.size(); ++i){
+    for(unsigned i = 0 ; i < searcher.matches.size(); ++i){
       std::cout << searcher.matches[i];
       if (i + 1 < searcher.matches.size()){
         std::cout << " ";
