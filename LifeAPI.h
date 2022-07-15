@@ -228,25 +228,48 @@ uint64_t rand64() {
 enum CopyType { COPY, OR, XOR, AND, ANDNOT, ORNOT };
 
 enum SymmetryTransform {
-  Identity, // only used for catalyst initialization. The identity is omitted
-            // for symmetry of the pattern.
-  ReflectXEven,
-  ReflectX,
-  ReflectYEven,
-  ReflectY,
+  Identity,
+  ReflectAcrossXEven,
+  ReflectAcrossX,
+  ReflectAcrossYEven,
+  ReflectAcrossY,
   Rotate90Even,
   Rotate90,
   Rotate270Even,
   Rotate270,
   Rotate180OddBoth,
-  Rotate180EvenX,
-  Rotate180EvenY,
+  Rotate180EvenHorizontal,
+  Rotate180EvenVertical,
   Rotate180EvenBoth,
-  ReflectYeqX,
-  ReflectYeqNegX,
-  ReflectYeqNegXP1 // reflect across y = -x+3/2, fixing (0,0), instead of
-                   // y=-x+1/2, sending (0,0) to (-1,-1). Needed for D4x_1
-                   // symmetry.
+  ReflectAcrossYeqX,
+  ReflectAcrossYeqNegX,
+  // reflect across y = -x+3/2, fixing (0,0), instead of y=-x+1/2,
+  // sending (0,0) to (-1,-1). Needed for D4x_1 symmetry.
+  ReflectAcrossYeqNegXP1
+};
+
+enum StaticSymmetry {
+  C1,
+  D2AcrossX,
+  D2AcrossXEven,
+  D2AcrossY,
+  D2AcrossYEven,
+  D2negdiagodd,
+  D2diagodd,
+  C2,
+  C2even,
+  C2verticaleven,
+  C2horizontaleven,
+  C4,
+  C4even,
+  D4,
+  D4even,
+  D4verticaleven,
+  D4horizontaleven,
+  D4diag,
+  D4diageven,
+  D8,
+  D8even,
 };
 
 inline uint64_t RotateLeft(uint64_t x, unsigned int k) {
@@ -1006,17 +1029,17 @@ void LifeState::Transform(SymmetryTransform transf) {
   switch (transf) {
   case Identity:
     break;
-  case ReflectXEven:
+  case ReflectAcrossXEven:
     FlipX();
     break;
-  case ReflectX:
+  case ReflectAcrossX:
     FlipX();
     Move(0, 1);
     break;
-  case ReflectYEven:
+  case ReflectAcrossYEven:
     FlipY();
     break;
-  case ReflectY:
+  case ReflectAcrossY:
     FlipY();
     Move(1, 0);
     break;
@@ -1024,12 +1047,12 @@ void LifeState::Transform(SymmetryTransform transf) {
     FlipX();
     FlipY();
     break;
-  case Rotate180EvenX:
+  case Rotate180EvenVertical:
     FlipX();
     FlipY();
     Move(1, 0);
     break;
-  case Rotate180EvenY:
+  case Rotate180EvenHorizontal:
     FlipX();
     FlipY();
     Move(0, 1);
@@ -1039,13 +1062,13 @@ void LifeState::Transform(SymmetryTransform transf) {
     FlipY();
     Move(1, 1);
     break;
-  case ReflectYeqX:
+  case ReflectAcrossYeqX:
     Transpose(false);
     break;
-  case ReflectYeqNegX:
+  case ReflectAcrossYeqNegX:
     Transpose(true);
     break;
-  case ReflectYeqNegXP1:
+  case ReflectAcrossYeqNegXP1:
     Transpose(true);
     Move(1, 1);
     break;
