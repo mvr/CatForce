@@ -753,8 +753,8 @@ public:
     std::vector<AffineTransform> symChain(SymmetryChainFromEnum(symmetryGroup));
     LifeState transformed;
     transformed.Join(state, x, y);
-    for (size_t i = 0; i < symChain.size(); ++i) {
-      transformed.Transform(symChain[i]);
+    for (auto sym : symChain) {
+      transformed.Transform(sym);
       Join(transformed);
     }
   }
@@ -767,14 +767,14 @@ public:
 
     std::vector<AffineTransform> symChain(SymmetryChainFromEnum(symmetryGroup));
     LifeState transformed = state;
-    for (size_t i = 0; i < symChain.size(); ++i) {
-      transformed.Transform(symChain[i]);
+    for (auto sym : symChain) {
+      transformed.Transform(sym);
       Join(transformed);
     }
   }
 
-  int GetPop() const {
-    int pop = 0;
+  unsigned GetPop() const {
+    unsigned pop = 0;
 
     for (int i = min; i <= max; i++) {
       pop += __builtin_popcountll(state[i]);
