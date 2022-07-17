@@ -1366,8 +1366,34 @@ void LifeState::Step() {
 
 void LifeState::Transform(AffineTransform transform) {
 
+  switch (transform.matrix){
+    case Rotate90: // rotat90 = AcrossYEqX then Y
+      Transpose(false);
+    case LinearTransform::FlipAcrossY:
+      FlipAcrossY();
+      break;
+    case Rotate270: // rotate270 = AcrossYEqX then X
+      Transpose(false);
+    case LinearTransform::FlipAcrossX:
+      FlipAcrossX();
+      break;
+    case LinearTransform::FlipAcrossYEqNegXP1:
+      Transpose(true);
+      Move(1,1);
+      break;
+    case LinearTransform::FlipAcrossYEqX:
+      Transpose(false);
+      break;
+    case Rotate180:
+      FlipAcrossX();
+      FlipAcrossY();
+      break;
+    // compiler will complain about Rotate0 not
+    // being covered, but that's the identity matrix.
+  }
+
   // could re-write as switch.
-  if ( transform.matrix == 3 || transform.matrix == 5){
+  /*if ( transform.matrix == 3 || transform.matrix == 5){
     // rotate 270 and flipYEqX become ReflectX and Identity.
     Transpose(false);
     transform = transform.Compose(AffineTransform(LinearTransform::FlipAcrossYEqX));
@@ -1393,7 +1419,7 @@ void LifeState::Transform(AffineTransform transform) {
 
   }
 
-  assert(transform.matrix == Rotate0);
+  assert(transform.matrix == Rotate0);*/
 
   Move(transform.transl.first, transform.transl.second);
 
