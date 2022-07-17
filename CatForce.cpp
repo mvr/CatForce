@@ -1291,6 +1291,9 @@ public:
           return;
       }
 
+      LifeState next = config.state;
+      next.Step();
+
       // Try adding a catalyst
       if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
         LifeState newcells = config.state;
@@ -1333,12 +1336,6 @@ public:
               // Do the placement
               auto newPlacement = newPlacements.FirstOn();
 
-              if (config.count == 0 && !params.quietMode) {
-                std::cout << "Placing catalyst " << s << " at "
-                          << newPlacement.first << ", " << newPlacement.second
-                          << std::endl;
-              }
-
               Configuration newConfig = config;
               newConfig.count += 1;
               newConfig.curx[config.count] = newPlacement.first;
@@ -1359,6 +1356,31 @@ public:
               newConfig.catalystsState.Join(symCatalyst);
               newConfig.state.Join(symCatalyst);
 
+              // Do a one-step lookahead to see if the catalyst interacts
+              if (newConfig.count < params.numCatalysts) {
+                LifeState newnext = newConfig.state;
+                newnext.Step();
+
+                LifeState difference = newnext;
+                difference.Copy(next, XOR);
+                difference.Copy(symCatalyst, XOR);
+                if (difference.IsEmpty()) {
+                  if (config.count == 0) {
+                    std::cout << "Skipping catalyst " << s << " at "
+                              << newPlacement.first << ", "
+                              << newPlacement.second
+                              << " (no interaction) "
+                              << std::endl;
+                  }
+
+                  // Note: we deliberately don't set the mask,
+                  // because it may turn out that a catalyst here
+                  // interacts properly in a later generation.
+                  newPlacements.Erase(newPlacement.first, newPlacement.second);
+                  continue;
+                }
+              }
+
               LifeState newHistory = history;
               newHistory.Join(symCatalyst);
 
@@ -1372,11 +1394,26 @@ public:
                 lookahead.Step();
                 lookahead.Step();
                 if (!lookahead.Contains(newRequired)) {
+                  if (config.count == 0) {
+                    std::cout << "Skipping catalyst " << s << " at "
+                              << newPlacement.first << ", "
+                              << newPlacement.second
+                              << " (is destroyed) "
+                              << std::endl;
+                  }
+
                   masks[s].Set(newPlacement.first, newPlacement.second);
                   newPlacements.Erase(newPlacement.first, newPlacement.second);
                   continue;
                 }
               }
+
+              if (config.count == 0) {
+                std::cout << "Placing catalyst " << s << " at "
+                          << newPlacement.first << ", " << newPlacement.second
+                          << std::endl;
+              }
+
               std::vector<LifeState> newMasks = masks;
 
               LifeState bounds;
@@ -1464,7 +1501,7 @@ public:
         lastReport = time(NULL);
       }
       history.Copy(config.state, OR);
-      config.state.Step();
+      config.state = next;
     }
   }
 };
