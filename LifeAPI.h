@@ -516,27 +516,37 @@ std::vector<AffineTransform> SymmetryChainFromEnum(const StaticSymmetry sym){
     case StaticSymmetry::C2verticaleven:
       return {Rotate180EvenVertical};
     case StaticSymmetry::C4:
-      return {Rotate90, Rotate90, Rotate90};
+      //return {Rotate90, Rotate90, Rotate90};
+      return {Rotate90Odd, Rotate180OddBoth};
     case StaticSymmetry::C4even:
-      return {Rotate90Even, Rotate90Even, Rotate90Even};
+      //return {Rotate90Even, Rotate90Even, Rotate90Even};
+      return {Rotate90Even, Rotate180EvenBoth};
     case StaticSymmetry::D4: // rotation = 2 reflections, so try to use reflections.
-      return {ReflectAcrossX, ReflectAcrossY, ReflectAcrossX};
+      //return {ReflectAcrossX, ReflectAcrossY, ReflectAcrossX};
+      return {ReflectAcrossX, ReflectAcrossY};
     case StaticSymmetry::D4even:
-      return {ReflectAcrossXEven, ReflectAcrossYEven, ReflectAcrossXEven};
+      //return {ReflectAcrossXEven, ReflectAcrossYEven, ReflectAcrossXEven};
+      return {ReflectAcrossXEven, ReflectAcrossYEven};
     case StaticSymmetry::D4horizontaleven:
-      return {ReflectAcrossYEven, ReflectAcrossX, ReflectAcrossYEven};
+      //return {ReflectAcrossYEven, ReflectAcrossX, ReflectAcrossYEven};
+      return {ReflectAcrossYEven, ReflectAcrossX};
     case StaticSymmetry::D4verticaleven:
-      return {ReflectAcrossXEven, ReflectAcrossY, ReflectAcrossXEven};
+      //return {ReflectAcrossXEven, ReflectAcrossY, ReflectAcrossXEven};
+      return {ReflectAcrossXEven, ReflectAcrossY};
     case StaticSymmetry::D4diag:
-      return {ReflectAcrossYeqX, ReflectAcrossYeqNegXP1, ReflectAcrossYeqX};
+      //return {ReflectAcrossYeqX, ReflectAcrossYeqNegXP1, ReflectAcrossYeqX};
+      return {ReflectAcrossYeqX, ReflectAcrossYeqNegXP1};
     case StaticSymmetry::D4diageven:
-      return {ReflectAcrossYeqX, ReflectAcrossYeqNegX, ReflectAcrossYeqX};
+      //return {ReflectAcrossYeqX, ReflectAcrossYeqNegX, ReflectAcrossYeqX};
+      return {ReflectAcrossYeqX, ReflectAcrossYeqNegX};
     case StaticSymmetry::D8: // reflect around in circle clockwise.
-      return {ReflectAcrossYeqX, ReflectAcrossY, ReflectAcrossYeqNegXP1,\
-                        ReflectAcrossX, ReflectAcrossYeqX, ReflectAcrossY, ReflectAcrossYeqNegXP1};
+      //return {ReflectAcrossYeqX, ReflectAcrossY, ReflectAcrossYeqNegXP1,\
+      //                  ReflectAcrossX, ReflectAcrossYeqX, ReflectAcrossY, ReflectAcrossYeqNegXP1};
+      return {Rotate90Odd, Rotate180OddBoth, ReflectAcrossYeqX};
     case StaticSymmetry::D8even:
-      return {ReflectAcrossYeqX, ReflectAcrossYEven, ReflectAcrossYeqNegX,\
-                        ReflectAcrossXEven, ReflectAcrossYeqX, ReflectAcrossYEven, ReflectAcrossYeqNegX};
+      //return {ReflectAcrossYeqX, ReflectAcrossYEven, ReflectAcrossYeqNegX,\
+      //                  ReflectAcrossXEven, ReflectAcrossYeqX, ReflectAcrossYEven, ReflectAcrossYeqNegX};
+      return {Rotate90Even, Rotate180EvenBoth, ReflectAcrossYeqX};
   }
 }
 
@@ -746,31 +756,48 @@ public:
     // product of h_1 thru h_j that way, we don't need to initialize a new
     // LifeState for each symmetry.
 
-    Join(state, x, y); // identity transformation
-    if (symmetryGroup == StaticSymmetry::C1)
+    
+    if (symmetryGroup == StaticSymmetry::C1){
+      Join(state, x, y); // identity transformation
       return;
+    }
 
     std::vector<AffineTransform> symChain(SymmetryChainFromEnum(symmetryGroup));
     LifeState transformed;
     transformed.Join(state, x, y);
+    
+    /*Join(transformed);
     for (auto sym : symChain) {
       transformed.Transform(sym);
       Join(transformed);
+    }*/
+    for (auto sym : symChain) {
+      LifeState soFar = transformed;
+      soFar.Transform(sym);
+      transformed.Join(soFar);
     }
+    Join(transformed);
   }
 
   void JoinWSymChain(const LifeState &state,
                      const StaticSymmetry symmetryGroup) {
-    Join(state); // identity transformation
-    if (symmetryGroup == StaticSymmetry::C1)
+    if (symmetryGroup == StaticSymmetry::C1){
+      Join(state); // identity transformation
       return;
-
+    }
     std::vector<AffineTransform> symChain(SymmetryChainFromEnum(symmetryGroup));
     LifeState transformed = state;
+    /*Join(transformed);
     for (auto sym : symChain) {
       transformed.Transform(sym);
       Join(transformed);
+    }*/
+    for (auto sym : symChain) {
+      LifeState soFar = transformed;
+      soFar.Transform(sym);
+      transformed.Join(soFar);
     }
+    Join(transformed);
   }
 
   unsigned GetPop() const {
