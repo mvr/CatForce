@@ -328,16 +328,19 @@ StaticSymmetry CharToSym(char ch) {
     return StaticSymmetry::D2AcrossY;
   case '-':
     return StaticSymmetry::D2AcrossX;
-  case '/': case '\\':
+  case '\\':
+    return StaticSymmetry::D2diagodd;
+  case '/':
     return StaticSymmetry::D2negdiagodd;
-  case '+': case '@':
+  case '+':
+  case '@':
     return StaticSymmetry::C4;
   case 'x':
-      return StaticSymmetry::D4diag;
+    return StaticSymmetry::D4diag;
   case '*':
     return StaticSymmetry::D8;
   default:
-    return StaticSymmetry::C1;
+    return (StaticSymmetry)-1;
   }
 }
 
