@@ -478,30 +478,27 @@ public:
     // product of h_1 thru h_j that way, we don't need to initialize a new
     // LifeState for each symmetry.
 
-    Join(state, x, y); // identity transformation
-    if (symChain.size() == 0)
-      return;
+    LifeState transformed = state;
+    transformed.Move(x, y);
 
-    LifeState transformed;
-
-    transformed.Join(state, x, y);
     for (auto sym : symChain) {
-      transformed.Transform(sym);
-      Join(transformed);
+      LifeState soFar = transformed;
+      soFar.Transform(sym);
+      transformed.Join(soFar);
     }
+    Join(transformed);
   }
 
   void JoinWSymChain(const LifeState &state,
                      const std::vector<SymmetryTransform> &symChain) {
-    Join(state); // identity transformation
-    if (symChain.size() == 0)
-      return;
-
     LifeState transformed = state;
+
     for (auto sym : symChain) {
-      transformed.Transform(sym);
-      Join(transformed);
+      LifeState soFar = transformed;
+      soFar.Transform(sym);
+      transformed.Join(soFar);
     }
+    Join(transformed);
   }
 
   unsigned GetPop() const {

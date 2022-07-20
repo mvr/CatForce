@@ -230,30 +230,25 @@ std::vector<SymmetryTransform> SymmetryChainFromEnum(const StaticSymmetry sym) {
   case StaticSymmetry::C2verticaleven:
     return {Rotate180EvenVertical};
   case StaticSymmetry::C4:
-    return {Rotate90, Rotate90, Rotate90};
+    return {Rotate90, Rotate180OddBoth};
   case StaticSymmetry::C4even:
-    return {Rotate90Even, Rotate90Even, Rotate90Even};
-  case StaticSymmetry::D4: // rotation = 2 reflections, so try to use
-                           // reflections.
-    return {ReflectAcrossX, ReflectAcrossY, ReflectAcrossX};
+    return {Rotate90Even, Rotate180EvenBoth};
+  case StaticSymmetry::D4:
+    return {ReflectAcrossX, ReflectAcrossY};
   case StaticSymmetry::D4even:
-    return {ReflectAcrossXEven, ReflectAcrossYEven, ReflectAcrossXEven};
+    return {ReflectAcrossXEven, ReflectAcrossYEven};
   case StaticSymmetry::D4horizontaleven:
-    return {ReflectAcrossYEven, ReflectAcrossX, ReflectAcrossYEven};
+    return {ReflectAcrossYEven, ReflectAcrossX};
   case StaticSymmetry::D4verticaleven:
-    return {ReflectAcrossXEven, ReflectAcrossY, ReflectAcrossXEven};
+    return {ReflectAcrossXEven, ReflectAcrossY};
   case StaticSymmetry::D4diag:
-    return {ReflectAcrossYeqX, ReflectAcrossYeqNegXP1, ReflectAcrossYeqX};
+    return {ReflectAcrossYeqX, ReflectAcrossYeqNegXP1};
   case StaticSymmetry::D4diageven:
-    return {ReflectAcrossYeqX, ReflectAcrossYeqNegX, ReflectAcrossYeqX};
-  case StaticSymmetry::D8: // reflect around in circle clockwise.
-    return {ReflectAcrossYeqX,     ReflectAcrossY,    ReflectAcrossYeqNegXP1,
-            ReflectAcrossX,        ReflectAcrossYeqX, ReflectAcrossY,
-            ReflectAcrossYeqNegXP1};
+    return {ReflectAcrossYeqX, ReflectAcrossYeqNegX};
+  case StaticSymmetry::D8:
+    return {Rotate90, Rotate180OddBoth, ReflectAcrossYeqX};
   case StaticSymmetry::D8even:
-    return {ReflectAcrossYeqX,   ReflectAcrossYEven, ReflectAcrossYeqNegX,
-            ReflectAcrossXEven,  ReflectAcrossYeqX,  ReflectAcrossYEven,
-            ReflectAcrossYeqNegX};
+    return {Rotate90Even, Rotate180EvenBoth, ReflectAcrossYeqX};
   }
 }
 
