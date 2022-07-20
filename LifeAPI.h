@@ -228,25 +228,48 @@ uint64_t rand64() {
 enum CopyType { COPY, OR, XOR, AND, ANDNOT, ORNOT };
 
 enum SymmetryTransform {
-  Identity, // only used for catalyst initialization. The identity is omitted
-            // for symmetry of the pattern.
-  ReflectXEven,
-  ReflectX,
-  ReflectYEven,
-  ReflectY,
+  Identity,
+  ReflectAcrossXEven,
+  ReflectAcrossX,
+  ReflectAcrossYEven,
+  ReflectAcrossY,
   Rotate90Even,
   Rotate90,
   Rotate270Even,
   Rotate270,
   Rotate180OddBoth,
-  Rotate180EvenX,
-  Rotate180EvenY,
+  Rotate180EvenHorizontal,
+  Rotate180EvenVertical,
   Rotate180EvenBoth,
-  ReflectYeqX,
-  ReflectYeqNegX,
-  ReflectYeqNegXP1 // reflect across y = -x+3/2, fixing (0,0), instead of
-                   // y=-x+1/2, sending (0,0) to (-1,-1). Needed for D4x_1
-                   // symmetry.
+  ReflectAcrossYeqX,
+  ReflectAcrossYeqNegX,
+  // reflect across y = -x+3/2, fixing (0,0), instead of y=-x+1/2,
+  // sending (0,0) to (-1,-1). Needed for D4x_1 symmetry.
+  ReflectAcrossYeqNegXP1
+};
+
+enum StaticSymmetry {
+  C1,
+  D2AcrossX,
+  D2AcrossXEven,
+  D2AcrossY,
+  D2AcrossYEven,
+  D2negdiagodd,
+  D2diagodd,
+  C2,
+  C2even,
+  C2verticaleven,
+  C2horizontaleven,
+  C4,
+  C4even,
+  D4,
+  D4even,
+  D4verticaleven,
+  D4horizontaleven,
+  D4diag,
+  D4diageven,
+  D8,
+  D8even,
 };
 
 inline uint64_t RotateLeft(uint64_t x, unsigned int k) {
@@ -455,30 +478,27 @@ public:
     // product of h_1 thru h_j that way, we don't need to initialize a new
     // LifeState for each symmetry.
 
-    Join(state, x, y); // identity transformation
-    if (symChain.size() == 0)
-      return;
+    LifeState transformed = state;
+    transformed.Move(x, y);
 
-    LifeState transformed;
-
-    transformed.Join(state, x, y);
     for (auto sym : symChain) {
-      transformed.Transform(sym);
-      Join(transformed);
+      LifeState soFar = transformed;
+      soFar.Transform(sym);
+      transformed.Join(soFar);
     }
+    Join(transformed);
   }
 
   void JoinWSymChain(const LifeState &state,
                      const std::vector<SymmetryTransform> &symChain) {
-    Join(state); // identity transformation
-    if (symChain.size() == 0)
-      return;
-
     LifeState transformed = state;
+
     for (auto sym : symChain) {
-      transformed.Transform(sym);
-      Join(transformed);
+      LifeState soFar = transformed;
+      soFar.Transform(sym);
+      transformed.Join(soFar);
     }
+    Join(transformed);
   }
 
   unsigned GetPop() const {
@@ -930,18 +950,29 @@ public:
 #endif
 
   static LifeState SolidRect(int x, int y, int w, int h) {
-    uint64_t column = RotateLeft(((uint64_t)1 << h) - 1, y);
-    unsigned int start = (x + N) % N;
-    unsigned int end = (x + w + N) % N;
+    uint64_t column;
+    if (h < 64)
+      column = RotateLeft(((uint64_t)1 << h) - 1, y);
+    else
+      column = ~0ULL;
+
+    unsigned start, end;
+    if (w < N) {
+      start = (x + N) % N;
+      end = (x + w + N) % N;
+    } else {
+      start = 0;
+      end = N;
+    }
 
     LifeState result;
-    if(end > start) {
-      for(unsigned int i = start; i < end; i++)
+    if (end > start) {
+      for (unsigned int i = start; i < end; i++)
         result.state[i] = column;
     } else {
-      for(unsigned int i = 0; i < end; i++)
+      for (unsigned int i = 0; i < end; i++)
         result.state[i] = column;
-      for(unsigned int i = start; i < N; i++)
+      for (unsigned int i = start; i < N; i++)
         result.state[i] = column;
     }
     return result;
@@ -1006,17 +1037,17 @@ void LifeState::Transform(SymmetryTransform transf) {
   switch (transf) {
   case Identity:
     break;
-  case ReflectXEven:
+  case ReflectAcrossXEven:
     FlipX();
     break;
-  case ReflectX:
+  case ReflectAcrossX:
     FlipX();
     Move(0, 1);
     break;
-  case ReflectYEven:
+  case ReflectAcrossYEven:
     FlipY();
     break;
-  case ReflectY:
+  case ReflectAcrossY:
     FlipY();
     Move(1, 0);
     break;
@@ -1024,12 +1055,12 @@ void LifeState::Transform(SymmetryTransform transf) {
     FlipX();
     FlipY();
     break;
-  case Rotate180EvenX:
+  case Rotate180EvenVertical:
     FlipX();
     FlipY();
     Move(1, 0);
     break;
-  case Rotate180EvenY:
+  case Rotate180EvenHorizontal:
     FlipX();
     FlipY();
     Move(0, 1);
@@ -1039,13 +1070,13 @@ void LifeState::Transform(SymmetryTransform transf) {
     FlipY();
     Move(1, 1);
     break;
-  case ReflectYeqX:
+  case ReflectAcrossYeqX:
     Transpose(false);
     break;
-  case ReflectYeqNegX:
+  case ReflectAcrossYeqNegX:
     Transpose(true);
     break;
-  case ReflectYeqNegXP1:
+  case ReflectAcrossYeqNegXP1:
     Transpose(true);
     Move(1, 1);
     break;

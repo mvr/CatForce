@@ -6,13 +6,13 @@ cat bo$obo$bo! 100 -1 -1 . transparent
 cat 2o$obo$b2o! 100 -1 -1 | transparent
 
 =True Spartan=
-cat 2o$2o! 20 0 0 / forbidden obo$b2o$bo2$2o$2o! 0 -4 forbidden 2o3bo$2ob2o$4b2o! 0 0 forbidden b2o$b2o2$bo$2o$obo! -1 0 forbidden 2o$b2ob2o$o3b2o! -4 -1 forbidden o3b2o$b2ob2o$2o! -4 0 forbidden obo$2o$bo2$b2o$b2o! -1 -4 forbidden 4b2o$2ob2o$2o3bo! 0 -1 forbidden 2o$2o2$bo$b2o$obo! 0 0 required o! 1 0
+cat 2o$2o! 20 0 0 / forbidden obo$b2o$bo2$2o$2o! 0 -4 forbidden 2o3bo$2ob2o$4b2o! 0 0 forbidden b2o$b2o2$bo$2o$obo! -1 0 forbidden 2o$b2ob2o$o3b2o! -4 -1 forbidden o3b2o$b2ob2o$2o! -4 0 forbidden obo$2o$bo2$b2o$b2o! -1 -4 forbidden 4b2o$2ob2o$2o3bo! 0 -1 forbidden 2o$2o2$bo$b2o$obo! 0 0 required o! 0 0
 cat 2o$o$b3o$3bo! 10 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6 required bo$o$b3o$3bo! -2 -2 locus 2o$o! -2 -2
 cat 2o$obo$bo! 10 -1 -1 + required o! -1 -1
 cat bo$obo$bo! 10 -1 -1 @ required bo$o! -1 -1
 
 =Uncommon Spartan=
-cat 2o$o$bo$2o! 10 0 0 + forbidden bo$obo$2o2$2o$o$bo$2o! 0 -4 forbidden b2o$bo$2bo$b2o2$b2o$obo$bo! 0 0 required 2o$o$bo$2o! 0 0
+cat 2o$o$bo$2o! 10 0 0 x forbidden bo$obo$2o2$2o$o$bo$2o! 0 -4 forbidden b2o$bo$2bo$b2o2$b2o$obo$bo! -1 0 required 2o$o$bo$2o! 0 0
 
 =Compound Spartan=
 cat 10b2o$10bobo$11b2o$7b2o$6bobo$6bo$4bobo$4b2o$2o$obo$b2o! 10 -6 -5 x required 9b2o3$6bo$5bobo$5bo$3bobo$4bo3$2o! -5 -5 locus 10b2o$10bobo$11b2o6$2o$obo$b2o! -6 -5
