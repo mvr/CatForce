@@ -950,18 +950,29 @@ public:
 #endif
 
   static LifeState SolidRect(int x, int y, int w, int h) {
-    uint64_t column = RotateLeft(((uint64_t)1 << h) - 1, y);
-    unsigned int start = (x + N) % N;
-    unsigned int end = (x + w + N) % N;
+    uint64_t column;
+    if (h < 64)
+      column = RotateLeft(((uint64_t)1 << h) - 1, y);
+    else
+      column = ~0ULL;
+
+    unsigned start, end;
+    if (w < N) {
+      start = (x + N) % N;
+      end = (x + w + N) % N;
+    } else {
+      start = 0;
+      end = N;
+    }
 
     LifeState result;
-    if(end > start) {
-      for(unsigned int i = start; i < end; i++)
+    if (end > start) {
+      for (unsigned int i = start; i < end; i++)
         result.state[i] = column;
     } else {
-      for(unsigned int i = 0; i < end; i++)
+      for (unsigned int i = 0; i < end; i++)
         result.state[i] = column;
-      for(unsigned int i = start; i < N; i++)
+      for (unsigned int i = start; i < N; i++)
         result.state[i] = column;
     }
     return result;
