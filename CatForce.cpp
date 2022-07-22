@@ -1345,10 +1345,12 @@ public:
               if (newConfig.count < params.numCatalysts) {
                 LifeState newnext = newConfig.state;
                 newnext.Step();
+                LifeState newcats = symCatalyst;
+                newcats.Step();
 
                 LifeState difference = newnext;
                 difference.Copy(next, XOR);
-                difference.Copy(symCatalyst, XOR);
+                difference.Copy(newcats, XOR);
                 if (difference.IsEmpty()) {
                   if (config.count == 0) {
                     std::cout << "Skipping catalyst " << s << " at "
