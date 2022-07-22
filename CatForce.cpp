@@ -90,7 +90,7 @@ public:
   std::pair<int, int> locusXY;
   bool transparent;
   bool mustInclude;
-  int period;
+  unsigned period;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems;
@@ -565,7 +565,7 @@ public:
   LifeState locus;
   bool transparent;
   bool mustInclude;
-  int period;
+  unsigned period;
 
   static std::vector<CatalystData> FromInput(CatalystInput &input);
 };
@@ -580,7 +580,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
   for (auto &tran : trans) {
     LifeState pat = LifeState::Parse(rle, input.centerX, input.centerY, tran);
 
-    for (int i = 0; i < input.period; i++) {
+    for (unsigned i = 0; i < input.period; i++) {
       CatalystData result;
 
       result.state = pat;
@@ -648,7 +648,7 @@ struct Configuration {
 };
 
 // Fix a, what positions of b causes a collision?
-LifeState CollisionMask(const LifeState &a, const LifeState &b, int period) {
+LifeState CollisionMask(const LifeState &a, const LifeState &b, unsigned period) {
   unsigned popsum = a.GetPop() + b.GetPop();
 
   LifeState mask;
@@ -663,7 +663,7 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b, int period) {
         continue;
       }
 
-      for(int i = 0; i < period; i++)
+      for(unsigned i = 0; i < period; i++)
         state.Step();
 
       if (!state.Contains(a) || !state.Contains(b, x, y)) {
@@ -1336,7 +1336,7 @@ public:
               LifeState symCatalyst;
               symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
               newConfig.startingCatalysts.Join(symCatalyst);
-              for (int k = 0; k < g % catalysts[s].period; k++)
+              for (unsigned k = 0; k < g % catalysts[s].period; k++)
                 symCatalyst.Step();
               newConfig.catalystsState.Join(symCatalyst);
               newConfig.state.Join(symCatalyst);
