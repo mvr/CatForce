@@ -679,6 +679,18 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b, unsigned period)
 
 std::string GetRLE(const LifeState &s);
 
+unsigned gcd(unsigned a, unsigned b) {
+    while(a != b)
+    {
+        if(a > b)
+            a -= b;
+        else
+            b -= a;
+    }
+    return a;
+}
+
+
 LifeState LoadCollisionMask(const CatalystData &a, const CatalystData &b) {
   std::stringstream ss;
   ss << "masks/mask-" << a.state.GetHash() << "-" << b.state.GetHash();
@@ -687,7 +699,7 @@ LifeState LoadCollisionMask(const CatalystData &a, const CatalystData &b) {
   std::ifstream infile;
   infile.open(fname.c_str(), std::ifstream::in);
   if (!infile.good()) {
-    LifeState mask = CollisionMask(a.state, b.state, a.period * b.period);
+    LifeState mask = CollisionMask(a.state, b.state, (a.period * b.period) / gcd(a.period, b.period));
     std::ofstream outfile;
     outfile.open(fname.c_str(), std::ofstream::out);
     outfile << GetRLE(mask);
