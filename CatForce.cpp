@@ -1272,6 +1272,9 @@ public:
         // if (hasRecovered[i]) {
         //   continue;
         // }
+        // TEMP: Temporary fix
+        if (catalysts[config.curs[i]].period > 1)
+          hasReacted[i] = true;
 
         if (config.state.gen % catalysts[config.curs[i]].period != 0)
           continue;
