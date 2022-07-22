@@ -69,6 +69,7 @@ public:
     outputFile = "results.rle";
     maxW = -1;
     maxH = -1;
+    symmetry = StaticSymmetry::C1;
     symmetryChain = {};
     maxCatSize = -1;
     fullReportFile = "";
@@ -355,27 +356,27 @@ StaticSymmetry SymmetryFromString(const std::string &name) {
   return StaticSymmetry::C1;
 }
 
-StaticSymmetry CharToSym(char ch) {
+std::vector<SymmetryTransform> CharToTransforms(char ch) {
   switch (ch) {
   case '.':
-    return StaticSymmetry::C1;
+    return SymmetryGroupFromEnum(StaticSymmetry::C1);
   case '|':
-    return StaticSymmetry::D2AcrossY;
+    return SymmetryGroupFromEnum(StaticSymmetry::D2AcrossY);
   case '-':
-    return StaticSymmetry::D2AcrossX;
+    return SymmetryGroupFromEnum(StaticSymmetry::D2AcrossX);
   case '\\':
-    return StaticSymmetry::D2diagodd;
+    return SymmetryGroupFromEnum(StaticSymmetry::D2diagodd);
   case '/':
-    return StaticSymmetry::D2negdiagodd;
+    return SymmetryGroupFromEnum(StaticSymmetry::D2negdiagodd);
   case '+':
   case '@':
-    return StaticSymmetry::C4;
+    return SymmetryGroupFromEnum(StaticSymmetry::C4);
   case 'x':
-    return StaticSymmetry::D4diag;
+    return {Rotate90, ReflectAcrossX, ReflectAcrossYeqX};
   case '*':
-    return StaticSymmetry::D8;
+    return SymmetryGroupFromEnum(StaticSymmetry::D8);
   default:
-    return (StaticSymmetry)-1;
+    return SymmetryGroupFromEnum(StaticSymmetry::C1);
   }
 }
 
@@ -571,7 +572,7 @@ public:
 };
 
 std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
-  std::vector<SymmetryTransform> trans = SymmetryGroupFromEnum(CharToSym(input.symmType));
+  std::vector<SymmetryTransform> trans = CharToTransforms(input.symmType);
 
   const char *rle = input.rle.c_str();
 
