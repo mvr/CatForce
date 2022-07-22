@@ -69,6 +69,7 @@ public:
     outputFile = "results.rle";
     maxW = -1;
     maxH = -1;
+    symmetry = StaticSymmetry::C1;
     symmetryChain = {};
     maxCatSize = -1;
     fullReportFile = "";
