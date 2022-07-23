@@ -1286,13 +1286,16 @@ public:
           //   masks[s].Join(hitLocations);
           // }
 
+          LifeState activePart = config.state;
+          activePart.Copy(config.startingCatalysts, ANDNOT);
+
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if (config.transparentCount == params.numTransparent && catalysts[s].transparent)
               continue;
             if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
               continue;
 
-            LifeState newPlacements = catalysts[s].reactionMask.Convolve(config.state);
+            LifeState newPlacements = catalysts[s].reactionMask.Convolve(activePart);
             newPlacements.Copy(masks[s], ANDNOT);
 
             while (!newPlacements.IsEmpty()) {
