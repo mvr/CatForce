@@ -367,7 +367,7 @@ std::vector<SymmetryTransform> CharToTransforms(char ch) {
   case '@':
     return SymmetryGroupFromEnum(StaticSymmetry::C4);
   case 'x':
-    return {Rotate90, ReflectAcrossX, ReflectAcrossYeqX};
+    return {Identity, Rotate90, ReflectAcrossX, ReflectAcrossYeqX};
   case '*':
     return SymmetryGroupFromEnum(StaticSymmetry::D8);
   default:
