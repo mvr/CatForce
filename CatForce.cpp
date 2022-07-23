@@ -1316,6 +1316,9 @@ public:
           //   masks[s].Join(hitLocations);
           // }
 
+          LifeState activePart = config.state;
+          activePart.Copy(config.catalystsState, ANDNOT);
+
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if (config.transparentCount == params.numTransparent && catalysts[s].transparent)
               continue;
@@ -1325,7 +1328,7 @@ public:
             LifeState newPlacements =
                 catalysts[s]
                     .phaseReactionMask[g % catalysts[s].period]
-                    .Convolve(config.state);
+                    .Convolve(activePart);
             newPlacements.Copy(masks[s], ANDNOT);
 
             while (!newPlacements.IsEmpty()) {
