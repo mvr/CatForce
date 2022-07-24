@@ -1,0 +1,43 @@
+# blinker
+cat 3o! 20 -1 0 . period 2 
+# half traffic
+cat 3o2$4bo$4bo$4bo! 20 -2 -2 | period 2 
+# toad
+cat 3o$b3o! 5 -2 -1 x period 2 required o$3bo! -2 -1 
+# killer toads
+cat b3o$3o4$3o$b3o! 5 -1 -3 @ period 2 required 3bo$o4$o$3bo! -1 -3 
+# clock
+cat 2bo$2o$2b2o$bo! 5 -2 -2 | period 2 required o$bo! -1 -1 
+# fox+clock
+cat 4bo$5b2o$3b2o$5bo3$4b3o$2bo$2o2b2o2$2bo2bo$3bo$3bo! 5 -4 -5 * period 2 required $5bo$4bo4$5bo2$bo3$3bo! -4 -5 
+# traffic stop
+cat 2b3o2$o$o$o$8b2o$2b3o3bobo$10bo$10b2o! 40 -3 -3 @ period 2 required bo$obo$2bo$2b2o! 5 2 
+# p6 pipsquirter
+cat 5bo$5bo2$3bo3bo$b3obob3o$o3b2o4bo$ob2o2b2obobo$bo2b2o2b2obo$2b2o2b2obobob2o$4bo2bobobob2o$4b4ob2o$8bo$6bobo$6b2o! 10 -5 -1 @ period 6 required b3o3b3o$o9bo$ob2o5bobo$bo2b2o5bo$2b2o7bob2o$4bo6bob2o$4b4ob2o$8bo$6bobo$6b2o! -5 3 
+
+# MWSS emulator
+cat 7bo$2b2obo3bob2o$2bo9bo$3b2o5b2o$3o2b5o2b3o$o2bo7bo2bo$b2o9b2o! 10 -7 0 @ required 2b2o7b2o$2bo9bo$3b2o5b2o$3o9b3o$o2bo7bo2bo$b2o9b2o! -7 1 period 4 
+# HWSS emulator
+cat 7b2o$2b2obo4bob2o$2bo10bo$3b2o6b2o$3o2b6o2b3o$o2bo8bo2bo$b2o10b2o! 10 -8 0 @ required 2b2o8b2o$2bo10bo$3b2o6b2o$3o10b3o$o2bo8bo2bo$b2o10b2o! -8 1 period 4
+
+# pentadecathlon
+cat 2bo4bo$2ob4ob2o$2bo4bo! 15 -5 -1 / period 15
+# blocker
+cat 6bobo$5bo$2o2bo4bo$2obo2bob2o$4b2o! 10 -5 -3 x period 8 required o8bo$o8bo! -5 -1
+# figure 8
+cat 3o$3o$3o$3b3o$3b3o$3b3o! 10 -3 -3 | period 8 
+# fumarole
+cat 3b2o$b2o2b2o$bo4bo$2bo2bo$obo2bobo$2o4b2o! 10 -4 -2 @ period 5 required 2bo2bo$obo2bobo$2o4b2o! -4 1
+# mold
+cat 2b2o$bo2bo$2bobo$2obo$3o$2o! 10 -2 -3 @ period 4 required b2o$o2bo$bobo$2bo! -1 -3
+# t-nosed p4
+cat 8bo$8bo$7b3o2$2b2o9b2o$2bo11bo$3b11o$3o2b7o2b3o$o2bo2bo3bo2bo2bo$b2o4b3o4b2o$7b3o$8bo! 10 -8 -7 / period 4 required 2b2o9b2o$2bo11bo$3bo9bo$3o11b3o$o2bo9bo2bo$b2o11b2o! -8 -3
+# unix
+cat b2o$b2o3$3o$2obo2b2o$2b2o2b2o$2b2o! 10 -2 -5 @ period 6 required b2o4$obo$3bo3bo$7bo$3bo! -2 -5
+
+# caterer
+cat 2bo$o3b4o$o3bo$o$3bo$b2o! 10 -3 -3 * period 3 required o3bo3$2bo! -3 -1
+# 30P3
+cat 11b2o$2bo9bo$o3b4obo$o3bo5b5o$o8bo4bo$3bo7bo$b2o7bobo$7b3obo! 10 -7 -3 * period 3 required 11b2o$12bo2$o3bo5b5o$14bo$11bo$2bo9bo$11bo! -7 -3
+
+
