@@ -1364,9 +1364,10 @@ public:
                 LifeState newcats = symCatalyst;
                 newcats.Step();
 
-                LifeState difference = newnext;
-                difference.Copy(next, XOR);
-                difference.Copy(newcats, XOR);
+                LifeState difference = next;
+                difference.Copy(newcats, OR);
+                difference.Copy(newnext, XOR);
+
                 if (difference.IsEmpty()) {
                   if (config.count == 0) {
                     std::cout << "Skipping catalyst " << s << " at "
