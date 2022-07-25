@@ -64,7 +64,7 @@ cat b2ob2o$b2obobo$4bobo$ob3ob3o$2o3bo3bo$3bo2b4o$2ob2obo$bobo2bob2o$bobobo2b2o$
 cat 3b2o$2bobo$2b2o$11b2o$6b2obo2bo$5bobob3o$2o3bobo$o2bobob3o$b4obo3bo$6bo2bobo$3bobo4bo$3b2o! 25 -6 -6 * required 11b2o$12bo$9b3o$2o$o4bob3o$b4obo3bo$6bo2bobo$3bobo4bo$3b2o! -6 -3
 cat 2o$o2bo$b3o$4b2o$b2obo$b2obo$4b2o$b3o$o2bo$2o! 8 -4 -4 @ required 2o$o2bo$b3o$4b2o$b2obo$b2obo$4b2o$b3o$o2bo$2o! -4 -4
 cat b2ob2o$obobobo$obobobo$bo3bo! 5 -3 -2 @ required b2ob2o$obobobo$obobobo$bo3bo! -3 -2
-cat 6b2o$5bobo$2o2bo$o2bob2o$2b2obobo$6bo! 25 -4 -2 * required 6b2o$5bobo$2o2bo$o2bob2o$2b2obobo! -4 -2
+cat 6b2o$5bobo$2o2bo$o2bob2o$2b2obobo$6bo! 25 -4 -2 * required 6b2o$5bobo$2o2bo$o2bob2o$2b2o3bo! -4 -2
 cat 8b2o$2bob2o2bobo$2b2o2bobob3o$5bobo5bo$2b2obo6b2o$2bobobo$6bo2b2o$5b2obobo$8bobob2o$bo6b2obobo$obo8bo$bo6b2obobo$8bobob2o$5b2obobo$6bo2b2o$2bobobo$2b2obo6b2o$5bobo5bo$2b2o2bobob3o$2bob2o2bobo$8b2o! 25 -6 -10 x required 6b2o$ob2o2bobo$2o2bobob3o$3bobo5bo$2obo6b2o$2bobo$7b2o$8bo$8bob2o$6b2obobo$9bo$6b2obobo$8bob2o$8bo$7b2o$2bobo$2obo6b2o$3bobo5bo$2o2bobob3o$ob2o2bobo$6b2o! -4 -10
 cat 3bo2bo2bo$3b7o$b2o7b2o$o3b2ob2o3bo$b3obobob3o$3bobobobo$3bobobobo$4b2ob2o! 50 -6 -3 x required 3bo2bo2bo$3b7o$b2o7b2o$o3b2ob2o3bo$b3obobob3o$3bo5bo! -6 -3
 cat 5bo$3b3o$2bo$o2b3o$3o3bo$3bobo$2obob2o$bobo$o3b3o$b3o2bo$4bo$b3o$bo! 20 -3 -6 x required 5bo$3b3o$2bo$3b3o$b2o3bo$3bobo$2obob2o$bobo$o3b2o$b3o$4bo$b3o$bo! -3 -6
