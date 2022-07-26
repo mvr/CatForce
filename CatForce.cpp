@@ -642,7 +642,7 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b) {
 
       state.Step();
 
-      if (!state.Contains(a) || !state.Contains(b, x, y)) {
+      if (!state.Contains(a) || !state.Contains(b, x, y) || state.GetPop() != popsum) {
         mask.Set(x, y);
       }
 
