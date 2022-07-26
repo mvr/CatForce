@@ -656,23 +656,21 @@ std::string GetRLE(const LifeState &s);
 
 LifeState LoadCollisionMask(const CatalystData &a, const CatalystData &b) {
   std::stringstream ss;
-  ss << "masks/mask-" << a.state.GetHash() << "-" << b.state.GetHash();
+  ss << "masks/maskraw-" << a.state.GetHash() << "-" << b.state.GetHash();
   std::string fname = ss.str();
 
   std::ifstream infile;
-  infile.open(fname.c_str(), std::ifstream::in);
+  infile.open(fname.c_str(), std::ios::binary);
   if (!infile.good()) {
     LifeState mask = CollisionMask(a.state, b.state);
     std::ofstream outfile;
-    outfile.open(fname.c_str(), std::ofstream::out);
-    outfile << GetRLE(mask);
+    outfile.open(fname.c_str(), std::ofstream::binary);
+    outfile.write((char *)mask.state, N * sizeof(uint64_t));
+    outfile.close();
     return mask;
   } else {
-    std::stringstream buffer;
-    buffer << infile.rdbuf();
-    std::string rle = buffer.str();
-    LifeState result = LifeState::Parse(rle.c_str());
-    result.Move(-32, -32);
+    LifeState result;
+    infile.read((char*)result.state, N * sizeof(uint64_t));
     return result;
   }
 }
