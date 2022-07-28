@@ -53,26 +53,31 @@ public:
 
   int maxCatSize;
 
+  std::string alsoRequired;
+  std::pair<int, int> alsoRequiredXY;
+
   SearchParams() {
     maxGen = 250;
     numCatalysts = 2;
     stableInterval = 15;
     pat = "";
-    searchArea[0] = -10;
-    searchArea[1] = 0;
-    searchArea[2] = 20;
-    searchArea[3] = 20;
+    searchArea[0] = -30;
+    searchArea[1] = -30;
+    searchArea[2] = 60;
+    searchArea[3] = 60;
     xPat = 0;
     yPat = 0;
     startGen = 1;
     lastGen = 100;
     outputFile = "results.rle";
+    fullReportFile = "";
     maxW = -1;
     maxH = -1;
     symmetry = StaticSymmetry::C1;
     symmetryChain = {};
     maxCatSize = -1;
-    fullReportFile = "";
+    alsoRequired = "";
+    alsoRequiredXY = {0, 0};
   }
 };
 
@@ -408,6 +413,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string fullReport = "full-report";
 
   std::string symmetry = "symmetry";
+  std::string alsoRequired = "also-required";
 
   std::string line;
 
@@ -535,7 +541,12 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
       params.symmetry = SymmetryFromString(symmetryString);
       params.symmetryChain = SymmetryChainFromEnum(params.symmetry);
     }
+    if (elems[0] == alsoRequired) {
+      params.alsoRequired = elems[1].c_str();
+      params.alsoRequiredXY = std::make_pair(atoi(elems[2].c_str()), atoi(elems[3].c_str()));
+    }
   }
+
   if(!hasLastGen)
     params.lastGen = params.maxGen - 1;
 
@@ -667,7 +678,7 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b, unsigned period)
       for(unsigned i = 0; i < period; i++)
         state.Step();
 
-      if (!state.Contains(a) || !state.Contains(b, x, y)) {
+      if (!state.Contains(a) || !state.Contains(b, x, y) || state.GetPop() != popsum) {
         mask.Set(x, y);
       }
 
@@ -693,23 +704,21 @@ unsigned gcd(unsigned a, unsigned b) {
 
 LifeState LoadCollisionMask(const CatalystData &a, const CatalystData &b) {
   std::stringstream ss;
-  ss << "masks/mask-" << a.state.GetHash() << "-" << b.state.GetHash();
+  ss << "masks/maskraw-" << a.state.GetHash() << "-" << b.state.GetHash();
   std::string fname = ss.str();
 
   std::ifstream infile;
-  infile.open(fname.c_str(), std::ifstream::in);
+  infile.open(fname.c_str(), std::ios::binary);
   if (!infile.good()) {
     LifeState mask = CollisionMask(a.state, b.state, (a.period * b.period) / gcd(a.period, b.period));
     std::ofstream outfile;
-    outfile.open(fname.c_str(), std::ofstream::out);
-    outfile << GetRLE(mask);
+    outfile.open(fname.c_str(), std::ofstream::binary);
+    outfile.write((char *)mask.state, N * sizeof(uint64_t));
+    outfile.close();
     return mask;
   } else {
-    std::stringstream buffer;
-    buffer << infile.rdbuf();
-    std::string rle = buffer.str();
-    LifeState result = LifeState::Parse(rle.c_str());
-    result.Move(-32, -32);
+    LifeState result;
+    infile.read((char*)result.state, N * sizeof(uint64_t));
     return result;
   }
 }
@@ -977,6 +986,7 @@ public:
   clock_t begin{};
   SearchParams params;
   LifeState pat;
+  LifeState alsoRequired;
   std::vector<CatalystData> catalysts;
   std::vector<LifeTarget> targetFilter;
   std::vector<std::vector<LifeState>> catalystCollisionMasks;
@@ -1043,6 +1053,7 @@ public:
         catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
       }
     }
+    alsoRequired = LifeState::Parse(params.alsoRequired.c_str(), params.alsoRequiredXY.first, params.alsoRequiredXY.second);
 
     current = clock();
     found = 0;
@@ -1254,7 +1265,7 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, LifeState(), masks, shiftedTargets,
+    RecursiveSearch(config, alsoRequired, masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>(),
                     std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
   }
