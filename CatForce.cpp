@@ -58,21 +58,21 @@ public:
     numCatalysts = 2;
     stableInterval = 15;
     pat = "";
-    searchArea[0] = -10;
-    searchArea[1] = 0;
-    searchArea[2] = 20;
-    searchArea[3] = 20;
+    searchArea[0] = -30;
+    searchArea[1] = -30;
+    searchArea[2] = 60;
+    searchArea[3] = 60;
     xPat = 0;
     yPat = 0;
     startGen = 1;
     lastGen = 100;
     outputFile = "results.rle";
+    fullReportFile = "";
     maxW = -1;
     maxH = -1;
     symmetry = StaticSymmetry::C1;
     symmetryChain = {};
     maxCatSize = -1;
-    fullReportFile = "";
   }
 };
 
