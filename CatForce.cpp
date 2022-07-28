@@ -53,6 +53,9 @@ public:
 
   int maxCatSize;
 
+  std::string alsoRequired;
+  std::pair<int, int> alsoRequiredXY;
+
   SearchParams() {
     maxGen = 250;
     numCatalysts = 2;
@@ -73,6 +76,8 @@ public:
     symmetry = StaticSymmetry::C1;
     symmetryChain = {};
     maxCatSize = -1;
+    alsoRequired = "";
+    alsoRequiredXY = {0, 0};
   }
 };
 
@@ -403,6 +408,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string fullReport = "full-report";
 
   std::string symmetry = "symmetry";
+  std::string alsoRequired = "also-required";
 
   std::string line;
 
@@ -530,7 +536,12 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
       params.symmetry = SymmetryFromString(symmetryString);
       params.symmetryChain = SymmetryChainFromEnum(params.symmetry);
     }
+    if (elems[0] == alsoRequired) {
+      params.alsoRequired = elems[1].c_str();
+      params.alsoRequiredXY = std::make_pair(atoi(elems[2].c_str()), atoi(elems[3].c_str()));
+    }
   }
+
   if(!hasLastGen)
     params.lastGen = params.maxGen - 1;
 
@@ -942,6 +953,7 @@ public:
   clock_t begin{};
   SearchParams params;
   LifeState pat;
+  LifeState alsoRequired;
   std::vector<CatalystData> catalysts;
   std::vector<LifeTarget> targetFilter;
   std::vector<std::vector<LifeState>> catalystCollisionMasks;
@@ -1008,6 +1020,7 @@ public:
         catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
       }
     }
+    alsoRequired = LifeState::Parse(params.alsoRequired.c_str(), params.alsoRequiredXY.first, params.alsoRequiredXY.second);
 
     current = clock();
     found = 0;
@@ -1228,7 +1241,7 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, LifeState(), masks, shiftedTargets,
+    RecursiveSearch(config, alsoRequired, masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>(),
                     std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
   }
