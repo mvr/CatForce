@@ -1288,7 +1288,13 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      if (!config.state.Contains(required))
+      LifeState maskedState = config.state;
+      maskedState.Copy(required, AND);
+      LifeState maskedCats = config.catalystsState;
+      maskedCats.Copy(required, AND);
+      maskedState.Copy(maskedCats, XOR);
+
+      if (!maskedState.IsEmpty())
         return;
 
       for (unsigned i = 0; i < config.count; i++) {
@@ -1405,7 +1411,18 @@ public:
                 lookahead.Step();
                 lookahead.Step();
                 lookahead.Step();
-                if (!lookahead.Contains(newRequired)) {
+
+                LifeState lookaheadcats = newConfig.catalystsState;
+                lookaheadcats.Step();
+                lookaheadcats.Step();
+                lookaheadcats.Step();
+                lookaheadcats.Step();
+
+                lookahead.Copy(newRequired, AND);
+                lookaheadcats.Copy(newRequired, AND);
+                lookahead.Copy(lookaheadcats, XOR);
+
+                if (!lookahead.IsEmpty()) {
                   if (config.count == 0) {
                     std::cout << "Skipping catalyst " << s << " at "
                               << newPlacement.first << ", "

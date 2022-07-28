@@ -21,11 +21,11 @@ cat 7bo$2b2obo3bob2o$2bo9bo$3b2o5b2o$3o2b5o2b3o$o2bo7bo2bo$b2o9b2o! 10 -7 0 @ re
 cat 7b2o$2b2obo4bob2o$2bo10bo$3b2o6b2o$3o2b6o2b3o$o2bo8bo2bo$b2o10b2o! 10 -8 0 @ required 2b2o8b2o$2bo10bo$3b2o6b2o$3o10b3o$o2bo8bo2bo$b2o10b2o! -8 1 period 4
 
 # pentadecathlon
-cat 2bo4bo$2ob4ob2o$2bo4bo! 15 -5 -1 / period 15
+cat 2bo4bo$2ob4ob2o$2bo4bo! 15 -5 -1 / period 15 required 8o$8o$8o! -4 -1
 # blocker
-cat 6bobo$5bo$2o2bo4bo$2obo2bob2o$4b2o! 10 -5 -3 x period 8 required o8bo$o8bo! -5 -1
+cat 6bobo$5bo$2o2bo4bo$2obo2bob2o$4b2o! 10 -5 -3 x period 8 required 4b2o$10o$10o$4b2o! -5 -2
 # figure 8
-cat 3o$3o$3o$3b3o$3b3o$3b3o! 10 -3 -3 | period 8 
+cat 3o$3o$3o$3b3o$3b3o$3b3o! 10 -3 -3 | period 8 required 3o$4o$5o$b5o$2b4o$3b3o! -3 -3
 # fumarole
 cat 3b2o$b2o2b2o$bo4bo$2bo2bo$obo2bobo$2o4b2o! 10 -4 -2 @ period 5 required 2bo2bo$obo2bobo$2o4b2o! -4 1
 # mold
@@ -34,9 +34,8 @@ cat 2b2o$bo2bo$2bobo$2obo$3o$2o! 10 -2 -3 @ period 4 required b2o$o2bo$bobo$2bo!
 cat 8bo$8bo$7b3o2$2b2o9b2o$2bo11bo$3b11o$3o2b7o2b3o$o2bo2bo3bo2bo2bo$b2o4b3o4b2o$7b3o$8bo! 10 -8 -7 / period 4 required 2b2o9b2o$2bo11bo$3bo9bo$3o11b3o$o2bo9bo2bo$b2o11b2o! -8 -3
 # unix
 cat b2o$b2o3$3o$2obo2b2o$2b2o2b2o$2b2o! 10 -2 -5 @ period 6 required b2o4$obo$3bo3bo$7bo$3bo! -2 -5
-
 # caterer
-cat 2bo$o3b4o$o3bo$o$3bo$b2o! 10 -3 -3 * period 3 required o3bo3$2bo! -3 -1
+cat 2bo$o3b4o$o3bo$o$3bo$b2o! 10 -3 -3 * period 3 required b5o$6o$b3o$b2o$b2o! -3 -2
 # 30P3
 cat 11b2o$2bo9bo$o3b4obo$o3bo5b5o$o8bo4bo$3bo7bo$b2o7bobo$7b3obo! 10 -7 -3 * period 3 required 11b2o$12bo2$o3bo5b5o$14bo$11bo$2bo9bo$11bo! -7 -3
 
