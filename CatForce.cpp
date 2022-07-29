@@ -1282,8 +1282,9 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      if (!config.state.Contains(required))
-        return;
+      if (!config.state.Contains(required)) {
+          failure = true;
+      }
 
       for (unsigned i = 0; i < config.count; i++) {
         // if (hasRecovered[i]) {
@@ -1303,12 +1304,13 @@ public:
 
         if (missingTime[i] > catalysts[config.curs[i]].maxDisappear) {
           failure = true;
-          failuretime = g;
         }
       }
 
-      if (failure)
+      if (failure) {
+        failuretime = g;
         break;
+      }
 
       LifeState next = config.state;
       next.Step();
@@ -1452,7 +1454,7 @@ public:
         }
       }
 
-      if (config.count == params.numCatalysts) {
+      if (config.count == params.numCatalysts && !success) {
         bool allRecovered = true;
         for (unsigned i = 0; i < config.count; i++) {
           if (!hasRecovered[i] || missingTime[i] > 0) {
