@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <algorithm>
 
 const int MAX_CATALYSTS = 5;
 
@@ -56,6 +57,8 @@ public:
   std::string alsoRequired;
   std::pair<int, int> alsoRequiredXY;
 
+  int stopAfterCatsDestroyed;
+
   SearchParams() {
     maxGen = 250;
     numCatalysts = 2;
@@ -78,6 +81,7 @@ public:
     maxCatSize = -1;
     alsoRequired = "";
     alsoRequiredXY = {0, 0};
+    stopAfterCatsDestroyed = -1;
   }
 };
 
@@ -414,6 +418,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
   std::string symmetry = "symmetry";
   std::string alsoRequired = "also-required";
+  std::string stopAfterCatsDestroyed = "stop-after-cats-destroyed";
 
   std::string line;
 
@@ -544,6 +549,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     if (elems[0] == alsoRequired) {
       params.alsoRequired = elems[1].c_str();
       params.alsoRequiredXY = std::make_pair(atoi(elems[2].c_str()), atoi(elems[3].c_str()));
+    }
+    if (elems[0] == stopAfterCatsDestroyed){
+      params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
     }
   }
 
@@ -1004,7 +1012,7 @@ public:
   bool hasFilter{};
   bool reportAll{};
 
-  int filterMaxGen{};
+  unsigned filterMaxGen{};
 
   void Init(const char *inputFile) {
     begin = clock();
@@ -1064,14 +1072,14 @@ public:
     filterMaxGen = FilterMaxGen();
   }
 
-  int FilterMaxGen() {
-    int maxGen = 0;
+  unsigned FilterMaxGen() {
+    unsigned maxGen = params.maxGen;
 
     for (unsigned j = 0; j < targetFilter.size(); j++) {
-      if (params.filterGen[j] > maxGen)
+      if (params.filterGen[j] >= 0 && params.filterGen[j] > maxGen)
         maxGen = params.filterGen[j];
 
-      if (params.filterGenRange[j].second > maxGen)
+      if (params.filterGenRange[j].second >= 0 && params.filterGenRange[j].second > maxGen)
         maxGen = params.filterGenRange[j].second;
     }
 
@@ -1159,14 +1167,20 @@ public:
     return false;
   }
 
-  bool ValidateFilters(Configuration &conf) {
+  bool ValidateFilters(Configuration &conf, unsigned failuretime) {
     LifeState workspace;
     workspace.JoinWSymChain(pat, params.symmetryChain);
     workspace.Join(conf.startingCatalysts);
 
     std::vector<bool> filterPassed(params.filterGen.size(), false);
 
-    for (unsigned g = 0; g <= filterMaxGen; g++) {
+    unsigned stopTime;
+    if (params.stopAfterCatsDestroyed != -1)
+      stopTime = failuretime + params.stopAfterCatsDestroyed;
+    else
+      stopTime = filterMaxGen;
+
+    for (unsigned g = 0; g <= std::min(filterMaxGen, stopTime); g++) {
       for (unsigned k = 0; k < params.filterGen.size(); k++) {
         if (filterPassed[k])
           continue; // No need to check it again.
@@ -1210,7 +1224,7 @@ public:
     return true;
   }
 
-  void ReportSolution(Configuration &conf, unsigned successtime){
+  void ReportSolution(Configuration &conf, unsigned successtime, unsigned failuretime) {
     if (HasForbidden(conf, successtime + 3))
       return;
 
@@ -1234,7 +1248,7 @@ public:
 
     // If has fitlter validate them;
     if (hasFilter) {
-      if (!ValidateFilters(conf))
+      if (!ValidateFilters(conf, failuretime))
         return;
     }
 
@@ -1279,6 +1293,10 @@ public:
                   std::array<unsigned, MAX_CATALYSTS> recoveredTime,
                   std::array<bool, MAX_CATALYSTS> hasReacted,
                   std::array<bool, MAX_CATALYSTS> hasRecovered) {
+    bool success = false;
+    bool failure = false;
+    unsigned successtime;
+    unsigned failuretime;
 
     for (unsigned g = config.state.gen; g < params.maxGen; g++) {
       if (config.count == 0 && g > params.lastGen)
@@ -1319,9 +1337,14 @@ public:
         if (hasReacted[i] && recoveredTime[i] > params.stableInterval)
           hasRecovered[i] = true;
 
-        if (missingTime[i] > catalysts[config.curs[i]].maxDisappear)
-          return;
+        if (missingTime[i] > catalysts[config.curs[i]].maxDisappear) {
+          failure = true;
+          failuretime = g;
+        }
       }
+
+      if (failure)
+        break;
 
       LifeState next = config.state;
       next.Step();
@@ -1483,6 +1506,7 @@ public:
           masks[s].Join(hitLocations);
         }
       }
+
       if (config.count == params.numCatalysts) {
         bool allRecovered = true;
         for (unsigned i = 0; i < config.count; i++) {
@@ -1490,9 +1514,9 @@ public:
             allRecovered = false;
           }
         }
-        if(allRecovered) {
-          ReportSolution(config, g);
-          return;
+        if (allRecovered) {
+          success = true;
+          successtime = g;
         }
       }
 
@@ -1502,6 +1526,12 @@ public:
       config.state = next;
       config.catalystsState.Step();
     }
+
+    if (!failure)
+      failuretime = filterMaxGen;
+
+    if (success)
+      ReportSolution(config, successtime, failuretime);
   }
 };
 

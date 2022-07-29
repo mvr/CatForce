@@ -4,9 +4,9 @@ start-gen 1
 num-catalyst 2
 stable-interval 15
 
-search-area -1 -18 18 36
+search-area -18 -18 36 36
 
-symmetry rotate180evenx
+symmetry C2|even
 pat 2bo$b3o$o3bo$b3o$2bo! 1 1
 output sym.rle
 
