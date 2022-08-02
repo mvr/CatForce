@@ -1043,10 +1043,6 @@ public:
       targetFilter.push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
                                                params.filterdx[i], params.filterdy[i]));
 
-    catalystCollisionMasks = std::vector<std::vector<LifeState>>(
-        catalysts.size(), std::vector<LifeState>(catalysts.size()));
-
-    for (unsigned s = 0; s < catalysts.size(); s++) {
       // LifeState nonLocus = catalysts[s];
       // nonLocus.Copy(catalystLocus[s], ANDNOT);
 
@@ -1057,8 +1053,13 @@ public:
       // catalystLocusReactionMasks[s].Transform(Rotate180OddBoth);
       // catalystLocusReactionMasks[s].Copy(catalystAvoidMasks[s], ANDNOT);
 
-      for (unsigned t = 0; t < catalysts.size(); t++) {
-        catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
+    if (params.numCatalysts > 1) {
+      catalystCollisionMasks = std::vector<std::vector<LifeState>>(
+          catalysts.size(), std::vector<LifeState>(catalysts.size()));
+      for (unsigned s = 0; s < catalysts.size(); s++) {
+        for (unsigned t = 0; t < catalysts.size(); t++) {
+          catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
+        }
       }
     }
     alsoRequired = LifeState::Parse(params.alsoRequired.c_str(), params.alsoRequiredXY.first, params.alsoRequiredXY.second);

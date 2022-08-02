@@ -605,7 +605,7 @@ public:
   inline bool Contains(const LifeTarget &target) const;
 
   void Reverse(int idxS, int idxE) {
-    for (int i = 0; idxS + i < idxE - i; i++) {
+    for (int i = 0; idxS + 2*i < idxE; i++) {
       int l = idxS + i;
       int r = idxE - i;
 
@@ -664,9 +664,8 @@ public:
           state[k | j] ^= t;
         }
       }
-
-      RecalculateMinMax();
     }
+    RecalculateMinMax();
   }
 
   void Transpose() { Transpose(true); }
