@@ -1,0 +1,15 @@
+max-gen 100
+start-gen 0
+last-gen 30
+num-catalyst 2
+stable-interval 16
+search-area -30 -30 60 60
+
+symmetry D2|
+pat 3o$obo$obo! -1 -1
+output phase-changing-blinker.rle
+
+cat 3o! 20 -1 0 . period 2 isblinker mustinclude
+
+cat 2o$2o! 30 0 0 / required o! 0 0 forbidden obo$b2o$bo2$2o$2o! 0 -4 forbidden 2o3bo$2ob2o$4b2o! 0 0 forbidden b2o$b2o2$bo$2o$obo! -1 0 forbidden 2o$b2ob2o$o3b2o! -4 -1 forbidden o3b2o$b2ob2o$2o! -4 0 forbidden obo$2o$bo2$b2o$b2o! -1 -4 forbidden 4b2o$2ob2o$2o3bo! 0 -1 forbidden 2o$2o2$bo$b2o$obo! 0 0 
+cat 2o$o$b3o$3bo! 10 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6 required bo$o$b3o$3bo! -2 -2 
