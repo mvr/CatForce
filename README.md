@@ -40,6 +40,8 @@ denote optional parameters.
 |                       | `(required rle x y)`   | Cells of a catalyst that must stay ON in every generation               |
 |                       | `(mustinclude)`        | Solutions must use at least one `mustinclude` catalyst                  |
 |                       | `(transparent)`        | Marked as transparent for the purposes of `num-transparent`             |
+|                       | `(period n)`           | Periodic catalyst                                                       |
+|                       | `(isblinker)`          | Mark this catalyst for the phase-shifting blinker special case          |
 | `output`              | `filename`             | Output filename                                                         |
 | `(and/or)filter`      | `genOrRange rle dx dy` | Filter that must be matched for the solution to be accepted (see below) |
 | `full-report`         | `filename`             | Output filename for solutions ignoring all pattern filters              |
