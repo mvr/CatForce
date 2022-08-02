@@ -101,6 +101,7 @@ public:
   bool transparent;
   bool mustInclude;
   unsigned period;
+  bool isBlinker;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems;
@@ -122,6 +123,7 @@ public:
 
     transparent = false;
     mustInclude = false;
+    isBlinker = false;
     period = 1;
 
     unsigned argi = 6;
@@ -146,6 +148,9 @@ public:
         argi += 1;
       } else if (elems[argi] == "mustinclude") {
         mustInclude = true;
+        argi += 1;
+      } else if (elems[argi] == "isblinker") {
+        isBlinker = true;
         argi += 1;
       } else if (elems[argi] == "period") {
         period = atoi(elems[argi + 1].c_str());
@@ -586,6 +591,7 @@ public:
   bool transparent;
   bool mustInclude;
   unsigned period;
+  bool isBlinker;
 
   static std::vector<CatalystData> FromInput(CatalystInput &input);
 };
@@ -644,6 +650,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.transparent = input.transparent;
       result.period = input.period;
       result.mustInclude = input.mustInclude;
+      result.isBlinker = input.isBlinker;
 
       results.push_back(result);
 
@@ -1014,6 +1021,8 @@ public:
 
   unsigned filterMaxGen{};
 
+  LifeTarget blinkerTarget;
+
   void Init(const char *inputFile) {
     begin = clock();
 
@@ -1063,6 +1072,10 @@ public:
       }
     }
     alsoRequired = LifeState::Parse(params.alsoRequired.c_str(), params.alsoRequiredXY.first, params.alsoRequiredXY.second);
+
+    blinkerTarget.wanted = LifeState::Parse("o!");
+    blinkerTarget.unwanted = LifeState::Parse("b3o$2ob2o$o3bo$2ob2o$b3o!");
+    blinkerTarget.unwanted.Move(-2, -2);
 
     current = clock();
     found = 0;
@@ -1390,7 +1403,13 @@ public:
 
               LifeState shiftedCatalyst = catalysts[s].state;
               shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
-              shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
+              if (!catalysts[s].isBlinker)
+                shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
+              else {
+                shiftedTargets[config.count] = blinkerTarget;
+                shiftedTargets[config.count].wanted.Move(newPlacement.first, newPlacement.second);
+                shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
+              }
 
               LifeState symCatalyst;
               symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
