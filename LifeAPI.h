@@ -664,9 +664,8 @@ public:
           state[k | j] ^= t;
         }
       }
-
-      RecalculateMinMax();
     }
+    RecalculateMinMax();
   }
 
   void Transpose() { Transpose(true); }
