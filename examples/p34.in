@@ -5,7 +5,7 @@ stable-interval 10
 num-catalyst 3
 
 symmetry C2
-search-area -20 -3 40 20
+search-area -20 -20 40 40
 pat 2ob2o$o3bo$b3o! 1 2
 filter 1-100 2ob2o$o3bo$b3o! 1 2
 output p34.rle
