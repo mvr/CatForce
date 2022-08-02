@@ -16,7 +16,7 @@ Run `make`, and then `./CatForce inputfile.in`. Currently only tested with `clan
 
 Input File Format
 --
-See `1.in` for an example.
+See `examples/p83.in` etc. Some useful lists of catalysts are given in `catlists/`.
 
 Parameters are separated by `" "` - i.e. space. Parentheses below
 denote optional parameters.
@@ -46,7 +46,7 @@ denote optional parameters.
 | `max-category-size`   | `n`                    | Maximum output row length before more solutions are dropped             |
 | `fit-in-width-height` | `w h`                  | Only allow solutions where all catalysts fit in a `w` by `h` rectangle  |
 | `also-required`       | `rle x y`              | Require `rle` to be present in every generation                         |
-| `symmetry`            |                        | Global symmetry of the entire pattern (see below)                       |
+| `symmetry`            | `symmetrycode`         | Global symmetry of the entire pattern (see below)                       |
 
 **Catalyst Symmetry**: A character specifying what transformations are
 applied to the catalyst:
