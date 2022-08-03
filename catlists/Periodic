@@ -39,6 +39,12 @@ cat b2o$b2o3$3o$2obo2b2o$2b2o2b2o$2b2o! 10 -2 -5 @ period 6 required b2o$4o$4o$4
 
 # fumarole
 cat 3b2o$b2o2b2o$bo4bo$2bo2bo$obo2bobo$2o4b2o! 10 -4 -2 @ period 5 required 2bo2bo$obo2bobo$2o4b2o! -4 1
+# toaster
+cat 4bo6b2o$3bobob2o2bo$3bobobobobo$2b2obo3bob2o$o3b2obob2o3bo$3bo7bo$3bo7bo$o3b2obob2o3bo$2b2obo3bob2o$3bobobobobo$3bobob2o2bo$4bo6b2o! 10 0 -6 @ period 5 required bo6b2o$9o$9o$9o$9o$9o$9o$9o$9o$9o$9o$bo6b2o! 3 -6
+# middleweight volcano
+cat 5bo2b2o$4bobo2bo$4bobobo$3b2obob2o$bo3b2o3bo$4b2o2b2obo$o3bobo2bobo$4b2o2b3o$bo3b2o$3b2obob5o$4bobo2bo2bo$4bo2bo$5b2o! 10 0 -6 @ period 5 required 5bo2b2o$4b6o$4b6o$3b7o$3b8o$3b9o$3b9o$3b8o$3b10o$3b10o$4b9o$4b4o$5b2o! 0 -6
+# heavyweight volcano
+# cat 6bo$4b3o$3bo8b2o$3bob2o5bo$2b2obobo5bo$4bo2bo4b2o$4b2obob2o$3b3obobob5o$2bo2bobo5bo2bo$5bo2b5o2b2o$5b4o3bo$o3bobo5b2o$o3bobo5b2o$5b4o3bo$5bo2b5o2b2o$2bo2bobo5bo2bo$3b3obobob5o$4b2obob2o$4bo2bo4b2o$2b2obobo5bo$3bob2o5bo$3bo8b2o$4b3o$6bo! 10 0 -12 @ period 5 required 6bo$4b3o$3b4o5b2o$3b5o4bo$2b6o5bo$2b6o4b2o$2b9o$2b14o$2b15o$2b15o$2b15o$2b15o$2b15o$2b15o$2b15o$2b15o$2b14o$2b9o$2b7o3b2o$2b6o5bo$3b4o5bo$3b4o5b2o$4b3o$6bo! 0 -12
 
 # pentadecathlon
 cat 2bo4bo$2ob4ob2o$2bo4bo! 15 -5 -1 / period 15 required 8o$8o$8o! -4 -1
