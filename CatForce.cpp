@@ -1314,11 +1314,11 @@ public:
         break;
       }
 
-      LifeState next = config.state;
-      next.Step();
-
       // Try adding a catalyst
       if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
+        LifeState next = config.state;
+        next.Step();
+
           // for (unsigned s = 0; s < catalysts.size(); s++) {
           //   LifeState hitLocations = newcells.Convolve(catalystAvoidMasks[s]);
           //   masks[s].Join(hitLocations);
@@ -1449,6 +1449,9 @@ public:
             }
           }
 
+          config.state = next;
+      } else {
+        config.state.Step();
       }
 
       // Still block the locations that are hit too early
@@ -1474,8 +1477,6 @@ public:
 
       if (config.count == 0)
         Report();
-
-      config.state = next;
     }
 
     if (!failure)
