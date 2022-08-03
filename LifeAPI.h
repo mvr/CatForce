@@ -982,8 +982,6 @@ void LifeState::Step() {
   uint64_t tempxor[N];
   uint64_t tempand[N];
 
-  uint64_t tempState[N];
-
   for (int i = 0; i < N; i++) {
     uint64_t l = RotateLeft(state[i]);
     uint64_t r = RotateRight(state[i]);
@@ -1005,8 +1003,7 @@ void LifeState::Step() {
     else
       idxB = i + 1;
 
-    tempState[i] = Evolve(state[i], tempxor[idxU], tempand[idxU], tempxor[idxB],
-                          tempand[idxB]);
+    state[i] = Evolve(state[i], tempxor[idxU], tempand[idxU], tempxor[idxB], tempand[idxB]);
   }
 
   // int s = min + 1;
@@ -1022,9 +1019,6 @@ void LifeState::Step() {
   //   state[i] = tempState[i];
   // }
   //
-  for (int i = 0; i < N; i++) {
-    state[i] = tempState[i];
-  }
 
   // RecalculateMinMax();
   min = 0;
