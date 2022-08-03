@@ -581,7 +581,7 @@ class CatalystData {
 public:
   LifeState state;
   std::vector<LifeState> phases;
-  // LifeTarget target;
+  LifeTarget target;
   LifeState reactionMask;
   std::vector<LifeState> phaseReactionMask;
   unsigned maxDisappear;
@@ -609,7 +609,9 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     for (unsigned i = 0; i < input.period; i++) {
       CatalystData result;
 
+
       result.state = pat;
+      result.target = LifeTarget(pat);
       result.reactionMask = pat.BigZOI();
       result.reactionMask.Transform(Rotate180OddBoth);
 
@@ -1362,11 +1364,11 @@ public:
         break;
       }
 
-      LifeState next = config.state;
-      next.Step();
-
       // Try adding a catalyst
       if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
+        LifeState next = config.state;
+        next.Step();
+
           // for (unsigned s = 0; s < catalysts.size(); s++) {
           //   LifeState hitLocations = newcells.Convolve(catalystAvoidMasks[s]);
           //   masks[s].Join(hitLocations);
@@ -1403,13 +1405,6 @@ public:
 
               LifeState shiftedCatalyst = catalysts[s].state;
               shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
-              if (!catalysts[s].isBlinker)
-                shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
-              else {
-                shiftedTargets[config.count] = blinkerTarget;
-                shiftedTargets[config.count].wanted.Move(newPlacement.first, newPlacement.second);
-                shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
-              }
 
               LifeState symCatalyst;
               symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
@@ -1488,6 +1483,16 @@ public:
                           << std::endl;
               }
 
+              if (!catalysts[s].isBlinker) {
+                shiftedTargets[config.count].wanted = shiftedCatalyst;
+                shiftedTargets[config.count].unwanted = catalysts[s].target.unwanted;
+                shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
+              } else {
+                shiftedTargets[config.count] = blinkerTarget;
+                shiftedTargets[config.count].wanted.Move(newPlacement.first, newPlacement.second);
+                shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
+              }
+
               std::vector<LifeState> newMasks = masks;
 
               LifeState bounds;
@@ -1519,7 +1524,11 @@ public:
             }
           }
 
+          config.state = next;
+      } else {
+        config.state.Step();
       }
+      config.catalystsState.Step();
 
       // Still block the locations that are hit too early
       if (config.state.gen < params.startGen) {
@@ -1544,9 +1553,6 @@ public:
 
       if (config.count == 0)
         Report();
-
-      config.state = next;
-      config.catalystsState.Step();
     }
 
     if (!failure)
