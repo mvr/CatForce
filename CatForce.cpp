@@ -570,7 +570,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 class CatalystData {
 public:
   LifeState state;
-  // LifeTarget target;
+  LifeTarget target;
   LifeState reactionMask;
   unsigned maxDisappear;
   std::vector<LifeTarget> forbidden;
@@ -595,6 +595,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     CatalystData result;
 
     result.state = pat;
+    result.target = LifeTarget(pat);
     result.reactionMask = pat.BigZOI();
     result.reactionMask.Transform(Rotate180OddBoth);
 
@@ -1351,7 +1352,6 @@ public:
 
               LifeState shiftedCatalyst = catalysts[s].state;
               shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
-              shiftedTargets[config.count] = LifeTarget(shiftedCatalyst);
 
               LifeState symCatalyst;
               symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
@@ -1413,6 +1413,10 @@ public:
                           << newPlacement.first << ", " << newPlacement.second
                           << std::endl;
               }
+
+              shiftedTargets[config.count].wanted = shiftedCatalyst;
+              shiftedTargets[config.count].unwanted = catalysts[s].target.unwanted;
+              shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
 
               std::vector<LifeState> newMasks = masks;
 
