@@ -1378,7 +1378,7 @@ public:
               newConfig.state.Join(symCatalyst);
 
               // Do a one-step lookahead to see if the catalyst interacts
-              if (newConfig.count < params.numCatalysts) {
+              {
                 LifeState newnext = newConfig.state;
                 newnext.Step();
 
@@ -1408,7 +1408,7 @@ public:
               LifeState newAntirequired = antirequired;
               newAntirequired.Join(catalysts[s].antirequired, newPlacement.first, newPlacement.second);
 
-              if (newConfig.count != params.numCatalysts) {
+              {
                 LifeState lookahead = newConfig.state;
                 lookahead.Step();
                 lookahead.Step();
