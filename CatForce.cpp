@@ -96,6 +96,8 @@ public:
   std::vector<std::pair<int, int>> forbiddenXY;
   std::string requiredRLE;
   std::pair<int, int> requiredXY;
+  std::string antirequiredRLE;
+  std::pair<int, int> antirequiredXY;
   std::string locusRLE;
   std::pair<int, int> locusXY;
   bool transparent;
@@ -134,6 +136,10 @@ public:
       } else if (elems[argi] == "required") {
         requiredRLE = elems[argi + 1];
         requiredXY = std::make_pair(atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
+        argi += 4;
+      } else if (elems[argi] == "antirequired") {
+        antirequiredRLE = elems[argi + 1];
+        antirequiredXY = std::make_pair(atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
         argi += 4;
       } else if (elems[argi] == "locus") {
         locusRLE = elems[argi + 1];
@@ -575,6 +581,7 @@ public:
   unsigned maxDisappear;
   std::vector<LifeTarget> forbidden;
   LifeState required;
+  LifeState antirequired;
   LifeState locus;
   bool transparent;
   bool mustInclude;
@@ -614,12 +621,10 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
                                          input.requiredXY.second, tran);
     }
 
-    if (input.locusRLE != "") {
-      result.locus = LifeState::Parse(input.locusRLE.c_str(),
-                                      input.locusXY.first,
-                                      input.locusXY.second, tran);
-    } else {
-      result.locus = pat;
+    if (input.antirequiredRLE != "") {
+      result.antirequired = LifeState::Parse(input.antirequiredRLE.c_str(),
+                                             input.antirequiredXY.first,
+                                             input.antirequiredXY.second, tran);
     }
 
     result.transparent = input.transparent;
@@ -1257,13 +1262,13 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, alsoRequired, masks, shiftedTargets,
+    RecursiveSearch(config, alsoRequired, LifeState(), masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>(),
                     std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
   }
 
   void
-  RecursiveSearch(Configuration config, const LifeState required,
+  RecursiveSearch(Configuration config, const LifeState required, const LifeState antirequired,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
@@ -1284,7 +1289,7 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      if (!config.state.Contains(required)) {
+      if (!config.state.Contains(required) || !config.state.AreDisjoint(antirequired)) {
           failure = true;
       }
 
@@ -1387,13 +1392,16 @@ public:
               LifeState newRequired = required;
               newRequired.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
 
+              LifeState newAntirequired = antirequired;
+              newAntirequired.Join(catalysts[s].antirequired, newPlacement.first, newPlacement.second);
+
               if (newConfig.count != params.numCatalysts) {
                 LifeState lookahead = newConfig.state;
                 lookahead.Step();
                 lookahead.Step();
                 lookahead.Step();
                 lookahead.Step();
-                if (!lookahead.Contains(newRequired)) {
+                if (!lookahead.Contains(newRequired) || !lookahead.AreDisjoint(newAntirequired)) {
                   if (config.count == 0) {
                     std::cout << "Skipping catalyst " << s << " at "
                               << newPlacement.first << ", "
@@ -1440,7 +1448,7 @@ public:
                 }
               }
 
-              RecursiveSearch(newConfig, newRequired, newMasks,
+              RecursiveSearch(newConfig, newRequired, newAntirequired, newMasks,
                               shiftedTargets, missingTime, recoveredTime,
                               hasReacted, hasRecovered);
 
