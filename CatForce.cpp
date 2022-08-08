@@ -582,7 +582,10 @@ public:
   std::vector<LifeTarget> forbidden;
   LifeState required;
   LifeState antirequired;
+  bool hasLocus;
   LifeState locus;
+  LifeState locusReactionMask;
+  LifeState locusAvoidMask;
   bool transparent;
   bool mustInclude;
 
@@ -605,8 +608,26 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.target = LifeTarget(pat);
     result.reactionMask = pat.BigZOI();
     result.reactionMask.Transform(Rotate180OddBoth);
+    result.reactionMask.RecalculateMinMax();
 
-    // result.target = LifeTarget(pat);
+    if (input.locusRLE != "") {
+      result.hasLocus = true;
+      result.locus = LifeState::Parse(input.locusRLE.c_str(),
+                                      input.locusXY.first,
+                                      input.locusXY.second, tran);
+    } else {
+      result.hasLocus = false;
+      result.locus = pat;
+    }
+
+    result.locusReactionMask = result.locus.BigZOI();
+    result.locusReactionMask.Transform(Rotate180OddBoth);
+    result.locusReactionMask.RecalculateMinMax();
+
+    result.locusAvoidMask = result.reactionMask;
+    result.locusAvoidMask.Copy(result.locusReactionMask, ANDNOT);
+    result.locusAvoidMask.RecalculateMinMax();
+
     result.maxDisappear = input.maxDisappear;
 
     for (unsigned k = 0; k < input.forbiddenRLE.size(); k++) {
@@ -1016,16 +1037,6 @@ public:
       targetFilter.push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
                                                params.filterdx[i], params.filterdy[i]));
 
-      // LifeState nonLocus = catalysts[s];
-      // nonLocus.Copy(catalystLocus[s], ANDNOT);
-
-      // catalystAvoidMasks[s] = nonLocus.BigZOI();
-      // catalystAvoidMasks[s].Transform(Rotate180OddBoth);
-
-      // catalystLocusReactionMasks[s] = catalystLocus[s].BigZOI();
-      // catalystLocusReactionMasks[s].Transform(Rotate180OddBoth);
-      // catalystLocusReactionMasks[s].Copy(catalystAvoidMasks[s], ANDNOT);
-
     if (params.numCatalysts > 1) {
       catalystCollisionMasks = std::vector<std::vector<LifeState>>(
           catalysts.size(), std::vector<LifeState>(catalysts.size()));
@@ -1324,13 +1335,15 @@ public:
         LifeState next = config.state;
         next.Step();
 
-          // for (unsigned s = 0; s < catalysts.size(); s++) {
-          //   LifeState hitLocations = newcells.Convolve(catalystAvoidMasks[s]);
-          //   masks[s].Join(hitLocations);
-          // }
-
           LifeState activePart = config.state;
           activePart.Copy(config.startingCatalysts, ANDNOT);
+
+          for (unsigned s = 0; s < catalysts.size(); s++) {
+            if(catalysts[s].hasLocus) {
+              LifeState hitLocations = catalysts[s].locusAvoidMask.Convolve(activePart);
+              masks[s].Join(hitLocations);
+            }
+          }
 
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if (config.transparentCount == params.numTransparent && catalysts[s].transparent)
@@ -1338,7 +1351,7 @@ public:
             if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
               continue;
 
-            LifeState newPlacements = catalysts[s].reactionMask.Convolve(activePart);
+            LifeState newPlacements = catalysts[s].locusReactionMask.Convolve(activePart);
             newPlacements.Copy(masks[s], ANDNOT);
 
             while (!newPlacements.IsEmpty()) {
