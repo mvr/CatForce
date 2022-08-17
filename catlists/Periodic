@@ -1,51 +1,101 @@
-# blinker
+# ============ period 2 ============
+# ===blinker===
 cat 3o! 20 -1 0 . period 2 
-# half traffic
+# ===half traffic===
 cat 3o2$4bo$4bo$4bo! 20 -2 -2 | period 2 
-# toad
+# ===toad===
 cat 3o$b3o! 5 -2 -1 x period 2 required o$3bo! -2 -1 
-# killer toads
+# ===killer toads===
 cat b3o$3o4$3o$b3o! 5 -1 -3 @ period 2 required 3bo$o4$o$3bo! -1 -3 
-# clock
+# ===clock===
 cat 2bo$2o$2b2o$bo! 5 -2 -2 | period 2 required o$bo! -1 -1 
-# fox+clock
+# ===fox+clock===
 cat 4bo$5b2o$3b2o$5bo3$4b3o$2bo$2o2b2o2$2bo2bo$3bo$3bo! 5 -4 -5 * period 2 required $5bo$4bo4$5bo2$bo3$3bo! -4 -5 
-# traffic stop
+# ===traffic stop===
 cat 2b3o2$o$o$o$8b2o$2b3o3bobo$10bo$10b2o! 40 -3 -3 @ period 2 required bo$obo$2bo$2b2o! 5 2 
 
-# MWSS emulator
+# ============ period 4 ============
+# ===MWSS emulator===
 cat 7bo$2b2obo3bob2o$2bo9bo$3b2o5b2o$3o2b5o2b3o$o2bo7bo2bo$b2o9b2o! 10 -7 0 @ required 2b2o7b2o$2bo9bo$3b2o5b2o$3o9b3o$o2bo7bo2bo$b2o9b2o! -7 1 period 4 
-# HWSS emulator
+# ===HWSS emulator===
 cat 7b2o$2b2obo4bob2o$2bo10bo$3b2o6b2o$3o2b6o2b3o$o2bo8bo2bo$b2o10b2o! 10 -8 0 @ required 2b2o8b2o$2bo10bo$3b2o6b2o$3o10b3o$o2bo8bo2bo$b2o10b2o! -8 1 period 4
-# mold
+# ===mold===
 cat 2b2o$bo2bo$2bobo$2obo$3o$2o! 10 -2 -3 @ period 4 required 2b2o$b4o$5o$4o$3o! -2 -3
-# t-nosed p4
+# ===t-nosed p4===
 cat 8bo$8bo$7b3o2$2b2o9b2o$2bo11bo$3b11o$3o2b7o2b3o$o2bo2bo3bo2bo2bo$b2o4b3o4b2o$7b3o$8bo! 10 -8 -7 / period 4 required 2b2o9b2o$2bo11bo$3bo9bo$3o11b3o$o2bo9bo2bo$b2o11b2o! -8 -3
 
-# figure 8
-cat 3o$3o$3o$3b3o$3b3o$3b3o! 10 -3 -3 | period 8 required 3o$4o$5o$b5o$2b4o$3b3o! -3 -3
-# blocker
-cat 6bobo$5bo$2o2bo4bo$2obo2bob2o$4b2o! 10 -5 -3 x period 8 required 4b2o$10o$10o$4b2o! -5 -2
+# ============ period 8 ============
+# ===figure eight===
+cat 2b2o2$o3bo$o4bo$2bobobo$3bobobo$4bo4bo$5bo3bo2$6b2o! 8 -5 -5 | required 2bo$b3o$5o$b5o$2b5o$3b5o$4b3o$5bo! -4 -4 period 8
+# ===36P8 (medium domino)===
+cat 6b2o$10b2o$5b2obo2bo$6bob3o$7bo$2bo4b4o$ob2o3bo2bo$o3b3ob2o$2b2obobo$3bobobo$bobob2o$b2o! 8 -6 -6 @ required 4b3o2b2o$4b4o2bo$3b7o$2b8o$10o$10o$9o$b6o$2b5o$ob4o$2o! -5 -5 period 8
+# ===180P8 (huge domino)===
+cat 17b2o$6bo2bo2bo3bo2bob2o$6b7o2bob3obo$2o13bo6b3o$bo2b11ob6o2bo$bobo4bo5bobobo4bo$2obobo4b2o3bo3b2o$o5bo2bo2bo4b2o8b5obo$b2ob2o6bo5b2o3bob2o$2bobo7bo8bo2bo9bo$2bobo7bo8bo2bo9bo$b2ob2o6bo5b2o3bob2o$o5bo2bo2bo4b2o8b5obo$2obobo4b2o3bo3b2o$bobo4bo5bobobo4bo$bo2b11ob6o2bo$2o13bo6b3o$6b7o2bob3obo$6bo2bo2bo3bo2bob2o$17b2o! 8 -18 -10 @ required 17b2o$6bo2bo2bo3b7o$2b20o$25o$b24o$b25o$27o$31o$b30o$2b29o$2b29o$b30o$31o$26o$b24o$b24o$25o$2b20o$6bo2bo2bo3b7o$17b2o! -18 -10 forbidden bo$obo15b2o$b2o4bo2bo2bo3bo2bob2o$7b7o2bob3obo$b2o13bo6b3o$2bo2b11ob6o2bo$2bobo4bo5bobobo4bo$b2obobo4b2o3bo3b2o$bo5bo2bo2bo4b2o8b5obo$2b2ob2o6bo5b2o3bob2o$3bobo7bo8bo2bo9bo$3bobo7bo8bo2bo9bo$2b2ob2o6bo5b2o3bob2o$bo5bo2bo2bo4b2o8b5obo$b2obobo4b2o3bo3b2o$2bobo4bo5bobobo4bo$2bo2b11ob6o2bo$b2o13bo6b3o$7b7o2bob3obo$7bo2bo2bo3bo2bob2o$18b2o! -19 -11 forbidden 18b2o$7bo2bo2bo3bo2bob2o$7b7o2bob3obo$b2o13bo6b3o$2bo2b11ob6o2bo$2bobo4bo5bobobo4bo$b2obobo4b2o3bo3b2o$bo5bo2bo2bo4b2o8b5obo$2b2ob2o6bo5b2o3bob2o$3bobo7bo8bo2bo9bo$3bobo7bo8bo2bo9bo$2b2ob2o6bo5b2o3bob2o$bo5bo2bo2bo4b2o8b5obo$b2obobo4b2o3bo3b2o$2bobo4bo5bobobo4bo$2bo2b11ob6o2bo$b2o13bo6b3o$7b7o2bob3obo$b2o4bo2bo2bo3bo2bob2o$obo15b2o$bo! -19 -10 period 8
+# ===blocker===
+cat 4b2o$2obo2bob2o$o4bo2b2o$4bo$bobo! 8 -5 -3 | required 8o$8o$8o$8o! -4 -3 period 8
+# ===kok's galaxy===
+cat 3bo2bo$7bo$8b2o$2bob2o6bo$2bo2bo3bo$bo3bob3o$o11bo$3b3obo3bo$3bo3bo2bo$o6b2obo$3b2o$5bo$6bo2bo! 8 -7 -7 | required 3b5o$2b7o$b9o$11o$11o$11o$11o$11o$b9o$2b7o$3b5o! -6 -6 period 8
+# ===209P8 (huge middleweight)===
+cat 15bob2o$2bo12b2obo$bobo14bob2o8bo$o3bo6b2o5bo2bo3b2o2bobo$bo3bo5bobob2ob2o5bo3bobo$2bo3bo6bobobo2b4obo2b2o2b2o$3bo3bo5bobo3bo3bobobo2bobo$4bobo3bo2b2ob2ob2obo2bob3o2bo$5bo4bob3o2b2obo4bo4bob2o$11bo4bo3bobo2bo4b2o3bo$12b9o5bo2b2obo$32bo3bo$12b9o5bo2b2obo$11bo4bo3bobo2bo4b2o3bo$5bo4bob3o2b2obo4bo4bob2o$4bobo3bo2b2ob2ob2obo2bob3o2bo$3bo3bo5bobo3bo3bobobo2bobo$2bo3bo6bobobo2b4obo2b2o2b2o$bo3bo5bobob2ob2o5bo3bobo$o3bo6b2o5bo2bo3b2o2bobo$bobo14bob2o8bo$2bo12b2obo$15bob2o! 8 -19 -12 @ required 14bob2o$13b5o$3o9b12o5bo$4o6b21o$5o5b21o$b5o3b24o$2b4o3b23o$3b3o3b23o$9b24o$10b23o$11b22o$11b22o$11b22o$10b23o$9b24o$3b3o3b23o$2b4o3b23o$b5o3b24o$5o5b21o$4o6b21o$3o9b9o8bo$13b5o$14bob2o! -18 -12 period 8
 
-# caterer
+# ============ period 16 ============
+# ===rich's p16===
+cat 4bo5bo$4bo5bo$2b4o3b4o$b2o9b2o$3o2b2ob2o2b3o$2o3b2ob2o3b2o$b3obo3bob3o$2b2o7b2o$3b3o3b3o$5b2ob2o$4bobobobo$5bo3bo! 10 -8 -6 / required 3b5o$2b7o$b9o$11o$11o$11o$b9o$2b7o$2b7o$3b5o! -6 -4 period 16
+# ===charity's p16===
+cat 4bobo2$3bo$10b2o$bo2b3o3b2o$obo$bo$6bo$6b2o$5b2obo$4bo2b3o$3bobobo$2bobobo$3o2bo$bob2o$2b2o$3bo! 10 -6 -9 * required b9o$b9o$b9o$b8o$8o$8o$b7o$b7o$b6o$b5o$b4o$b3o! -5 -6 period 16
+# ===68P16===
+cat 3b2o5b2o3b2o$bo4bo3b2o3bo2bo$6bo$o6bo5bo5bo$2o4bo5bo6bo$6bo2b2o2bo$3bobo3b2o3b2ob2o$4bo11bo$2o$2o3b2o6b2o$5b2o6b2o3b2o$18b2o$3bo11bo$b2ob2o3b2o3bobo$6bo2b2o2bo$o6bo5bo4b2o$o5bo5bo6bo$13bo$bo2bo3b2o3bo4bo$3b2o3b2o5b2o! 10 -10 -10 | required 5b10o$2b14o$b16o$17o$17o$18o$18o$18o$18o$18o$18o$18o$18o$b17o$b17o$b16o$2b14o$3b10o! -9 -9 period 16
+
+# ============ period 3 ============
+# ===caterer===
 cat 2bo$o3b4o$o3bo$o$3bo$b2o! 10 -3 -3 * period 3 required b5o$6o$b3o$b2o$b2o! -3 -2
-# 30P3
+# ===30P3===
 cat 11b2o$2bo9bo$o3b4obo$o3bo5b5o$o8bo4bo$3bo7bo$b2o7bobo$7b3obo! 10 -7 -3 * period 3 required 11b2o$12bo2$o3bo5b5o$14bo$11bo$2bo9bo$11bo! -7 -3
 
-# p6 pipsquirter
+# ============ period 6 ============
+# ===p6 pipsquirter===
 cat 5bo$5bo2$3bo3bo$b3obob3o$o3b2o4bo$ob2o2b2obobo$bo2b2o2b2obo$2b2o2b2obobob2o$4bo2bobobob2o$4b4ob2o$8bo$6bobo$6b2o! 10 -5 -1 @ period 6 required b3o3b3o$o9bo$ob2o5bobo$bo2b2o5bo$2b2o7bob2o$4bo6bob2o$4b4ob2o$8bo$6bobo$6b2o! -5 3 
-# unix
+# ===unix===
 cat b2o$b2o3$3o$2obo2b2o$2b2o2b2o$2b2o! 10 -2 -5 @ period 6 required b2o$4o$4o$4o$7o$b7o$2b6o$3b4o! -2 -5
 
-# fumarole
-cat 3b2o$b2o2b2o$bo4bo$2bo2bo$obo2bobo$2o4b2o! 10 -4 -2 @ period 5 required 2bo2bo$obo2bobo$2o4b2o! -4 1
-# toaster
-cat 4bo6b2o$3bobob2o2bo$3bobobobobo$2b2obo3bob2o$o3b2obob2o3bo$3bo7bo$3bo7bo$o3b2obob2o3bo$2b2obo3bob2o$3bobobobobo$3bobob2o2bo$4bo6b2o! 10 0 -6 @ period 5 required bo6b2o$9o$9o$9o$9o$9o$9o$9o$9o$9o$9o$bo6b2o! 3 -6
-# middleweight volcano
-cat 5bo2b2o$4bobo2bo$4bobobo$3b2obob2o$bo3b2o3bo$4b2o2b2obo$o3bobo2bobo$4b2o2b3o$bo3b2o$3b2obob5o$4bobo2bo2bo$4bo2bo$5b2o! 10 0 -6 @ period 5 required 5bo2b2o$4b6o$4b6o$3b7o$3b8o$3b9o$3b9o$3b8o$3b10o$3b10o$4b9o$4b4o$5b2o! 0 -6
-# heavyweight volcano
-# cat 6bo$4b3o$3bo8b2o$3bob2o5bo$2b2obobo5bo$4bo2bo4b2o$4b2obob2o$3b3obobob5o$2bo2bobo5bo2bo$5bo2b5o2b2o$5b4o3bo$o3bobo5b2o$o3bobo5b2o$5b4o3bo$5bo2b5o2b2o$2bo2bobo5bo2bo$3b3obobob5o$4b2obob2o$4bo2bo4b2o$2b2obobo5bo$3bob2o5bo$3bo8b2o$4b3o$6bo! 10 0 -12 @ period 5 required 6bo$4b3o$3b4o5b2o$3b5o4bo$2b6o5bo$2b6o4b2o$2b9o$2b14o$2b15o$2b15o$2b15o$2b15o$2b15o$2b15o$2b15o$2b15o$2b14o$2b9o$2b7o3b2o$2b6o5bo$3b4o5bo$3b4o5b2o$4b3o$6bo! 0 -12
+# ============ period 9 ============
+# ===48P9 (weak dot)===
+cat 4b2o$b2o2bo$4bo$4bo8b2o$o12bo$4b2o5bobo$2b2ob2o4b2o$6b2o$6b3o$6b2o$2b2ob2o4b2o$4b2o5bobo$o12bo$4bo8b2o$4bo$b2o2bo$4b2o! 12 -8 -9 @ required b3o$b3o$5o$6o5b2o$7o4b2o$10ob2o$13o$13o$13o$13o$13o$10ob2o$7o4b2o$6o5b2o$5o$b3o$b3o! -6 -9 forbidden 13bo$4b2o6bobo$b2o2bo7b2o$4bo$4bo8b2o$o12bo$4b2o5bobo$2b2ob2o4b2o$6b2o$6b3o$6b2o$2b2ob2o4b2o$4b2o5bobo$o12bo$4bo8b2o$4bo$b2o2bo$4b2o! -8 -10 forbidden 4b2o$b2o2bo$4bo$4bo8b2o$o12bo$4b2o5bobo$2b2ob2o4b2o$6b2o$6b3o$6b2o$2b2ob2o4b2o$4b2o5bobo$o12bo$4bo8b2o$4bo$b2o2bo7b2o$4b2o6bobo$13bo! -8 -9 period 9
+# ===60P9 (dot)===
+cat 9bo$8bobo$4bo3bobo3bo$3bobo7bobo$2bobo3b3o3bo$3bo3bo3bo$7b4obo$5b2o4bobob2o$b2obobob2obobo3bo$o3bobob2obobob2o$b2obobo4b2o$5bob4o$6bo3bo3bo$3bo3b3o3bobo$2bobo7bobo$3bo3bobo3bo$7bobo$8bo! 12 -9 -9 . required 4b2obob2o$2b11o$b12o$b13o$14o$13o$15o$13o$14o$14o$13o$b12o$b11o$3b2obob2o! -7 -7 period 9
+# ===50P9 (domino)===
+cat 8b2o2$4b2o6b2o$7b4o$3bobo6bobo$b3obobo2bobob3o$o3b2ob4ob2o3bo$b2o3bo4bo3b2o$3b2o2bo2bo2b2o$3bob2o4b2obo! 12 -9 -5 @ required 4b10o$3b12o$3b12o$b16o$18o$b16o$3b12o$3bob8obo! -9 -3 period 9
+# ===104P9 (large heavyweight)===
+cat 8b2o$6bo4bo$2b2o10b2o$2bo2bo6bo2bo$3b3ob4ob3o$6bo4bo$3b3o6b3o$2bo12bo$3b5o2b5o$8b2o$5b2o4b2o$4bobo4bobo$4b2o6b2o3$6b2o2b2o$5bo2b2o2bo$3bobob4obobo$b3obobo2bobob3o$o3b2ob4ob2o3bo$b2o3bo4bo3b2o$3b2o2bo2bo2b2o$3bob2o4b2obo! 12 -9 -12 @ required 2b14o$2b14o$3b12o$3b12o$3b12o$2b14o$3b12o$4b10o$4b10o$4b10o$4b10o$4b10o$4b10o$4b10o$3b12o$3b12o$b16o$18o$b16o$3b12o$3bob8obo! -9 -10 period 9
 
-# pentadecathlon
+# ============ period 5 ============
+# ===fumarole===
+cat 3b2o$b2o2b2o$bo4bo$2bo2bo$obo2bobo$2o4b2o! 10 -4 -2 @ period 5 required 2bo2bo$obo2bobo$2o4b2o! -4 1
+# ===toaster===
+cat 4bo6b2o$3bobob2o2bo$3bobobobobo$2b2obo3bob2o$o3b2obob2o3bo$3bo7bo$3bo7bo$o3b2obob2o3bo$2b2obo3bob2o$3bobobobobo$3bobob2o2bo$4bo6b2o! 10 0 -6 @ period 5 required bo6b2o$9o$9o$9o$9o$9o$9o$9o$9o$9o$9o$bo6b2o! 3 -6
+# ===middleweight volcano===
+cat 5bo2b2o$4bobo2bo$4bobobo$3b2obob2o$bo3b2o3bo$4b2o2b2obo$o3bobo2bobo$4b2o2b3o$bo3b2o$3b2obob5o$4bobo2bo2bo$4bo2bo$5b2o! 10 0 -6 @ period 5 required 5bo2b2o$4b6o$4b6o$3b7o$3b8o$3b9o$3b9o$3b8o$3b10o$3b10o$4b9o$4b4o$5b2o! 0 -6
+# ===heavyweight volcano===
+cat 6bo$4b3o$3bo8b2o$3bob2o5bo$2b2obobo5bo$4bo2bo4b2o$4b2obob2o$3b3obobob5o$2bo2bobo5bo2bo$5bo2b5o2b2o$5b4o3bo$o3bobo5b2o$o3bobo5b2o$5b4o3bo$5bo2b5o2b2o$2bo2bobo5bo2bo$3b3obobob5o$4b2obob2o$4bo2bo4b2o$2b2obobo5bo$3bob2o5bo$3bo8b2o$4b3o$6bo! 10 0 -12 @ period 5 required 6bo$4b3o$3b4o5b2o$3b5o4bo$2b6o5bo$2b6o4b2o$2b9o$2b14o$2b15o$2b15o$2b15o$2b15o$2b15o$2b15o$2b15o$2b15o$2b14o$2b9o$2b7o3b2o$2b6o5bo$3b4o5bo$3b4o5b2o$4b3o$6bo! 0 -12
+
+# ============ period 10 ============
+# ===55P10 (double middleweight)===
+cat 6bo7bo$4bo3bo3bo3bo2$3bo5bobo5bo$b3ob2o2bobo2b2ob3o$o4bo3bobo3bo4bo$b5obobobobob5o$6b2obobob2o$3b2o5bo5b2o$3bo13bo$4bo11bo$3b2o11b2o! 12 -11 -6 @ required 3b7ob7o$b9ob9o$10ob10o$b9ob9o$3b7ob7o$3b15o$3b15o$4b13o$3b2o11b2o! -11 -3 forbidden 6bo7bo$4bo3bo3bo3bo2$3bo5bobo5bo$b3ob2o2bobo2b2ob3o$o4bo3bobo3bo4bo$b5obobobobob5o$6b2obobob2o$3b2o5bo5b2o$3bo13bo$4bo11bo$3b2o11b2o2$3b2o$2bobo$3bo! -11 -6 forbidden 6bo7bo$4bo3bo3bo3bo2$3bo5bobo5bo$b3ob2o2bobo2b2ob3o$o4bo3bobo3bo4bo$b5obobobobob5o$6b2obobob2o$3b2o5bo5b2o$3bo13bo$4bo11bo$3b2o11b2o2$16b2o$16bobo$17bo! -11 -6 period 10
+# ===p10 domino fountain===
+cat 16b2o2$13bo6bo$12bo8bo$13b8o3$8b2o14b2o$2b2o4b6o6b6o4b2o$2b3o5b5o4b5o5b3o$b2o2b2o2bo3bobo2bobo3bo2b2o2b2o$o2b2obob3obo2b4o2bob3obob2o2bo$2obo2bobo2bobo6bobo2bobo2bob2o$3bob2ob2obob8obob2ob2obo$3bo2bo2bobo10bobo2bo2bo$4bobo2bobob4o2b2obobo2bobo$5bo4b2obo2bo2b2ob2o4bo! 12 -17 -9 @ required 12b10o$11b12o$10b14o$8b18o$2b2o4b18o4b2o$2b30o$b32o$34o$34o$2b29o$3b28o$4b26o$5b9o2b13o! -17 -5 period 10
+
+# ============ period 15 ============
+# ===pentadecathlon===
 cat 2bo4bo$2ob4ob2o$2bo4bo! 15 -5 -1 / period 15 required 8o$8o$8o! -4 -1
 
+# ============ period 7 ============
+# ===meatball===
+cat 8bo$3b2o4b2o$b3ob2o2b2o$o8bo$bob2o$bobo3bobo$6b2obo$bo8bo$2o2b2ob3o$2o4b2o$2bo! 10 -6 -6 x required 3b8o$b10o$10o$b9o$b9o$b9o$b10o$10o$8o! -6 -5 period 7
+# ===thin meatball===
+cat bo2bo$5bo$o5bo$2o4bo$5bo$4bo$3b4obo$3bo3bo$bo3bo$ob4o$4bo$3bo$2bo4b2o$2bo5bo$3bo$4bo2bo! 10 -5 -8 x required 3b3o$b6o$b6o$b5o$b4o$b6obo$b7o$b7o$ob6o$4b4o$3b5o$2b6o$2b6o$3b3o! -5 -7 period 7
+# ===p7 pipsquirter===
+cat 5bo$5bo2$3bo3bo$b3obob3o$o4bo4bo$b4obobobo$4bobo4b2o$b2obo2bob2o2bo$b2obo3bobob2o$5bo4bobo$10bo2bo$6bo4b3o$7b4o$11bo$3b2obobob2o$3bob2ob2o$7bo3b3o$7bob2o2bo$8bobo! 10 -7 -10 + required 4b3o$3b5o$b9o$11o$b10o$b12o$3b11o$3b11o$4b9o$4b10o$4b10o$4b9o$4b9o$3b10o$3bob8o$7b7o$7b4o2bo$8bobo! -7 -8 forbidden 5bo$5bo2$3bo3bo$b3obob3o$o4bo4bo$b4obobobo$4bobo4b2o$b2obo2bob2o2bo$b2obo3bobob2o$5bo4bobo$10bo2bo$6bo4b3o$7b4o$11bo$3b2obobob2o$3bob2ob2o$7bo3b3ob2o$7bob2o2bobobo$8bobo5bo! -7 -10 forbidden 6bo$6bo2$4bo3bo$2b3obob3o$bo4bo4bo$2b4obobobo$5bobo4b2o$2b2obo2bob2o2bo$2b2obo3bobob2o$6bo4bobo$11bo2bo$7bo4b3o$8b4o$12bo$b2ob2obobob2o$obobob2ob2o$bo6bo3b3o$8bob2o2bo$9bobo! -8 -10 period 7
+# ===62P7 (midsized domino)===
+cat 8b2o$6bo4bo$2b2obo6bob2o$bob4o4b4obo$bobob8obobo$2obo2b6o2bob2o$o2bo10bo2bo$2bo2bo6bo2bo$3b2o8b2o$5bo6bo$3b2o3b2o3b2o$3bo3bo2bo3bo$bobo4b2o4bobo$b2o12b2o! 10 -9 -7 + required 2b2o10b2o$b6o4b6o$b16o$18o$18o$b16o$b16o$b16o$b16o$b16o$b16o$b2o12b2o! -9 -5 forbidden 8b2o$6bo4bo$2b2obo6bob2o$bob4o4b4obo$bobob8obobo$2obo2b6o2bob2o$o2bo10bo2bo$2bo2bo6bo2bo$3b2o8b2o$5bo6bo$3b2o3b2o3b2o$3bo3bo2bo3bo4bo$bobo4b2o4bobobobo$b2o12b2ob2o! -9 -7 forbidden 11b2o$9bo4bo$5b2obo6bob2o$4bob4o4b4obo$4bobob8obobo$3b2obo2b6o2bob2o$3bo2bo10bo2bo$5bo2bo6bo2bo$6b2o8b2o$8bo6bo$6b2o3b2o3b2o$bo4bo3bo2bo3bo$obobobo4b2o4bobo$b2ob2o12b2o! -12 -7 period 7
+===60P7 (midsize domino)===
+cat 10b2o$8b6o$7b8o$6bo8bo$5b2o8b2o$3b3ob8ob3o$2bob2o2b6o2b2obo$b2ob2o4b2o4b2ob2o$2bo2b2o8b2o2bo$o2bobo10bobo2bo$2obobobo6bobobob2o$3bo2b2o6b2o2bo$2obo14bob2o$obo16bobo! 10 -11 -7 @ required 7b8o$6b10o$5b12o$3b16o$2b18o$b20o$22o$22o$22o$22o$22o$ob3o12b3obo! -11 -5 period 7
