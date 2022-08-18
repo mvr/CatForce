@@ -62,6 +62,7 @@ public:
   SearchParams() {
     maxGen = 250;
     numCatalysts = 2;
+    numTransparent = 100;
     stableInterval = 15;
     pat = "";
     searchArea[0] = -30;
@@ -96,6 +97,8 @@ public:
   std::vector<std::pair<int, int>> forbiddenXY;
   std::string requiredRLE;
   std::pair<int, int> requiredXY;
+  std::string antirequiredRLE;
+  std::pair<int, int> antirequiredXY;
   std::string locusRLE;
   std::pair<int, int> locusXY;
   bool transparent;
@@ -138,6 +141,10 @@ public:
       } else if (elems[argi] == "required") {
         requiredRLE = elems[argi + 1];
         requiredXY = std::make_pair(atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
+        argi += 4;
+      } else if (elems[argi] == "antirequired") {
+        antirequiredRLE = elems[argi + 1];
+        antirequiredXY = std::make_pair(atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
         argi += 4;
       } else if (elems[argi] == "locus") {
         locusRLE = elems[argi + 1];
@@ -587,7 +594,11 @@ public:
   unsigned maxDisappear;
   std::vector<LifeTarget> forbidden;
   LifeState required;
+  LifeState antirequired;
+  bool hasLocus;
   LifeState locus;
+  LifeState locusReactionMask;
+  LifeState locusAvoidMask;
   bool transparent;
   bool mustInclude;
   unsigned period;
@@ -609,11 +620,11 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     for (unsigned i = 0; i < input.period; i++) {
       CatalystData result;
 
-
       result.state = pat;
       result.target = LifeTarget(pat);
       result.reactionMask = pat.BigZOI();
       result.reactionMask.Transform(Rotate180OddBoth);
+      result.reactionMask.RecalculateMinMax();
 
       // result.target = LifeTarget(pat);
       result.maxDisappear = input.maxDisappear;
@@ -630,13 +641,36 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
                                            input.requiredXY.second, tran);
       }
 
+      if (input.antirequiredRLE != "") {
+        result.antirequired = LifeState::Parse(input.antirequiredRLE.c_str(),
+                                               input.antirequiredXY.first,
+                                               input.antirequiredXY.second, tran);
+      }
+
       if (input.locusRLE != "") {
+        result.hasLocus = true;
         result.locus = LifeState::Parse(input.locusRLE.c_str(),
                                         input.locusXY.first,
                                         input.locusXY.second, tran);
       } else {
-        result.locus = pat;
+        result.hasLocus = false;
+
+        // Use the envelope
+        LifeState tmp = pat;
+        for (unsigned j = 0; j < input.period; j++) {
+          result.locus.Copy(tmp, OR);
+          tmp.Step();
+        }
       }
+
+      result.locusReactionMask = result.locus.BigZOI();
+      result.locusReactionMask.Transform(Rotate180OddBoth);
+      result.locusReactionMask.RecalculateMinMax();
+
+      // This is a little janky, it should probably be per phase
+      result.locusAvoidMask = result.reactionMask;
+      result.locusAvoidMask.Copy(result.locusReactionMask, ANDNOT);
+      result.locusAvoidMask.RecalculateMinMax();
 
       LifeState tmp = pat;
       for (unsigned j = 0; j < input.period; j++) {
@@ -644,6 +678,8 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
         LifeState phasemask = tmp.BigZOI();
         phasemask.Transform(Rotate180OddBoth);
+        phasemask.Copy(result.locusReactionMask, AND);
+        phasemask.RecalculateMinMax();
         result.phaseReactionMask.push_back(phasemask);
 
         tmp.Step();
@@ -1054,21 +1090,19 @@ public:
       targetFilter.push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
                                                params.filterdx[i], params.filterdy[i]));
 
-      // LifeState nonLocus = catalysts[s];
-      // nonLocus.Copy(catalystLocus[s], ANDNOT);
-
-      // catalystAvoidMasks[s] = nonLocus.BigZOI();
-      // catalystAvoidMasks[s].Transform(Rotate180OddBoth);
-
-      // catalystLocusReactionMasks[s] = catalystLocus[s].BigZOI();
-      // catalystLocusReactionMasks[s].Transform(Rotate180OddBoth);
-      // catalystLocusReactionMasks[s].Copy(catalystAvoidMasks[s], ANDNOT);
-
     if (params.numCatalysts > 1) {
       catalystCollisionMasks = std::vector<std::vector<LifeState>>(
           catalysts.size(), std::vector<LifeState>(catalysts.size()));
       for (unsigned s = 0; s < catalysts.size(); s++) {
         for (unsigned t = 0; t < catalysts.size(); t++) {
+          if (params.numCatalysts == 2 && hasMustInclude &&
+              !catalysts[s].mustInclude && !catalysts[t].mustInclude)
+            continue;
+
+          if (params.numTransparent == 1 && catalysts[s].transparent &&
+              catalysts[t].transparent)
+            continue;
+
           catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
         }
       }
@@ -1295,13 +1329,13 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, alsoRequired, masks, shiftedTargets,
+    RecursiveSearch(config, alsoRequired, LifeState(), masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>(),
                     std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
   }
 
   void
-  RecursiveSearch(Configuration config, const LifeState required,
+  RecursiveSearch(Configuration config, const LifeState required, const LifeState antirequired,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
@@ -1328,7 +1362,7 @@ public:
       maskedCats.Copy(required, AND);
       maskedState.Copy(maskedCats, XOR);
 
-      if (!maskedState.IsEmpty()) {
+      if (!maskedState.IsEmpty() || !config.state.AreDisjoint(antirequired)) {
           failure = true;
       }
 
@@ -1369,13 +1403,15 @@ public:
         LifeState next = config.state;
         next.Step();
 
-          // for (unsigned s = 0; s < catalysts.size(); s++) {
-          //   LifeState hitLocations = newcells.Convolve(catalystAvoidMasks[s]);
-          //   masks[s].Join(hitLocations);
-          // }
-
           LifeState activePart = config.state;
           activePart.Copy(config.catalystsState, ANDNOT);
+
+          for (unsigned s = 0; s < catalysts.size(); s++) {
+            if(catalysts[s].hasLocus) {
+              LifeState hitLocations = catalysts[s].locusAvoidMask.Convolve(activePart);
+              masks[s].Join(hitLocations);
+            }
+          }
 
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if (config.transparentCount == params.numTransparent && catalysts[s].transparent)
@@ -1415,7 +1451,7 @@ public:
               newConfig.state.Join(symCatalyst);
 
               // Do a one-step lookahead to see if the catalyst interacts
-              if (newConfig.count < params.numCatalysts) {
+              {
                 LifeState newnext = newConfig.state;
                 newnext.Step();
                 LifeState newcats = symCatalyst;
@@ -1445,24 +1481,37 @@ public:
               LifeState newRequired = required;
               newRequired.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
 
-              if (newConfig.count != params.numCatalysts) {
+              LifeState newAntirequired = antirequired;
+              newAntirequired.Join(catalysts[s].antirequired, newPlacement.first, newPlacement.second);
+
+              {
                 LifeState lookahead = newConfig.state;
                 lookahead.Step();
                 lookahead.Step();
                 lookahead.Step();
                 lookahead.Step();
 
-                LifeState lookaheadcats = newConfig.catalystsState;
-                lookaheadcats.Step();
-                lookaheadcats.Step();
-                lookaheadcats.Step();
-                lookaheadcats.Step();
+                bool requiredFailed = false;
+                bool antirequiredFailed = false;
+                if (!lookahead.AreDisjoint(newAntirequired)) {
+                  antirequiredFailed = true;
+                } else {
+                  LifeState lookaheadcats = newConfig.catalystsState;
+                  lookaheadcats.Step();
+                  lookaheadcats.Step();
+                  lookaheadcats.Step();
+                  lookaheadcats.Step();
 
-                lookahead.Copy(newRequired, AND);
-                lookaheadcats.Copy(newRequired, AND);
-                lookahead.Copy(lookaheadcats, XOR);
+                  lookahead.Copy(newRequired, AND);
+                  lookaheadcats.Copy(newRequired, AND);
+                  lookahead.Copy(lookaheadcats, XOR);
 
-                if (!lookahead.IsEmpty()) {
+                  if (!lookahead.IsEmpty()) {
+                    requiredFailed = true;
+                  }
+                }
+
+                if (requiredFailed || antirequiredFailed) {
                   if (config.count == 0) {
                     std::cout << "Skipping catalyst " << s << " at "
                               << newPlacement.first << ", "
@@ -1515,7 +1564,7 @@ public:
                 }
               }
 
-              RecursiveSearch(newConfig, newRequired, newMasks,
+              RecursiveSearch(newConfig, newRequired, newAntirequired, newMasks,
                               shiftedTargets, missingTime, recoveredTime,
                               hasReacted, hasRecovered);
 

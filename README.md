@@ -21,34 +21,36 @@ See `examples/p83.in` etc. Some useful lists of catalysts are given in `catlists
 Parameters are separated by `" "` - i.e. space. Parentheses below
 denote optional parameters.
 
-| Line                  | Parameter              | Description                                                             |
-|-----------------------|------------------------|-------------------------------------------------------------------------|
-| `max-gen`             | `n`                    | Overall maximum generation                                              |
-| `start-gen`           | `n`                    | The min gen the _first_ encounter occurs                                |
-| `last-gen`            | `n`                    | The max gen the _first_ encounter occurs                                |
-| `num-catalyst`        | `n`                    | The number of catalyst to place                                         |
-| `num-transparent`     | `n`                    | The number of catalysts marked `transparent` that may appear            |
-| `stable-interval`     | `n`                    | Gens the catalysts must remain untouched to be considered stable        |
-| `search-area`         | `x y w h`              | Search area                                                             |
-| `pat`                 | `rle`                  | The active pattern                                                      |
-|                       | `(dx dy)`              | Offset applied to the active pattern                                    |
-| `cat `                | `rle`                  | A catalyst                                                              |
-|                       | `max-active`           | Number of generations in a row the catalyst may be missing              |
-|                       | `dx dy`                | Offset applied centre the catalyst, typically negative                  |
-|                       | `symmetries-char`      | Character denoting the symmetry of the catalyst (see below)             |
-|                       | `(forbidden rle x y)`  | Forbidden pattern around the catalyst (see below)                       |
-|                       | `(required rle x y)`   | Cells of a catalyst that must stay ON in every generation               |
-|                       | `(mustinclude)`        | Solutions must use at least one `mustinclude` catalyst                  |
-|                       | `(transparent)`        | Marked as transparent for the purposes of `num-transparent`             |
-|                       | `(period n)`           | Periodic catalyst                                                       |
-|                       | `(isblinker)`          | Mark this catalyst for the phase-shifting blinker special case          |
-| `output`              | `filename`             | Output filename                                                         |
-| `(and/or)filter`      | `genOrRange rle dx dy` | Filter that must be matched for the solution to be accepted (see below) |
-| `full-report`         | `filename`             | Output filename for solutions ignoring all pattern filters              |
-| `max-category-size`   | `n`                    | Maximum output row length before more solutions are dropped             |
-| `fit-in-width-height` | `w h`                  | Only allow solutions where all catalysts fit in a `w` by `h` rectangle  |
-| `also-required`       | `rle x y`              | Require `rle` to be present in every generation                         |
-| `symmetry`            | `symmetrycode`         | Global symmetry of the entire pattern (see below)                       |
+| Line                  | Parameter                | Description                                                             |
+|-----------------------|--------------------------|-------------------------------------------------------------------------|
+| `max-gen`             | `n`                      | Overall maximum generation                                              |
+| `start-gen`           | `n`                      | The min gen the _first_ encounter occurs                                |
+| `last-gen`            | `n`                      | The max gen the _first_ encounter occurs                                |
+| `num-catalyst`        | `n`                      | The number of catalyst to place                                         |
+| `num-transparent`     | `n`                      | The number of catalysts marked `transparent` that may appear            |
+| `stable-interval`     | `n`                      | Gens the catalysts must remain untouched to be considered stable        |
+| `search-area`         | `x y w h`                | Search area                                                             |
+| `pat`                 | `rle`                    | The active pattern                                                      |
+|                       | `(dx dy)`                | Offset applied to the active pattern                                    |
+| `cat `                | `rle`                    | A catalyst                                                              |
+|                       | `max-active`             | Number of generations in a row the catalyst may be missing              |
+|                       | `dx dy`                  | Offset applied centre the catalyst, typically negative                  |
+|                       | `symmetries-char`        | Character denoting the symmetry of the catalyst (see below)             |
+|                       | `(forbidden rle x y)`    | Forbidden pattern around the catalyst (see below)                       |
+|                       | `(required rle x y)`     | Cells of a catalyst that must stay ON in every generation               |
+|                       | `(antirequired rle x y)` | Cells of a catalyst that must stay OFF in every generation              |
+|                       | `(locus rle x y)`        | Cells of a catalyst that must interact first                            |
+|                       | `(mustinclude)`          | Solutions must use at least one `mustinclude` catalyst                  |
+|                       | `(transparent)`          | Marked as transparent for the purposes of `num-transparent`             |
+|                       | `(period n)`             | Periodic catalyst                                                       |
+|                       | `(isblinker)`            | Mark this catalyst for the phase-shifting blinker special case          |
+| `output`              | `filename`               | Output filename                                                         |
+| `(and/or)filter`      | `genOrRange rle dx dy`   | Filter that must be matched for the solution to be accepted (see below) |
+| `full-report`         | `filename`               | Output filename for solutions ignoring all pattern filters              |
+| `max-category-size`   | `n`                      | Maximum output row length before more solutions are dropped             |
+| `fit-in-width-height` | `w h`                    | Only allow solutions where all catalysts fit in a `w` by `h` rectangle  |
+| `also-required`       | `rle x y`                | Require `rle` to be present in every generation                         |
+| `symmetry`            | `symmetrycode`           | Global symmetry of the entire pattern (see below)                       |
 
 **Catalyst Symmetry**: A character specifying what transformations are
 applied to the catalyst:
