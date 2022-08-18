@@ -62,6 +62,7 @@ public:
   SearchParams() {
     maxGen = 250;
     numCatalysts = 2;
+    numTransparent = 100;
     stableInterval = 15;
     pat = "";
     searchArea[0] = -30;
@@ -1042,6 +1043,14 @@ public:
           catalysts.size(), std::vector<LifeState>(catalysts.size()));
       for (unsigned s = 0; s < catalysts.size(); s++) {
         for (unsigned t = 0; t < catalysts.size(); t++) {
+          if (params.numCatalysts == 2 && hasMustInclude &&
+              !catalysts[s].mustInclude && !catalysts[t].mustInclude)
+            continue;
+
+          if (params.numTransparent == 1 && catalysts[s].transparent &&
+              catalysts[t].transparent)
+            continue;
+
           catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
         }
       }
