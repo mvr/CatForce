@@ -825,11 +825,6 @@ private:
     b0 ^= val;
   }
 
-  void inline Add_Init(uint64_t &b1, uint64_t &b0, const uint64_t &val) {
-    b1 = b0 & val;
-    b0 ^= val;
-  }
-
   void inline Add(uint64_t &b2, uint64_t &b1, uint64_t &b0,
                   const uint64_t &val) {
     uint64_t t_b2 = b0 & val;
@@ -839,28 +834,36 @@ private:
     b0 ^= val;
   }
 
-  void inline Add_Init(uint64_t &b2, uint64_t &b1, uint64_t &b0,
-                       uint64_t &val) {
-    uint64_t t_b2 = b0 & val;
-
-    b2 = t_b2 & b1;
-    b1 ^= t_b2;
-    b0 ^= val;
-  }
-
   uint64_t inline Evolve(const uint64_t &temp, const uint64_t &bU0,
                          const uint64_t &bU1, const uint64_t &bB0,
                          const uint64_t &bB1) {
-    uint64_t sum0, sum1, sum2;
-    sum0 = RotateLeft(temp);
-    Add_Init(sum1, sum0, RotateRight(temp));
+    uint64_t sum0 = RotateLeft(temp);
 
+    uint64_t sum1 = 0;
+    Add(sum1, sum0, RotateRight(temp));
     Add(sum1, sum0, bU0);
-    Add_Init(sum2, sum1, bU1);
+
+    uint64_t sum2 = 0;
+    Add(sum2, sum1, bU1);
     Add(sum2, sum1, sum0, bB0);
     Add(sum2, sum1, bB1);
 
     return ~sum2 & sum1 & (temp | sum0);
+  }
+
+  // From Page 15 of
+  // https://www.gathering4gardner.org/g4g13gift/math/RokickiTomas-GiftExchange-LifeAlgorithms-G4G13.pdf
+  uint64_t inline Rokicki(const uint64_t &a, const uint64_t &bU0,
+                          const uint64_t &bU1, const uint64_t &bB0,
+                          const uint64_t &bB1) {
+    uint64_t aw = RotateLeft(a);
+    uint64_t ae = RotateRight(a);
+    uint64_t s0 = aw ^ ae;
+    uint64_t s1 = aw & ae;
+    uint64_t ts0 = bB0 ^ bU0;
+    uint64_t ts1 = (bB0 & bU0) | (ts0 & s0);
+    return (bB1 ^ bU1 ^ ts1 ^ s1) & ((bB1 | bU1) ^ (ts1 | s1)) &
+           ((ts0 ^ s0) | a);
   }
 
 public:
@@ -1042,7 +1045,7 @@ void LifeState::Step() {
     uint64_t l = RotateLeft(state[i]);
     uint64_t r = RotateRight(state[i]);
     tempxor[i] = l ^ r ^ state[i];
-    tempand[i] = ((l | r) & state[i]) | (l & r);
+    tempand[i] = ((l ^ r) & state[i]) | (l & r);
   }
 
   #pragma clang loop unroll(full)
@@ -1059,7 +1062,7 @@ void LifeState::Step() {
     else
       idxB = i + 1;
 
-    state[i] = Evolve(state[i], tempxor[idxU], tempand[idxU], tempxor[idxB], tempand[idxB]);
+    state[i] = Rokicki(state[i], tempxor[idxU], tempand[idxU], tempxor[idxB], tempand[idxB]);
   }
 
   // int s = min + 1;
