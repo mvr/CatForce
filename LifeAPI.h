@@ -4,6 +4,7 @@
 // Written by Michael Simkin 2014
 
 #include <algorithm>
+#include <array>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -744,7 +745,65 @@ public:
     }
   }
 
-  LifeState Convolve(const LifeState &other) const {
+  static inline void ConvolveLine(LifeState &result, const uint64_t (&doubledother)[N * 2], uint64_t x, unsigned int k) {
+    while (x != 0) {
+      unsigned int postshift;
+
+      uint64_t shifted;
+
+      if((x & 1) == 0) { // Possibly wrapped
+        int lsb = __builtin_ctzll(x);
+        shifted = __builtin_rotateright64(x, lsb);
+        postshift = lsb;
+      } else{
+        int lead = __builtin_clzll(~x);
+        shifted = __builtin_rotateleft64(x, lead);
+        postshift = 64-lead;
+      }
+
+      unsigned runlength = __builtin_ctzll(~shifted);
+      uint64_t run = (1ULL << runlength) - 1;
+
+      switch(run) {
+      case (1 << 1) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 2) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 3) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 4) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 5) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 6) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 7) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 8) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 9) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 10) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 11) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 12) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 13) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 14) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 15) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 16) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 17) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 18) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 19) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 20) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 21) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 22) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 23) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 24) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 25) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 26) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 27) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 28) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 29) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1 << 30) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1ULL << 31) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      default:           ConvolveInner(result, doubledother, run, k, postshift); break;
+      }
+
+      x &= ~__builtin_rotateleft64(run, postshift);
+    }
+  }
+
+  __attribute__((flatten)) LifeState Convolve(const LifeState &other) const {
     LifeState result;
     uint64_t doubledother[N*2];
     memcpy(doubledother,     other.state, N * sizeof(uint64_t));
@@ -755,52 +814,7 @@ public:
       if(x == 0)
         continue;
 
-      unsigned int postshift;
-
-      if((x & 1) == 0) { // Possibly wrapped
-        int lsb = __builtin_ctzll(x);
-        x = __builtin_rotateright64(x, lsb);
-        postshift = lsb;
-      } else{
-        int lead = __builtin_clzll(~x);
-        x = __builtin_rotateleft64(x, lead);
-        postshift = 64-lead;
-      }
-
-      switch(x) {
-      case (1 << 1) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 2) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 3) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 4) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 5) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 6) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 7) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 8) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 9) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 10) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 11) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 12) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 13) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 14) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 15) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 16) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 17) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 18) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 19) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 20) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 21) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 22) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 23) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 24) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 25) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 26) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 27) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 28) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 29) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1 << 30) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      case (1ULL << 31) - 1: ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      default:           ConvolveInner(result, doubledother, x, 64-j, postshift); break;
-      }
+      ConvolveLine(result, doubledother, x, 64-j);
     }
 
     result.min = 0;
@@ -824,11 +838,6 @@ private:
     b0 ^= val;
   }
 
-  void inline Add_Init(uint64_t &b1, uint64_t &b0, const uint64_t &val) {
-    b1 = b0 & val;
-    b0 ^= val;
-  }
-
   void inline Add(uint64_t &b2, uint64_t &b1, uint64_t &b0,
                   const uint64_t &val) {
     uint64_t t_b2 = b0 & val;
@@ -838,28 +847,36 @@ private:
     b0 ^= val;
   }
 
-  void inline Add_Init(uint64_t &b2, uint64_t &b1, uint64_t &b0,
-                       uint64_t &val) {
-    uint64_t t_b2 = b0 & val;
-
-    b2 = t_b2 & b1;
-    b1 ^= t_b2;
-    b0 ^= val;
-  }
-
   uint64_t inline Evolve(const uint64_t &temp, const uint64_t &bU0,
                          const uint64_t &bU1, const uint64_t &bB0,
                          const uint64_t &bB1) {
-    uint64_t sum0, sum1, sum2;
-    sum0 = RotateLeft(temp);
-    Add_Init(sum1, sum0, RotateRight(temp));
+    uint64_t sum0 = RotateLeft(temp);
 
+    uint64_t sum1 = 0;
+    Add(sum1, sum0, RotateRight(temp));
     Add(sum1, sum0, bU0);
-    Add_Init(sum2, sum1, bU1);
+
+    uint64_t sum2 = 0;
+    Add(sum2, sum1, bU1);
     Add(sum2, sum1, sum0, bB0);
     Add(sum2, sum1, bB1);
 
     return ~sum2 & sum1 & (temp | sum0);
+  }
+
+  // From Page 15 of
+  // https://www.gathering4gardner.org/g4g13gift/math/RokickiTomas-GiftExchange-LifeAlgorithms-G4G13.pdf
+  uint64_t inline Rokicki(const uint64_t &a, const uint64_t &bU0,
+                          const uint64_t &bU1, const uint64_t &bB0,
+                          const uint64_t &bB1) {
+    uint64_t aw = RotateLeft(a);
+    uint64_t ae = RotateRight(a);
+    uint64_t s0 = aw ^ ae;
+    uint64_t s1 = aw & ae;
+    uint64_t ts0 = bB0 ^ bU0;
+    uint64_t ts1 = (bB0 & bU0) | (ts0 & s0);
+    return (bB1 ^ bU1 ^ ts1 ^ s1) & ((bB1 | bU1) ^ (ts1 | s1)) &
+           ((ts0 ^ s0) | a);
   }
 
 public:
@@ -999,6 +1016,38 @@ public:
     }
     return result;
   }
+
+  std::array<int, 4> XYBounds() {
+    int minCol = -32;
+    int maxCol = 31;
+
+    for (int i = -32; i <= 31; i++) {
+      if (state[(i + 64) % 64] != 0) {
+        minCol = i;
+        break;
+      }
+    }
+
+    for (int i = 31; i >= -32; i--) {
+      if (state[(i + 64) % 64] != 0) {
+        maxCol = i;
+        break;
+      }
+    }
+
+    uint64_t orOfCols(0);
+    for (int i = minCol; i <= maxCol; ++i) {
+      orOfCols = orOfCols | state[(i + 64) % 64];
+    }
+    if (orOfCols == 0ULL) {
+      return std::array<int, 4>({0, 0, 0, 0});
+    }
+    orOfCols = __builtin_rotateright64(orOfCols, 32);
+    int topMargin = __builtin_ctzll(orOfCols);
+    int bottomMargin = __builtin_clzll(orOfCols);
+    return std::array<int, 4>(
+        {minCol, topMargin - 32, maxCol, 31 - bottomMargin});
+  }
 };
 
 void LifeState::Step() {
@@ -1009,7 +1058,7 @@ void LifeState::Step() {
     uint64_t l = RotateLeft(state[i]);
     uint64_t r = RotateRight(state[i]);
     tempxor[i] = l ^ r ^ state[i];
-    tempand[i] = ((l | r) & state[i]) | (l & r);
+    tempand[i] = ((l ^ r) & state[i]) | (l & r);
   }
 
   #pragma clang loop unroll(full)
@@ -1026,7 +1075,7 @@ void LifeState::Step() {
     else
       idxB = i + 1;
 
-    state[i] = Evolve(state[i], tempxor[idxU], tempand[idxU], tempxor[idxB], tempand[idxB]);
+    state[i] = Rokicki(state[i], tempxor[idxU], tempand[idxU], tempxor[idxB], tempand[idxB]);
   }
 
   // int s = min + 1;
