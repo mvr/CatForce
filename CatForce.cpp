@@ -1330,8 +1330,7 @@ public:
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
     RecursiveSearch(config, alsoRequired, LifeState(), masks, shiftedTargets,
-                    std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>(),
-                    std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
+                    std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>());
   }
 
   void
@@ -1340,9 +1339,7 @@ public:
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
                   std::array<unsigned, MAX_CATALYSTS> missingTime,
-                  std::array<unsigned, MAX_CATALYSTS> recoveredTime,
-                  std::array<bool, MAX_CATALYSTS> hasReacted,
-                  std::array<bool, MAX_CATALYSTS> hasRecovered) {
+                  std::array<unsigned, MAX_CATALYSTS> recoveredTime) {
     bool success = false;
     bool failure = false;
     unsigned successtime;
@@ -1367,13 +1364,6 @@ public:
       }
 
       for (unsigned i = 0; i < config.count; i++) {
-        // if (hasRecovered[i]) {
-        //   continue;
-        // }
-        // TEMP: Temporary fix
-        if (catalysts[config.curs[i]].period > 1)
-          hasReacted[i] = true;
-
         if (config.state.gen % catalysts[config.curs[i]].period != 0)
           continue;
 
@@ -1381,12 +1371,9 @@ public:
           missingTime[i] = 0;
           recoveredTime[i] += catalysts[config.curs[i]].period;
         } else {
-          hasReacted[i] = true;
           missingTime[i] += catalysts[config.curs[i]].period;
           recoveredTime[i] = 0;
         }
-        if (hasReacted[i] && recoveredTime[i] > params.stableInterval)
-          hasRecovered[i] = true;
 
         if (missingTime[i] > catalysts[config.curs[i]].maxDisappear) {
           failure = true;
@@ -1544,29 +1531,30 @@ public:
 
               std::vector<LifeState> newMasks = masks;
 
-              LifeState bounds;
-              if (params.maxW != -1) {
-                bounds = LifeState::SolidRect(newPlacement.first - params.maxW,
-                                              newPlacement.second - params.maxH,
-                                              2 * params.maxW - 1,
-                                              2 * params.maxH - 1);
-              }
-
               // If we just placed the last catalyst, don't bother
+              // updating the masks
               if (newConfig.count != params.numCatalysts) {
+                LifeState bounds;
+                if (params.maxW != -1) {
+                  LifeState rect = LifeState::SolidRect(newPlacement.first - params.maxW,
+                                                        newPlacement.second - params.maxH,
+                                                        2 * params.maxW - 1,
+                                                        2 * params.maxH - 1);
+                  bounds.JoinWSymChain(rect, params.symmetryChain);
+
+                  for (unsigned t = 0; t < catalysts.size(); t++) {
+                    newMasks[t].Copy(bounds, ORNOT);
+                  }
+                }
+
                 for (unsigned t = 0; t < catalysts.size(); t++) {
                   newMasks[t].Join(catalystCollisionMasks[s][t],
                                    newPlacement.first, newPlacement.second);
-
-                  if (params.maxW != -1) {
-                    newMasks[t].Copy(bounds, ORNOT);
-                  }
                 }
               }
 
               RecursiveSearch(newConfig, newRequired, newAntirequired, newMasks,
-                              shiftedTargets, missingTime, recoveredTime,
-                              hasReacted, hasRecovered);
+                              shiftedTargets, missingTime, recoveredTime);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
               newPlacements.Erase(newPlacement.first, newPlacement.second);
@@ -1590,7 +1578,7 @@ public:
       if (config.count == params.numCatalysts && !success) {
         bool allRecovered = true;
         for (unsigned i = 0; i < config.count; i++) {
-          if (!hasRecovered[i] || missingTime[i] > 0) {
+          if (recoveredTime[i] < params.stableInterval || missingTime[i] > 0) {
             allRecovered = false;
           }
         }
