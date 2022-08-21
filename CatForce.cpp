@@ -1283,8 +1283,7 @@ public:
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
     RecursiveSearch(config, alsoRequired, LifeState(), masks, shiftedTargets,
-                    std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>(),
-                    std::array<bool, MAX_CATALYSTS>(), std::array<bool, MAX_CATALYSTS>());
+                    std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>());
   }
 
   void
@@ -1293,9 +1292,7 @@ public:
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
                   std::array<unsigned, MAX_CATALYSTS> missingTime,
-                  std::array<unsigned, MAX_CATALYSTS> recoveredTime,
-                  std::array<bool, MAX_CATALYSTS> hasReacted,
-                  std::array<bool, MAX_CATALYSTS> hasRecovered) {
+                  std::array<unsigned, MAX_CATALYSTS> recoveredTime) {
     bool success = false;
     bool failure = false;
     unsigned successtime;
@@ -1314,20 +1311,13 @@ public:
       }
 
       for (unsigned i = 0; i < config.count; i++) {
-        // if (hasRecovered[i]) {
-        //   continue;
-        // }
-
         if (config.state.Contains(shiftedTargets[i])) {
           missingTime[i] = 0;
           recoveredTime[i] += 1;
         } else {
-          hasReacted[i] = true;
           missingTime[i] += 1;
           recoveredTime[i] = 0;
         }
-        if (hasReacted[i] && recoveredTime[i] > params.stableInterval)
-          hasRecovered[i] = true;
 
         if (missingTime[i] > catalysts[config.curs[i]].maxDisappear) {
           failure = true;
@@ -1471,8 +1461,7 @@ public:
               }
 
               RecursiveSearch(newConfig, newRequired, newAntirequired, newMasks,
-                              shiftedTargets, missingTime, recoveredTime,
-                              hasReacted, hasRecovered);
+                              shiftedTargets, missingTime, recoveredTime);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
               newPlacements.Erase(newPlacement.first, newPlacement.second);
@@ -1495,7 +1484,7 @@ public:
       if (config.count == params.numCatalysts && !success) {
         bool allRecovered = true;
         for (unsigned i = 0; i < config.count; i++) {
-          if (!hasRecovered[i] || missingTime[i] > 0) {
+          if (recoveredTime[i] < params.stableInterval || missingTime[i] > 0) {
             allRecovered = false;
           }
         }
