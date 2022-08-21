@@ -1440,23 +1440,25 @@ public:
 
               std::vector<LifeState> newMasks = masks;
 
-              LifeState bounds;
-              if (params.maxW != -1) {
-                bounds = LifeState::SolidRect(newPlacement.first - params.maxW,
-                                              newPlacement.second - params.maxH,
-                                              2 * params.maxW - 1,
-                                              2 * params.maxH - 1);
-              }
-
               // If we just placed the last catalyst, don't bother
+              // updating the masks
               if (newConfig.count != params.numCatalysts) {
+                LifeState bounds;
+                if (params.maxW != -1) {
+                  LifeState rect = LifeState::SolidRect(newPlacement.first - params.maxW,
+                                                        newPlacement.second - params.maxH,
+                                                        2 * params.maxW - 1,
+                                                        2 * params.maxH - 1);
+                  bounds.JoinWSymChain(rect, params.symmetryChain);
+
+                  for (unsigned t = 0; t < catalysts.size(); t++) {
+                    newMasks[t].Copy(bounds, ORNOT);
+                  }
+                }
+
                 for (unsigned t = 0; t < catalysts.size(); t++) {
                   newMasks[t].Join(catalystCollisionMasks[s][t],
                                    newPlacement.first, newPlacement.second);
-
-                  if (params.maxW != -1) {
-                    newMasks[t].Copy(bounds, ORNOT);
-                  }
                 }
               }
 
