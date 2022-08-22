@@ -745,7 +745,16 @@ public:
     }
   }
 
-  static inline void ConvolveLine(LifeState &result, const uint64_t (&doubledother)[N * 2], uint64_t x, unsigned int k) {
+  LifeState Convolve(const LifeState &other) const {
+    LifeState result;
+    uint64_t doubledother[N*2];
+    memcpy(doubledother,     other.state, N * sizeof(uint64_t));
+    memcpy(doubledother + N, other.state, N * sizeof(uint64_t));
+
+    for (unsigned j = 0; j < N; j++) {
+      unsigned k = 64-j;
+      uint64_t x = state[j];
+
     while (x != 0) {
       unsigned int postshift;
 
@@ -801,20 +810,6 @@ public:
 
       x &= ~__builtin_rotateleft64(run, postshift);
     }
-  }
-
-  __attribute__((flatten)) LifeState Convolve(const LifeState &other) const {
-    LifeState result;
-    uint64_t doubledother[N*2];
-    memcpy(doubledother,     other.state, N * sizeof(uint64_t));
-    memcpy(doubledother + N, other.state, N * sizeof(uint64_t));
-
-    for (int j = 0; j < N; j++) {
-      uint64_t x = state[j];
-      if(x == 0)
-        continue;
-
-      ConvolveLine(result, doubledother, x, 64-j);
     }
 
     result.min = 0;
