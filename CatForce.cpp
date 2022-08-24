@@ -664,11 +664,8 @@ struct Configuration {
   std::array<int, MAX_CATALYSTS> curx;
   std::array<int, MAX_CATALYSTS> cury;
   std::array<int, MAX_CATALYSTS> curs;
-  // int minIter;
   LifeState state;
-  LifeState catalystsState;
   LifeState startingCatalysts;
-  // std::vector<LifeTarget> shiftedTargets;
 };
 
 // Fix a, what positions of b causes a collision?
@@ -1241,7 +1238,7 @@ public:
                                  successtime - params.stableInterval + 2, 0);
     }
 
-    // If has fitlter validate them;
+    // If has filter validate them;
     if (hasFilter) {
       if (!ValidateFilters(conf, failuretime))
         return;
@@ -1373,7 +1370,6 @@ public:
               LifeState symCatalyst;
               symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
               newConfig.startingCatalysts.Join(symCatalyst);
-              newConfig.catalystsState.Join(symCatalyst);
               newConfig.state.Join(symCatalyst);
 
               // Do a one-step lookahead to see if the catalyst interacts
