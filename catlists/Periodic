@@ -1,18 +1,18 @@
 # ============ period 2 ============
 # ===blinker===
-cat 3o! 20 -1 0 . period 2 
+cat 3o! 10 -1 0 . period 2 isblinker
 # ===half traffic===
 cat 3o2$4bo$4bo$4bo! 20 -2 -2 | period 2 
-# ===toad===
-cat 3o$b3o! 5 -2 -1 x period 2 required o$3bo! -2 -1 
+# ===toad (nontransparent)===
+cat 3o$b3o! 5 -2 -1 x period 2 required 3o$b3o! -2 -1
 # ===killer toads===
-cat b3o$3o4$3o$b3o! 5 -1 -3 @ period 2 required 3bo$o4$o$3bo! -1 -3 
+cat b3o$3o4$3o$b3o! 5 -1 -3 @ period 2 required b3o$3o4$3o$b3o! -1 -3
 # ===clock===
-cat 2bo$2o$2b2o$bo! 5 -2 -2 | period 2 required o$bo! -1 -1 
+cat 2bo$2o$2b2o$bo! 5 -2 -2 | period 2 required b2o$4o$4o$b2o! -1 -1
 # ===fox+clock===
-cat 4bo$5b2o$3b2o$5bo3$4b3o$2bo$2o2b2o2$2bo2bo$3bo$3bo! 5 -4 -5 * period 2 required $5bo$4bo4$5bo2$bo3$3bo! -4 -5 
+cat 4bo$5b2o$3b2o$5bo3$4b3o$2bo$2o2b2o2$2bo2bo$3bo$3bo! 5 -4 -5 * period 2 required 4bo$5b2o$3b2o$5bo3$4b3o$2bo$2o2b2o2$2bo2bo$3bo$3bo! -4 -5
 # ===traffic stop===
-cat 2b3o2$o$o$o$8b2o$2b3o3bobo$10bo$10b2o! 40 -3 -3 @ period 2 required bo$obo$2bo$2b2o! 5 2 
+cat 2b3o2$o$o$o$8b2o$2b3o3bobo$10bo$10b2o! 40 -3 -3 @ period 2 required bo$obo$2bo$2b2o! 5 2 antirequired 2b2o3b2o$3o5b3o$o9bo$o9b2o$2o9b2o$b2o5bo3b2o$2b2o3b2o2bobo$3b2ob6ob2o$4b3o4bo2bo$11b4o! -5 -3
 
 # ============ period 4 ============
 # ===MWSS emulator===
