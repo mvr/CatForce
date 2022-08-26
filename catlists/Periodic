@@ -32,7 +32,7 @@ cat 6b2o$10b2o$5b2obo2bo$6bob3o$7bo$2bo4b4o$ob2o3bo2bo$o3b3ob2o$2b2obobo$3bobobo
 # ===180P8 (huge domino)===
 cat 17b2o$6bo2bo2bo3bo2bob2o$6b7o2bob3obo$2o13bo6b3o$bo2b11ob6o2bo$bobo4bo5bobobo4bo$2obobo4b2o3bo3b2o$o5bo2bo2bo4b2o8b5obo$b2ob2o6bo5b2o3bob2o$2bobo7bo8bo2bo9bo$2bobo7bo8bo2bo9bo$b2ob2o6bo5b2o3bob2o$o5bo2bo2bo4b2o8b5obo$2obobo4b2o3bo3b2o$bobo4bo5bobobo4bo$bo2b11ob6o2bo$2o13bo6b3o$6b7o2bob3obo$6bo2bo2bo3bo2bob2o$17b2o! 8 -18 -10 @ required 17b2o$6bo2bo2bo3b7o$2b20o$25o$b24o$b25o$27o$31o$b30o$2b29o$2b29o$b30o$31o$26o$b24o$b24o$25o$2b20o$6bo2bo2bo3b7o$17b2o! -18 -10 forbidden bo$obo15b2o$b2o4bo2bo2bo3bo2bob2o$7b7o2bob3obo$b2o13bo6b3o$2bo2b11ob6o2bo$2bobo4bo5bobobo4bo$b2obobo4b2o3bo3b2o$bo5bo2bo2bo4b2o8b5obo$2b2ob2o6bo5b2o3bob2o$3bobo7bo8bo2bo9bo$3bobo7bo8bo2bo9bo$2b2ob2o6bo5b2o3bob2o$bo5bo2bo2bo4b2o8b5obo$b2obobo4b2o3bo3b2o$2bobo4bo5bobobo4bo$2bo2b11ob6o2bo$b2o13bo6b3o$7b7o2bob3obo$7bo2bo2bo3bo2bob2o$18b2o! -19 -11 forbidden 18b2o$7bo2bo2bo3bo2bob2o$7b7o2bob3obo$b2o13bo6b3o$2bo2b11ob6o2bo$2bobo4bo5bobobo4bo$b2obobo4b2o3bo3b2o$bo5bo2bo2bo4b2o8b5obo$2b2ob2o6bo5b2o3bob2o$3bobo7bo8bo2bo9bo$3bobo7bo8bo2bo9bo$2b2ob2o6bo5b2o3bob2o$bo5bo2bo2bo4b2o8b5obo$b2obobo4b2o3bo3b2o$2bobo4bo5bobobo4bo$2bo2b11ob6o2bo$b2o13bo6b3o$7b7o2bob3obo$b2o4bo2bo2bo3bo2bob2o$obo15b2o$bo! -19 -10 period 8
 # ===blocker===
-cat 4b2o$2obo2bob2o$o4bo2b2o$4bo$bobo! 8 -5 -3 | required 8o$8o$8o$8o! -4 -3 period 8
+cat 4b2o$2obo2bob2o$o4bo2b2o$4bo$bobo! 8 -5 -3 x required 8o$8o$8o$8o! -4 -3 period 8
 # ===kok's galaxy===
 cat 3bo2bo$7bo$8b2o$2bob2o6bo$2bo2bo3bo$bo3bob3o$o11bo$3b3obo3bo$3bo3bo2bo$o6b2obo$3b2o$5bo$6bo2bo! 8 -7 -7 | required 3b5o$2b7o$b9o$11o$11o$11o$11o$11o$b9o$2b7o$3b5o! -6 -6 period 8
 # ===209P8 (huge middleweight)===
