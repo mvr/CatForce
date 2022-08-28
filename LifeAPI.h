@@ -319,16 +319,6 @@ public:
     return result;
   }
 
-  void ExpandMinMax(int &min, int &max) {
-    min = min - 2;
-    max = max + 2;
-
-    if (min <= 0 || max >= N - 1) {
-      min = 0;
-      max = N - 1;
-    }
-  }
-
 #ifdef __AVX2__
   void RecalculateMinMax() {
     min = 0;
@@ -360,8 +350,6 @@ public:
       }
       p -= 64;
     } while(p >= p_init);
-
-    ExpandMinMax(min, max);
   }
 #else
   void RecalculateMinMax() {
@@ -381,8 +369,6 @@ public:
         break;
       }
     }
-
-    ExpandMinMax(min, max);
   }
 #endif
 
