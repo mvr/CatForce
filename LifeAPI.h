@@ -1012,7 +1012,7 @@ public:
     return result;
   }
 
-  std::array<int, 4> XYBounds() {
+  std::array<int, 4> XYBounds() const {
     int minCol = -32;
     int maxCol = 31;
 
