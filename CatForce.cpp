@@ -705,11 +705,9 @@ struct Configuration {
   std::array<int, MAX_CATALYSTS> curx;
   std::array<int, MAX_CATALYSTS> cury;
   std::array<int, MAX_CATALYSTS> curs;
-  // int minIter;
   LifeState state;
   LifeState catalystsState;
   LifeState startingCatalysts;
-  // std::vector<LifeTarget> shiftedTargets;
 };
 
 // Fix a, what positions of b causes a collision?
@@ -1055,11 +1053,68 @@ public:
   CategoryContainer *fullCategoryContainer{};
 
   bool hasFilter{};
+  bool hasMustInclude{};
   bool reportAll{};
 
   unsigned filterMaxGen{};
 
   LifeTarget blinkerTarget;
+
+  uint64_t AllCatalystsHash() const {
+    uint64_t result = 0;
+    for (auto &cat : catalysts) {
+      result ^= cat.state.GetHash();
+    }
+    return result;
+  }
+
+  void LoadMasks() {
+    if (params.numCatalysts == 1)
+      return;
+
+    catalystCollisionMasks = std::vector<std::vector<LifeState>>(catalysts.size(), std::vector<LifeState>(catalysts.size()));
+
+    std::stringstream ss;
+    ss << "maskpack-" << AllCatalystsHash();
+    std::string fname = ss.str();
+
+    // See if the pack exists
+    std::ifstream infile;
+    infile.open(fname.c_str(), std::ios::binary);
+    if (infile.good()) {
+      for (unsigned s = 0; s < catalysts.size(); s++) {
+        for (unsigned t = 0; t < catalysts.size(); t++) {
+          infile.read((char*)catalystCollisionMasks[s][t].state, N * sizeof(uint64_t));
+        }
+      }
+      return;
+    }
+
+    // If not, load or generate the masks
+    for (unsigned s = 0; s < catalysts.size(); s++) {
+      for (unsigned t = 0; t < catalysts.size(); t++) {
+        if (params.numCatalysts == 2 && hasMustInclude &&
+            !catalysts[s].mustInclude && !catalysts[t].mustInclude)
+          continue;
+
+        if (params.numTransparent == 1 && catalysts[s].transparent &&
+            catalysts[t].transparent)
+          continue;
+
+        catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
+      }
+    }
+
+    // Save the pack for next time
+    std::ofstream outfile;
+    outfile.open(fname.c_str(), std::ofstream::binary);
+    for (unsigned s = 0; s < catalysts.size(); s++) {
+      for (unsigned t = 0; t < catalysts.size(); t++) {
+        outfile.write((char *)catalystCollisionMasks[s][t].state, N * sizeof(uint64_t));
+      }
+    }
+    outfile.close();
+  }
 
   void Init(const char *inputFile) {
     begin = clock();
@@ -1071,7 +1126,7 @@ public:
       std::vector<CatalystData> newcats = CatalystData::FromInput(input);
       catalysts.insert(catalysts.end(), newcats.begin(), newcats.end());
     }
-    bool hasMustInclude = false;
+    hasMustInclude = false;
     for (auto &cat : catalysts) {
       hasMustInclude = hasMustInclude || cat.mustInclude;
     }
@@ -1090,23 +1145,8 @@ public:
       targetFilter.push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
                                                params.filterdx[i], params.filterdy[i]));
 
-    if (params.numCatalysts > 1) {
-      catalystCollisionMasks = std::vector<std::vector<LifeState>>(
-          catalysts.size(), std::vector<LifeState>(catalysts.size()));
-      for (unsigned s = 0; s < catalysts.size(); s++) {
-        for (unsigned t = 0; t < catalysts.size(); t++) {
-          if (params.numCatalysts == 2 && hasMustInclude &&
-              !catalysts[s].mustInclude && !catalysts[t].mustInclude)
-            continue;
+    LoadMasks();
 
-          if (params.numTransparent == 1 && catalysts[s].transparent &&
-              catalysts[t].transparent)
-            continue;
-
-          catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
-        }
-      }
-    }
     alsoRequired = LifeState::Parse(params.alsoRequired.c_str(), params.alsoRequiredXY.first, params.alsoRequiredXY.second);
 
     blinkerTarget.wanted = LifeState::Parse("o!");
@@ -1296,7 +1336,7 @@ public:
                                  successtime - params.stableInterval + 2, 0);
     }
 
-    // If has fitlter validate them;
+    // If has filter validate them;
     if (hasFilter) {
       if (!ValidateFilters(conf, failuretime))
         return;
