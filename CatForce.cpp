@@ -989,7 +989,7 @@ public:
   LifeState alsoRequired;
   std::vector<CatalystData> catalysts;
   std::vector<LifeTarget> targetFilter;
-  std::vector<std::vector<LifeState>> catalystCollisionMasks;
+  std::vector<LifeState> catalystCollisionMasks;
 
   clock_t current{};
   long long idx{};
@@ -1019,7 +1019,7 @@ public:
     if (params.numCatalysts == 1)
       return;
 
-    catalystCollisionMasks = std::vector<std::vector<LifeState>>(catalysts.size(), std::vector<LifeState>(catalysts.size()));
+    catalystCollisionMasks = std::vector<LifeState>(catalysts.size() * catalysts.size());
 
     std::stringstream ss;
     ss << "maskpack-" << AllCatalystsHash();
@@ -1031,7 +1031,7 @@ public:
     if (infile.good()) {
       for (unsigned s = 0; s < catalysts.size(); s++) {
         for (unsigned t = 0; t < catalysts.size(); t++) {
-          infile.read((char*)catalystCollisionMasks[s][t].state, N * sizeof(uint64_t));
+          infile.read((char*)catalystCollisionMasks[s * catalysts.size() + t].state, N * sizeof(uint64_t));
         }
       }
       return;
@@ -1048,7 +1048,7 @@ public:
             catalysts[t].transparent)
           continue;
 
-        catalystCollisionMasks[s][t] = LoadCollisionMask(catalysts[s], catalysts[t]);
+        catalystCollisionMasks[s * catalysts.size() + t] = LoadCollisionMask(catalysts[s], catalysts[t]);
       }
     }
 
@@ -1057,7 +1057,7 @@ public:
     outfile.open(fname.c_str(), std::ofstream::binary);
     for (unsigned s = 0; s < catalysts.size(); s++) {
       for (unsigned t = 0; t < catalysts.size(); t++) {
-        outfile.write((char *)catalystCollisionMasks[s][t].state, N * sizeof(uint64_t));
+        outfile.write((char *)catalystCollisionMasks[s * catalysts.size() + t].state, N * sizeof(uint64_t));
       }
     }
     outfile.close();
@@ -1495,7 +1495,7 @@ public:
                 }
 
                 for (unsigned t = 0; t < catalysts.size(); t++) {
-                  newMasks[t].Join(catalystCollisionMasks[s][t],
+                  newMasks[t].Join(catalystCollisionMasks[s * catalysts.size() + t],
                                    newPlacement.first, newPlacement.second);
                 }
               }
