@@ -672,6 +672,12 @@ public:
       unsigned k = 64-j;
       uint64_t x = state[j];
 
+      // Annoying special case
+      if(x == ~0ULL) {
+        ConvolveInner(result, doubledother, ~0ULL, k, 0);
+        continue;
+      }
+
     while (x != 0) {
       unsigned int postshift;
 
@@ -742,6 +748,26 @@ public:
     min = 0;
     max = 0;
     gen = 0;
+  }
+
+  LifeState MatchLive(const LifeState &live) const {
+    LifeState invThis = ~*this;
+    LifeState flipLive = live;
+    flipLive.Transform(Rotate180OddBoth);
+    return ~invThis.Convolve(flipLive);
+  }
+
+  LifeState MatchLiveAndDead(const LifeState &live, const LifeState &dead) const {
+    LifeState invThis = ~*this;
+    LifeState flipLive = live;
+    flipLive.Transform(Rotate180OddBoth);
+    LifeState flipDead = dead;
+    flipDead.Transform(Rotate180OddBoth);
+    return ~invThis.Convolve(flipLive) & ~Convolve(flipDead);
+  }
+
+  LifeState Match(const LifeState &live) const {
+    return MatchLiveAndDead(live, live.GetBoundary());
   }
 
 private:
