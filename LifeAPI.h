@@ -770,6 +770,8 @@ public:
     return MatchLiveAndDead(live, live.GetBoundary());
   }
 
+  LifeState Match(const LifeTarget &target) const;
+
 private:
   void inline Add(uint64_t &b1, uint64_t &b0, const uint64_t &val) {
     b1 |= b0 & val;
@@ -1202,6 +1204,11 @@ public:
     unwanted = state.GetBoundary();
   }
 
+  void Transform(SymmetryTransform transf) {
+    wanted.Transform(transf);
+    unwanted.Transform(transf);
+  }
+
   static int Parse(LifeTarget &target, const char *rle, int x, int y,
                    SymmetryTransform transf) {
     LifeState Temp;
@@ -1238,6 +1245,10 @@ inline bool LifeState::Contains(const LifeTarget &target, int dx,
 
 inline bool LifeState::Contains(const LifeTarget &target) const {
   return Contains(target.wanted) && AreDisjoint(target.unwanted);
+}
+
+inline LifeState LifeState::Match(const LifeTarget &target) const {
+  return MatchLiveAndDead(target.wanted, target.unwanted);
 }
 
 // typedef struct {

@@ -25,6 +25,7 @@ void split(const std::string &s, char delim, std::vector<std::string> &elems) {
 enum FilterType {
   ANDFILTER,
   ORFILTER,
+  MATCHFILTER,
 };
 
 class SearchParams {
@@ -419,6 +420,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string filter = "filter";
   std::string andfilter = "andfilter";
   std::string orfilter = "orfilter";
+  std::string matchfilter = "match";
   std::string maxWH = "fit-in-width-height";
   std::string maxCatSize = "max-category-size";
   std::string fullReport = "full-report";
@@ -496,7 +498,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
       }
     }
 
-    if (elems[0] == filter || elems[0] == orfilter || elems[0] == andfilter) {
+    if (elems[0] == filter || elems[0] == orfilter || elems[0] == andfilter || elems[0] == matchfilter) {
       std::vector<std::string> rangeElems;
       split(elems[1], '-', rangeElems);
 
@@ -512,11 +514,23 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
       }
 
       params.targetFilter.push_back(elems[2]);
-      params.filterdx.push_back(atoi(elems[3].c_str()));
-      params.filterdy.push_back(atoi(elems[4].c_str()));
-      if (elems[0] == orfilter) {
+
+      if (elems[0] == andfilter) {
+        params.filterdx.push_back(atoi(elems[3].c_str()));
+        params.filterdy.push_back(atoi(elems[4].c_str()));
+        params.filterType.push_back(ANDFILTER);
+      } else if (elems[0] == orfilter) {
+        params.filterdx.push_back(atoi(elems[3].c_str()));
+        params.filterdy.push_back(atoi(elems[4].c_str()));
         params.filterType.push_back(ORFILTER);
+      } else if (elems[0] == matchfilter) {
+        params.filterdx.push_back(0);
+        params.filterdy.push_back(0);
+        params.filterType.push_back(MATCHFILTER);
       } else {
+        // Shouldn't happen
+        params.filterdx.push_back(atoi(elems[3].c_str()));
+        params.filterdy.push_back(atoi(elems[4].c_str()));
         params.filterType.push_back(ANDFILTER);
       }
     }
@@ -1216,14 +1230,26 @@ public:
         if (filterPassed[k])
           continue; // No need to check it again.
 
-        bool singlePassed = workspace.gen == params.filterGen[k] &&
-                            workspace.Contains(targetFilter[k]);
-        bool rangePassed = params.filterGen[k] == -1 &&
-                           params.filterGenRange[k].first <= workspace.gen &&
-                           params.filterGenRange[k].second >= workspace.gen &&
-                           workspace.Contains(targetFilter[k]);
+        bool inSingle = workspace.gen == params.filterGen[k];
+        bool inRange = params.filterGen[k] == -1 &&
+                       params.filterGenRange[k].first <= workspace.gen &&
+                       params.filterGenRange[k].second >= workspace.gen;
+        bool shouldCheck = inSingle || inRange;
 
-        if (singlePassed || rangePassed) {
+        bool succeeded = false;
+        if (shouldCheck && (params.filterType[k] == ANDFILTER ||
+                            params.filterType[k] == ORFILTER)) {
+          succeeded = workspace.Contains(targetFilter[k]);
+        }
+        if (shouldCheck && (params.filterType[k] == MATCHFILTER)) {
+          for (auto sym : SymmetryGroupFromEnum(StaticSymmetry::D8)) {
+            LifeTarget transformed = targetFilter[k];
+            transformed.Transform(sym);
+            succeeded = succeeded || !workspace.Match(transformed).IsEmpty();
+          }
+        }
+
+        if (succeeded) {
           filterPassed[k] = true;
 
           // If this was an OR filter, consider all the other OR filters passed
