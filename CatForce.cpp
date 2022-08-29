@@ -1436,26 +1436,6 @@ public:
               LifeState newAntirequired = antirequired;
               newAntirequired.Join(catalysts[s].antirequired, newPlacement.first, newPlacement.second);
 
-              if (catalysts[s].checkRecovery) {
-                LifeState lookahead = newConfig.state;
-                for (unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
-                  lookahead.Step();
-                }
-                if (!lookahead.Contains(shiftedCatalyst)) {
-                  if (config.count == 0) {
-                    std::cout << "Skipping catalyst " << s << " at "
-                              << newPlacement.first << ", "
-                              << newPlacement.second
-                              << " (failed to recover completely) "
-                              << std::endl;
-                  }
-
-                  masks[s].Set(newPlacement.first, newPlacement.second);
-                  newPlacements.Erase(newPlacement.first, newPlacement.second);
-                  continue;
-                }
-              }
-
               {
                 LifeState lookahead = newConfig.state;
                 lookahead.Step();
@@ -1477,9 +1457,30 @@ public:
                 }
               }
 
+              if (catalysts[s].checkRecovery) {
+                LifeState lookahead = newConfig.state;
+                for (unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
+                  lookahead.Step();
+                }
+                if (!lookahead.Contains(shiftedCatalyst)) {
+                  if (config.count == 0) {
+                    std::cout << "Skipping catalyst " << s << " at "
+                              << newPlacement.first << ", "
+                              << newPlacement.second
+                              << " (failed to recover completely) "
+                              << std::endl;
+                  }
+
+                  masks[s].Set(newPlacement.first, newPlacement.second);
+                  newPlacements.Erase(newPlacement.first, newPlacement.second);
+                  continue;
+                }
+              }
+
               if (config.count == 0) {
                 std::cout << "Placing catalyst " << s << " at "
                           << newPlacement.first << ", " << newPlacement.second
+                  //                                            << ": " << GetRLE(newConfig.state)
                           << std::endl;
               }
 
