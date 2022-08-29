@@ -42,6 +42,7 @@ denote optional parameters.
 |                       | `(locus rle x y)`        | Cells of a catalyst that must interact first                            |
 |                       | `(mustinclude)`          | Solutions must use at least one `mustinclude` catalyst                  |
 |                       | `(transparent)`          | Marked as transparent for the purposes of `num-transparent`             |
+|                       | `(check-recovery)`       | Always check the catalyst is recovered after exactly `max-active` gens  |
 | `output`              | `filename`               | Output filename                                                         |
 | `(and/or)filter`      | `genOrRange rle dx dy`   | Filter that must be matched for the solution to be accepted (see below) |
 | `full-report`         | `filename`               | Output filename for solutions ignoring all pattern filters              |
@@ -72,6 +73,12 @@ i.e. the filter location is based on the catalyst location. Intended
 to exclude eaters/boat-bits and similar unwanted garbage. You may have
 several forbidden patterns per catalyst. See the files in `catlists`
 for examples.
+
+**Check Recovery**: Catalysts with the `check-recovery` attribute are
+immediately tested for whether they recover in `max-active`
+generations, without the support of any further catalysts. This is
+useful for catalysts with a bait still life that has a long recovery
+time, like the hive-pushes or the loaf-spin catalysts.
 
 <!-- Combining Results -->
 <!-- --- -->

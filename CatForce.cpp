@@ -103,6 +103,7 @@ public:
   std::pair<int, int> locusXY;
   bool transparent;
   bool mustInclude;
+  bool checkRecovery;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems;
@@ -124,6 +125,7 @@ public:
 
     transparent = false;
     mustInclude = false;
+    checkRecovery = false;
 
     unsigned argi = 6;
 
@@ -151,6 +153,9 @@ public:
         argi += 1;
       } else if (elems[argi] == "mustinclude") {
         mustInclude = true;
+        argi += 1;
+      } else if (elems[argi] == "check-recovery") {
+        checkRecovery = true;
         argi += 1;
       } else {
         std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
@@ -589,6 +594,7 @@ public:
   LifeState locusAvoidMask;
   bool transparent;
   bool mustInclude;
+  bool checkRecovery;
 
   static std::vector<CatalystData> FromInput(CatalystInput &input);
 };
@@ -650,6 +656,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
     result.transparent = input.transparent;
     result.mustInclude = input.mustInclude;
+    result.checkRecovery = input.checkRecovery;
 
     results.push_back(result);
   }
@@ -1428,6 +1435,24 @@ public:
 
               LifeState newAntirequired = antirequired;
               newAntirequired.Join(catalysts[s].antirequired, newPlacement.first, newPlacement.second);
+
+              if (catalysts[s].checkRecovery) {
+                LifeState lookahead = newConfig.state;
+                for (unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
+                  lookahead.Step();
+                }
+                if (!lookahead.Contains(shiftedCatalyst)) {
+                  std::cout << "Skipping catalyst " << s << " at "
+                            << newPlacement.first << ", "
+                            << newPlacement.second
+                            << " (failed to recover completely) "
+                            << std::endl;
+
+                  masks[s].Set(newPlacement.first, newPlacement.second);
+                  newPlacements.Erase(newPlacement.first, newPlacement.second);
+                  continue;
+                }
+              }
 
               {
                 LifeState lookahead = newConfig.state;
