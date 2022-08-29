@@ -625,8 +625,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.locusReactionMask.Transform(Rotate180OddBoth);
     result.locusReactionMask.RecalculateMinMax();
 
-    result.locusAvoidMask = result.reactionMask;
-    result.locusAvoidMask.Copy(result.locusReactionMask, ANDNOT);
+    result.locusAvoidMask = result.reactionMask & ~result.locusReactionMask;
     result.locusAvoidMask.RecalculateMinMax();
 
     result.maxDisappear = input.maxDisappear;
@@ -932,17 +931,13 @@ public:
   void Add(LifeState &init, const LifeState &afterCatalyst, const LifeState &catalysts,
            const Configuration &conf, unsigned firstGenSurvive,
            unsigned genSurvive) {
-    LifeState result;
 
-    result.Copy(afterCatalyst);
-    result.Copy(catalysts, XOR);
+    LifeState result = afterCatalyst ^ catalysts;
 
     result.Step(maxgen - result.gen);
     uint64_t hash = result.GetHash();
 
-    result.Clear();
-    result.Copy(afterCatalyst);
-    result.Copy(catalysts, XOR);
+    result = afterCatalyst ^ catalysts;
 
     for (auto & category: categories) {
       if (category->BelongsTo(result, hash)) {
@@ -952,9 +947,7 @@ public:
       }
     }
 
-    LifeState categoryKey;
-    categoryKey.Copy(afterCatalyst);
-    categoryKey.Copy(catalysts, XOR);
+    LifeState categoryKey = afterCatalyst ^ catalysts;
 
     SearchResult r(init, conf, firstGenSurvive, genSurvive);
     categories.push_back(new Category(categoryKey, r, catDelta, maxgen));
@@ -1311,12 +1304,11 @@ public:
         LifeState::SolidRect(params.searchArea[0], params.searchArea[1],
                              params.searchArea[2], params.searchArea[3]);
 
-    bounds.Copy(FundamentalDomain(params.symmetry), AND);
+    bounds &= FundamentalDomain(params.symmetry);
 
     std::vector<LifeState> masks(catalysts.size());
     for (unsigned s = 0; s < catalysts.size(); s++) {
-      masks[s] = config.state.Convolve(catalysts[s].reactionMask);
-      masks[s].Copy(bounds, ORNOT);
+      masks[s] = config.state.Convolve(catalysts[s].reactionMask) | ~bounds;
     }
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
@@ -1373,8 +1365,7 @@ public:
         LifeState next = config.state;
         next.Step();
 
-          LifeState activePart = config.state;
-          activePart.Copy(config.startingCatalysts, ANDNOT);
+          LifeState activePart = config.state & ~config.startingCatalysts;
 
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if(catalysts[s].hasLocus) {
@@ -1389,8 +1380,7 @@ public:
             if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
               continue;
 
-            LifeState newPlacements = catalysts[s].locusReactionMask.Convolve(activePart);
-            newPlacements.Copy(masks[s], ANDNOT);
+            LifeState newPlacements = catalysts[s].locusReactionMask.Convolve(activePart) & ~masks[s];
 
             while (!newPlacements.IsEmpty()) {
               // Do the placement
@@ -1419,9 +1409,7 @@ public:
                 LifeState newnext = newConfig.state;
                 newnext.Step();
 
-                LifeState difference = newnext;
-                difference.Copy(next, XOR);
-                difference.Copy(symCatalyst, XOR);
+                LifeState difference = newnext ^ next ^ symCatalyst;
                 if (difference.IsEmpty()) {
                   if (config.count == 0) {
                     std::cout << "Skipping catalyst " << s << " at "
@@ -1490,7 +1478,7 @@ public:
                   bounds.JoinWSymChain(rect, params.symmetryChain);
 
                   for (unsigned t = 0; t < catalysts.size(); t++) {
-                    newMasks[t].Copy(bounds, ORNOT);
+                    newMasks[t] |= ~bounds;
                   }
                 }
 
