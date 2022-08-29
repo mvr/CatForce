@@ -1442,11 +1442,13 @@ public:
                   lookahead.Step();
                 }
                 if (!lookahead.Contains(shiftedCatalyst)) {
-                  std::cout << "Skipping catalyst " << s << " at "
-                            << newPlacement.first << ", "
-                            << newPlacement.second
-                            << " (failed to recover completely) "
-                            << std::endl;
+                  if (config.count == 0) {
+                    std::cout << "Skipping catalyst " << s << " at "
+                              << newPlacement.first << ", "
+                              << newPlacement.second
+                              << " (failed to recover completely) "
+                              << std::endl;
+                  }
 
                   masks[s].Set(newPlacement.first, newPlacement.second);
                   newPlacements.Erase(newPlacement.first, newPlacement.second);
