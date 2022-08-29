@@ -42,6 +42,7 @@ denote optional parameters.
 |                       | `(locus rle x y)`        | Cells of a catalyst that must interact first                            |
 |                       | `(mustinclude)`          | Solutions must use at least one `mustinclude` catalyst                  |
 |                       | `(transparent)`          | Marked as transparent for the purposes of `num-transparent`             |
+|                       | `(check-recovery)`       | Always check the catalyst is recovered after exactly `max-active` gens  |
 |                       | `(period n)`             | Periodic catalyst                                                       |
 |                       | `(isblinker)`            | Mark this catalyst for the phase-shifting blinker special case          |
 | `output`              | `filename`               | Output filename                                                         |
@@ -74,6 +75,12 @@ i.e. the filter location is based on the catalyst location. Intended
 to exclude eaters/boat-bits and similar unwanted garbage. You may have
 several forbidden patterns per catalyst. See the files in `catlists`
 for examples.
+
+**Check Recovery**: Catalysts with the `check-recovery` attribute are
+immediately tested for whether they recover in `max-active`
+generations, without the support of any further catalysts. This is
+useful for catalysts with a bait still life that has a long recovery
+time, like the hive-pushes or the loaf-spin catalysts.
 
 <!-- Combining Results -->
 <!-- --- -->
