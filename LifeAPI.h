@@ -408,6 +408,59 @@ public:
     return true;
   }
 
+  LifeState operator~() const {
+    LifeState result;
+    for (int i = 0; i < N; i++) {
+      result.state[i] = ~state[i];
+    }
+    return result;
+  }
+
+  LifeState operator&(const LifeState &other) const {
+    LifeState result;
+    for (int i = 0; i < N; i++) {
+      result.state[i] = state[i] & other.state[i];
+    }
+    return result;
+  }
+
+  LifeState& operator&=(const LifeState &other) {
+    for (int i = 0; i < N; i++) {
+      state[i] = state[i] & other.state[i];
+    }
+    return *this;
+  }
+
+  LifeState operator|(const LifeState &other) const {
+    LifeState result;
+    for (int i = 0; i < N; i++) {
+      result.state[i] = state[i] | other.state[i];
+    }
+    return result;
+  }
+
+  LifeState& operator|=(const LifeState &other) {
+    for (int i = 0; i < N; i++) {
+      state[i] = state[i] | other.state[i];
+    }
+    return *this;
+  }
+
+  LifeState operator^(const LifeState &other) const {
+    LifeState result;
+    for (int i = 0; i < N; i++) {
+      result.state[i] = state[i] ^ other.state[i];
+    }
+    return result;
+  }
+
+  LifeState& operator^=(const LifeState &other) {
+    for (int i = 0; i < N; i++) {
+      state[i] = state[i] ^ other.state[i];
+    }
+    return *this;
+  }
+
   inline bool AreDisjoint(const LifeState &pat) const {
     int min = 0;
     int max = N - 1;
