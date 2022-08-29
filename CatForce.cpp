@@ -1165,8 +1165,7 @@ public:
  }
 
   bool HasForbidden(Configuration &conf, unsigned curIter) {
-    LifeState workspace;
-    workspace.Join(conf.startingCatalysts);
+    LifeState workspace = conf.startingCatalysts;
     workspace.JoinWSymChain(pat, params.symmetryChain);
 
     for (unsigned i = 0; i <= curIter + 1; i++) {
@@ -1194,9 +1193,8 @@ public:
   }
 
   bool ValidateFilters(Configuration &conf, unsigned failuretime) {
-    LifeState workspace;
+    LifeState workspace = conf.startingCatalysts;
     workspace.JoinWSymChain(pat, params.symmetryChain);
-    workspace.Join(conf.startingCatalysts);
 
     std::vector<bool> filterPassed(params.filterGen.size(), false);
 
@@ -1254,18 +1252,15 @@ public:
     if (HasForbidden(conf, successtime + 3))
       return;
 
-    LifeState init;
-    LifeState afterCatalyst;
-
-    LifeState workspace;
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
-      workspace.Join(conf.startingCatalysts);
+      LifeState workspace = conf.startingCatalysts;
       workspace.JoinWSymChain(pat, params.symmetryChain);
-      init.Copy(workspace);
+
+      LifeState init = workspace;
 
       workspace.Step(successtime - params.stableInterval + 2);
-      afterCatalyst.Copy(workspace);
+      LifeState afterCatalyst = workspace;
 
       fullfound++;
 
@@ -1280,13 +1275,14 @@ public:
     }
 
     // If all filters validated update results
-    workspace.Clear();
+    LifeState workspace = conf.startingCatalysts;
     workspace.JoinWSymChain(pat, params.symmetryChain);
-    workspace.Join(conf.startingCatalysts);
-    init.Copy(workspace);
+
+    LifeState init = workspace;
 
     workspace.Step(successtime - params.stableInterval + 2);
-    afterCatalyst.Copy(workspace);
+
+    LifeState afterCatalyst = workspace;
 
     categoryContainer->Add(init, afterCatalyst, conf.startingCatalysts, conf,
                            successtime - params.stableInterval + 2, 0);
@@ -1370,7 +1366,7 @@ public:
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if(catalysts[s].hasLocus) {
               LifeState hitLocations = catalysts[s].locusAvoidMask.Convolve(activePart);
-              masks[s].Join(hitLocations);
+              masks[s] |= hitLocations;
             }
           }
 
@@ -1401,8 +1397,8 @@ public:
 
               LifeState symCatalyst;
               symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
-              newConfig.startingCatalysts.Join(symCatalyst);
-              newConfig.state.Join(symCatalyst);
+              newConfig.startingCatalysts |= symCatalyst;
+              newConfig.state |= symCatalyst;
 
               // Do a one-step lookahead to see if the catalyst interacts
               {
@@ -1505,7 +1501,7 @@ public:
       if (config.state.gen < params.startGen) {
         for (unsigned s = 0; s < catalysts.size(); s++) {
           LifeState hitLocations = config.state.Convolve(catalysts[s].reactionMask);
-          masks[s].Join(hitLocations);
+          masks[s] |= hitLocations;
         }
       }
 
