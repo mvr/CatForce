@@ -1606,8 +1606,6 @@ int main(int argc, char *argv[]) {
             << std::endl;
 
   searcher.Search();
-  // Print report one final time (update files with the final results).
-  searcher.Report();
 
   printf("\n\nFINISH\n");
   clock_t end = clock();
