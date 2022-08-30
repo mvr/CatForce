@@ -223,7 +223,7 @@ public:
       __m256i v2 = _mm256_loadu_si256((const __m256i*)(p+32));
       __m256i vor = _mm256_or_si256(v1,v2);
       if (!_mm256_testz_si256(vor, vor)) {
-        max = (p-p_init+64)/8;
+        max = (p-p_init)/8 + 7;
         break;
       }
       p -= 64;
@@ -312,23 +312,22 @@ public:
 
   void Join(const LifeState &delta) { Copy(delta, OR); }
 
-  inline void Join(const LifeState &delta, int x, int y) {
-    uint64_t temp1[N] = {0};
-    uint64_t temp2[N];
+  void Join(const LifeState &delta, int x, int y) {
+    uint64_t temp[2*N] = {0};
 
     if (x < 0)
       x += N;
     if (y < 0)
       y += 64;
 
-    for (int i = delta.min; i <= delta.max; i++)
-      temp1[i] = RotateLeft(delta.state[i], y);
-
-    memmove(temp2, temp1 + (N - x), x * sizeof(uint64_t));
-    memmove(temp2 + x, temp1, (N - x) * sizeof(uint64_t));
-
     for (int i = 0; i < N; i++) {
-      state[i] |= temp2[i];
+      temp[i]   = RotateLeft(delta.state[i], y);
+      temp[i+N] = RotateLeft(delta.state[i], y);
+    }
+
+    const int shift = N - x;
+    for (int i = 0; i < N; i++) {
+      state[i] |= temp[i+shift];
     }
 
     min = 0;
@@ -534,18 +533,22 @@ public:
   }
 
   void Move(int x, int y) {
-    uint64_t temp[N];
+    uint64_t temp[2*N] = {0};
 
     if (x < 0)
       x += N;
     if (y < 0)
       y += 64;
 
-    for (int i = 0; i < N; i++)
-      temp[i] = RotateLeft(state[i], y);
+    for (int i = 0; i < N; i++) {
+      temp[i]   = RotateLeft(state[i], y);
+      temp[i+N] = RotateLeft(state[i], y);
+    }
 
-    memmove(state, temp + (N - x), x * sizeof(uint64_t));
-    memmove(state + x, temp, (N - x) * sizeof(uint64_t));
+    const int shift = N - x;
+    for (int i = 0; i < N; i++) {
+      state[i] = temp[i+shift];
+    }
 
     if ((min + x) % N < (max + x) % N) {
       min = (min + x) % N;
@@ -583,7 +586,8 @@ public:
         }
       }
     }
-    RecalculateMinMax();
+    min = 0;
+    max = N - 1;
   }
 
   void Transpose() { Transpose(true); }
@@ -596,7 +600,6 @@ public:
   void Transform(int dx, int dy, SymmetryTransform transf) {
     Move(dx, dy);
     Transform(transf);
-    RecalculateMinMax();
   }
 
   LifeState ZOI() const {
@@ -668,7 +671,7 @@ public:
     memcpy(doubledother,     other.state, N * sizeof(uint64_t));
     memcpy(doubledother + N, other.state, N * sizeof(uint64_t));
 
-    for (unsigned j = 0; j < N; j++) {
+    for (unsigned j = min; j <= max; j++) {
       unsigned k = 64-j;
       uint64_t x = state[j];
 
@@ -770,6 +773,8 @@ public:
     return MatchLiveAndDead(live, live.GetBoundary());
   }
 
+  LifeState Match(const LifeTarget &target) const;
+
 private:
   void inline Add(uint64_t &b1, uint64_t &b0, const uint64_t &val) {
     b1 |= b0 & val;
@@ -857,6 +862,7 @@ public:
     LifeState result;
     Parse(result, rle);
     result.Transform(dx, dy, trans);
+    result.RecalculateMinMax();
 
     return result;
   }
@@ -1102,6 +1108,8 @@ void LifeState::Transform(SymmetryTransform transf) {
     Move(0, 1);
     break;
   }
+  min = 0;
+  max = N - 1;
 }
 
 void LifeState::Print() const {
@@ -1202,6 +1210,11 @@ public:
     unwanted = state.GetBoundary();
   }
 
+  void Transform(SymmetryTransform transf) {
+    wanted.Transform(transf);
+    unwanted.Transform(transf);
+  }
+
   static int Parse(LifeTarget &target, const char *rle, int x, int y,
                    SymmetryTransform transf) {
     LifeState Temp;
@@ -1238,6 +1251,10 @@ inline bool LifeState::Contains(const LifeTarget &target, int dx,
 
 inline bool LifeState::Contains(const LifeTarget &target) const {
   return Contains(target.wanted) && AreDisjoint(target.unwanted);
+}
+
+inline LifeState LifeState::Match(const LifeTarget &target) const {
+  return MatchLiveAndDead(target.wanted, target.unwanted);
 }
 
 // typedef struct {

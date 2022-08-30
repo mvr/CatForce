@@ -47,6 +47,7 @@ denote optional parameters.
 |                       | `(isblinker)`            | Mark this catalyst for the phase-shifting blinker special case          |
 | `output`              | `filename`               | Output filename                                                         |
 | `(and/or)filter`      | `genOrRange rle dx dy`   | Filter that must be matched for the solution to be accepted (see below) |
+| `match`               | `genOrRange rle`         | Filter that checks whether the pattern occurs anywhere                  |
 | `full-report`         | `filename`               | Output filename for solutions ignoring all pattern filters              |
 | `max-category-size`   | `n`                      | Maximum output row length before more solutions are dropped             |
 | `fit-in-width-height` | `w h`                    | Only allow solutions where all catalysts fit in a `w` by `h` rectangle  |
@@ -63,10 +64,12 @@ applied to the catalyst:
 - `*`: all 8 transformations.
 
 **Filters**: Every potential solution will be checked against the
-provided filters: only solutions that match the filter will be
+provided filters: only solutions that match the filters will be
 kept. There are two variants: `andfilter` and `orfilter`. Every
 `andfilter ...` must match and at least one `orfilter ...` must match
-for the solution to succeed.
+for the solution to succeed. A `match` filter pattern-matches the
+solution for the specified pattern, and succeeds if the pattern occurs
+anywhere (and otherwise behaves like an `andfilter`).
 
 **Forbidden**: Checks for `rle` in the same location as the
 catalyst. If `rle` is matched in any generation, the solution is

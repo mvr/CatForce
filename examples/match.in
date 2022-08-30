@@ -1,0 +1,19 @@
+start-gen 0
+last-gen 10
+max-gen 100
+stable-interval 15
+num-catalyst 2
+stop-after-cats-destroyed 5
+
+symmetry C2even
+pat b2o$obo$o$obo$b2o! -5 6
+match 5-100 b2o$obo$o$obo$b2o!
+output p196_pi_hassler.rle
+full-report p196_pi_hassler_full.rle
+
+cat 2o$2o! 30 0 0 / required o! 0 0 antirequired 2o$o! -1 -1
+
+cat 2o$o$b3o$3bo! 10 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6 required bo$o$b3o$3bo! -2 -2 antirequired 2bo$b3o$o$3o! -2 -2
+
+cat 2obo$2ob3o$6bo$2ob2obo$bob2ob2o$bo$2b3ob2o$4bob2o! 10 -3 -3 | forbidden 2bo$obo$b2o2$3b2obo$3b2ob3o$9bo$3b2ob2obo$4bob2ob2o$4bo$5b3ob2o$7bob2o! -6 -7 forbidden bo$2bo$3o2$3b2obo$3b2ob3o$9bo$3b2ob2obo$4bob2ob2o$4bo$5b3ob2o$7bob2o! -6 -7 forbidden 2bo$obo$b2o$4b2obo$4b2ob3o$10bo$4b2ob2obo$5bob2ob2o$5bo$6b3ob2o$8bob2o! -7 -6 forbidden bo$2bo$3o$4b2obo$4b2ob3o$10bo$4b2ob2obo$5bob2ob2o$5bo$6b3ob2o$8bob2o! -7 -6 forbidden 2obo$2ob3o$6bo$2ob2obo$bob2ob2o$bo$2b3ob2o$4bob2o$9b3o$9bo$10bo! -3 -3 forbidden 2obo$2ob3o$6bo$2ob2obo$bob2ob2o$bo$2b3ob2o$4bob2o$9b2o$9bobo$9bo! -3 -3 forbidden 2obo$2ob3o$6bo$2ob2obo$bob2ob2o$bo$2b3ob2o$4bob2o2$8b3o$8bo$9bo! -3 -3 forbidden 2obo$2ob3o$6bo$2ob2obo$bob2ob2o$bo$2b3ob2o$4bob2o2$8b2o$8bobo$8bo! -3 -3 required 3bo$3b3o$6bo$2ob2obo$bob2ob2o$bo$2b3o$4bo! -3 -3 antirequired 4b3o$6b2o$2b4obo$2bo2bobo$obo2bo$ob4o$2o$b3o! -3 -3 locus 2o$2o5$6b2o$6b2o! -3 -3
+
