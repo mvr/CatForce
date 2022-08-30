@@ -171,7 +171,7 @@ public:
   }
 };
 
-std::vector<SymmetryTransform> SymmetryGroupFromEnum(const StaticSymmetry sym) {
+inline std::vector<SymmetryTransform> SymmetryGroupFromEnum(const StaticSymmetry sym) {
   switch (sym) {
   case StaticSymmetry::C1:
     return {Identity};
@@ -228,7 +228,7 @@ std::vector<SymmetryTransform> SymmetryGroupFromEnum(const StaticSymmetry sym) {
   }
 }
 
-std::vector<SymmetryTransform> SymmetryChainFromEnum(const StaticSymmetry sym) {
+inline std::vector<SymmetryTransform> SymmetryChainFromEnum(const StaticSymmetry sym) {
   switch (sym) {
   case StaticSymmetry::C1:
     return {};
