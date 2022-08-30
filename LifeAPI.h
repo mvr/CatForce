@@ -223,7 +223,7 @@ public:
       __m256i v2 = _mm256_loadu_si256((const __m256i*)(p+32));
       __m256i vor = _mm256_or_si256(v1,v2);
       if (!_mm256_testz_si256(vor, vor)) {
-        max = (p-p_init+64)/8;
+        max = (p-p_init)/8 + 7;
         break;
       }
       p -= 64;
@@ -583,7 +583,8 @@ public:
         }
       }
     }
-    RecalculateMinMax();
+    min = 0;
+    max = N - 1;
   }
 
   void Transpose() { Transpose(true); }
@@ -596,7 +597,6 @@ public:
   void Transform(int dx, int dy, SymmetryTransform transf) {
     Move(dx, dy);
     Transform(transf);
-    RecalculateMinMax();
   }
 
   LifeState ZOI() const {
@@ -859,6 +859,7 @@ public:
     LifeState result;
     Parse(result, rle);
     result.Transform(dx, dy, trans);
+    result.RecalculateMinMax();
 
     return result;
   }
@@ -1104,6 +1105,8 @@ void LifeState::Transform(SymmetryTransform transf) {
     Move(0, 1);
     break;
   }
+  min = 0;
+  max = N - 1;
 }
 
 void LifeState::Print() const {

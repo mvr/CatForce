@@ -1046,6 +1046,7 @@ public:
       for (unsigned s = 0; s < catalysts.size(); s++) {
         for (unsigned t = 0; t < catalysts.size(); t++) {
           infile.read((char*)catalystCollisionMasks[s * catalysts.size() + t].state, N * sizeof(uint64_t));
+          catalystCollisionMasks[s * catalysts.size() + t].RecalculateMinMax();
         }
       }
       return;
@@ -1063,6 +1064,7 @@ public:
           continue;
 
         catalystCollisionMasks[s * catalysts.size() + t] = LoadCollisionMask(catalysts[s], catalysts[t]);
+        catalystCollisionMasks[s * catalysts.size() + t].RecalculateMinMax();
       }
     }
 
