@@ -312,23 +312,22 @@ public:
 
   void Join(const LifeState &delta) { Copy(delta, OR); }
 
-  inline void Join(const LifeState &delta, int x, int y) {
-    uint64_t temp1[N] = {0};
-    uint64_t temp2[N];
+  void Join(const LifeState &delta, int x, int y) {
+    uint64_t temp[2*N] = {0};
 
     if (x < 0)
       x += N;
     if (y < 0)
       y += 64;
 
-    for (int i = delta.min; i <= delta.max; i++)
-      temp1[i] = RotateLeft(delta.state[i], y);
-
-    memmove(temp2, temp1 + (N - x), x * sizeof(uint64_t));
-    memmove(temp2 + x, temp1, (N - x) * sizeof(uint64_t));
-
     for (int i = 0; i < N; i++) {
-      state[i] |= temp2[i];
+      temp[i]   = RotateLeft(delta.state[i], y);
+      temp[i+N] = RotateLeft(delta.state[i], y);
+    }
+
+    const int shift = N - x;
+    for (int i = 0; i < N; i++) {
+      state[i] |= temp[i+shift];
     }
 
     min = 0;
@@ -534,18 +533,22 @@ public:
   }
 
   void Move(int x, int y) {
-    uint64_t temp[N];
+    uint64_t temp[2*N] = {0};
 
     if (x < 0)
       x += N;
     if (y < 0)
       y += 64;
 
-    for (int i = 0; i < N; i++)
-      temp[i] = RotateLeft(state[i], y);
+    for (int i = 0; i < N; i++) {
+      temp[i]   = RotateLeft(state[i], y);
+      temp[i+N] = RotateLeft(state[i], y);
+    }
 
-    memmove(state, temp + (N - x), x * sizeof(uint64_t));
-    memmove(state + x, temp, (N - x) * sizeof(uint64_t));
+    const int shift = N - x;
+    for (int i = 0; i < N; i++) {
+      state[i] = temp[i+shift];
+    }
 
     if ((min + x) % N < (max + x) % N) {
       min = (min + x) % N;
