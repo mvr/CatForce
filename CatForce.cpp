@@ -1344,12 +1344,12 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, alsoRequired, LifeState(), masks, shiftedTargets,
+    RecursiveSearch(config, config.state, alsoRequired, LifeState(), masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>());
   }
 
   void
-  RecursiveSearch(Configuration config, const LifeState required, const LifeState antirequired,
+  RecursiveSearch(Configuration config, LifeState history, const LifeState required, const LifeState antirequired,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
@@ -1396,11 +1396,12 @@ public:
         LifeState next = config.state;
         next.Step();
 
-          LifeState activePart = config.state & ~config.startingCatalysts;
+        LifeState activePart = (~history).ZOI() & config.state & ~config.startingCatalysts;
 
+          if(!activePart.IsEmpty()) {
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if(catalysts[s].hasLocus) {
-              LifeState hitLocations = catalysts[s].locusAvoidMask.Convolve(activePart);
+              LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
               masks[s] |= hitLocations;
             }
           }
@@ -1411,7 +1412,7 @@ public:
             if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
               continue;
 
-            LifeState newPlacements = catalysts[s].locusReactionMask.Convolve(activePart) & ~masks[s];
+            LifeState newPlacements = activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
 
             while (!newPlacements.IsEmpty()) {
               // Do the placement
@@ -1540,16 +1541,19 @@ public:
                 }
               }
 
-              RecursiveSearch(newConfig, newRequired, newAntirequired, newMasks,
+              RecursiveSearch(newConfig, history, newRequired, newAntirequired, newMasks,
                               shiftedTargets, missingTime, recoveredTime);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
               newPlacements.Erase(newPlacement.first, newPlacement.second);
             }
           }
-
+          }
+          history |= config.state;
           config.state = next;
       } else {
+        // No need to update history, not used for anything
+        // history |= config.state;
         config.state.Step();
       }
 
