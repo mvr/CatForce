@@ -716,8 +716,6 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b) {
   return mask;
 }
 
-std::string GetRLE(const LifeState &s);
-
 LifeState LoadCollisionMask(const CatalystData &a, const CatalystData &b) {
   std::stringstream ss;
   ss << "masks/maskraw-" << a.state.GetHash() << "-" << b.state.GetHash();
@@ -808,16 +806,6 @@ std::string GetRLE(const std::vector<std::vector<bool>> &life2d) {
   }
 
   return result.str();
-}
-
-std::string GetRLE(const LifeState &s) {
-  std::vector<std::vector<bool>> vec(N, std::vector<bool>(N));
-
-  for (unsigned j = 0; j < N; j++)
-    for (unsigned i = 0; i < N; i++)
-      vec[i][j] = s.GetCell(i - 32, j - 32) == 1;
-
-  return GetRLE(vec);
 }
 
 class SearchResult {
@@ -1509,7 +1497,7 @@ public:
               if (config.count == 0) {
                 std::cout << "Placing catalyst " << s << " at "
                           << newPlacement.first << ", " << newPlacement.second
-                  //                                            << ": " << GetRLE(newConfig.state)
+                  //                                                              << ": " << newConfig.state.RLE()
                           << std::endl;
               }
 
