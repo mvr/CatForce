@@ -1469,7 +1469,7 @@ public:
         LifeState next = config.state;
         next.Step();
 
-          LifeState activePart = config.state & ~config.startingCatalysts;
+          LifeState activePart = config.state & ~config.catalystsState;
 
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if(catalysts[s].hasLocus) {
