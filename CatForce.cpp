@@ -678,7 +678,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
         // Use the envelope
         LifeState tmp = pat;
         for (unsigned j = 0; j < input.period; j++) {
-          result.locus.Copy(tmp, OR);
+          result.locus |= tmp;
           tmp.Step();
         }
       }
@@ -689,7 +689,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
       // This is a little janky, it should probably be per phase
       result.locusAvoidMask = result.reactionMask;
-      result.locusAvoidMask.Copy(result.locusReactionMask, ANDNOT);
+      result.locusAvoidMask &= ~result.locusReactionMask;
       result.locusAvoidMask.RecalculateMinMax();
 
       LifeState tmp = pat;
@@ -698,7 +698,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
         LifeState phasemask = tmp.BigZOI();
         phasemask.Transform(Rotate180OddBoth);
-        phasemask.Copy(result.locusReactionMask, AND);
+        phasemask &= result.locusReactionMask;
         phasemask.RecalculateMinMax();
         result.phaseReactionMask.push_back(phasemask);
 
@@ -888,7 +888,7 @@ public:
 
   SearchResult(LifeState &initState, const Configuration &conf,
                unsigned firstGenSurviveIn, unsigned genSurvive) {
-    init.Copy(initState);
+    init = initState;
 
     maxGenSurvive = genSurvive;
     firstGenSurvive = firstGenSurviveIn;
@@ -1436,11 +1436,7 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      LifeState maskedState = config.state;
-      maskedState.Copy(required, AND);
-      LifeState maskedCats = config.catalystsState;
-      maskedCats.Copy(required, AND);
-      maskedState.Copy(maskedCats, XOR);
+      LifeState maskedState = (config.state & required) ^ (config.catalystsState & required);
 
       if (!maskedState.IsEmpty() || !config.state.AreDisjoint(antirequired)) {
           failure = true;
@@ -1567,9 +1563,7 @@ public:
                   lookaheadcats.Step();
                   lookaheadcats.Step();
 
-                  lookahead.Copy(newRequired, AND);
-                  lookaheadcats.Copy(newRequired, AND);
-                  lookahead.Copy(lookaheadcats, XOR);
+                  lookahead = (lookahead & newRequired) ^ (lookaheadcats & newRequired);
 
                   if (!lookahead.IsEmpty()) {
                     requiredFailed = true;
