@@ -672,7 +672,7 @@ public:
     memcpy(doubledother,     other.state, N * sizeof(uint64_t));
     memcpy(doubledother + N, other.state, N * sizeof(uint64_t));
 
-    for (unsigned j = min; j <= max; j++) {
+    for (unsigned j = 0; j < N; j++) {
       unsigned k = 64-j;
       uint64_t x = state[j];
 
