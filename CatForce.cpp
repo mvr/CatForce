@@ -1661,7 +1661,7 @@ public:
       config.catalystsState.Step();
 
       // Still block the locations that are hit too early
-      if (config.state.gen < params.startGen) {
+      if (g < params.startGen) {
         for (unsigned s = 0; s < catalysts.size(); s++) {
           LifeState hitLocations = config.state.Convolve(catalysts[s].phaseReactionMask[g % catalysts[s].period]);
           masks[s] |= hitLocations;
