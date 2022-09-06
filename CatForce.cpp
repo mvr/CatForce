@@ -59,6 +59,7 @@ public:
   std::pair<int, int> alsoRequiredXY;
 
   int stopAfterCatsDestroyed;
+  int maxJunk;
 
   SearchParams() {
     maxGen = 250;
@@ -84,6 +85,7 @@ public:
     alsoRequired = "";
     alsoRequiredXY = {0, 0};
     stopAfterCatsDestroyed = -1;
+    maxJunk = -1;
   }
 };
 
@@ -438,6 +440,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string symmetry = "symmetry";
   std::string alsoRequired = "also-required";
   std::string stopAfterCatsDestroyed = "stop-after-cats-destroyed";
+  std::string maxJunk = "max-junk";
 
   std::string line;
 
@@ -583,6 +586,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     }
     if (elems[0] == stopAfterCatsDestroyed){
       params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
+    }
+    if (elems[0] == maxJunk){
+      params.maxJunk = atoi(elems[1].c_str());
     }
   }
 
@@ -760,8 +766,6 @@ LifeState CollisionMask(const LifeState &a, const LifeState &b, unsigned period)
   return mask;
 }
 
-std::string GetRLE(const LifeState &s);
-
 unsigned gcd(unsigned a, unsigned b) {
     while(a != b)
     {
@@ -772,7 +776,6 @@ unsigned gcd(unsigned a, unsigned b) {
     }
     return a;
 }
-
 
 LifeState LoadCollisionMask(const CatalystData &a, const CatalystData &b) {
   std::stringstream ss;
@@ -866,16 +869,6 @@ std::string GetRLE(const std::vector<std::vector<bool>> &life2d) {
   return result.str();
 }
 
-std::string GetRLE(const LifeState &s) {
-  std::vector<std::vector<bool>> vec(N, std::vector<bool>(N));
-
-  for (unsigned j = 0; j < N; j++)
-    for (unsigned i = 0; i < N; i++)
-      vec[i][j] = s.GetCell(i - 32, j - 32) == 1;
-
-  return GetRLE(vec);
-}
-
 class SearchResult {
 public:
   // Saved for the report
@@ -917,7 +910,7 @@ public:
 
   Category(LifeState &catalystRemoved, SearchResult &firstResult,
            unsigned catDeltaIn, unsigned maxGen) {
-    categoryKey.Copy(catalystRemoved);
+    categoryKey = catalystRemoved;
     results.push_back(firstResult);
     catDelta = catDeltaIn;
     maxgen = maxGen;
@@ -1010,11 +1003,13 @@ public:
            unsigned firstGenSurvive,
            unsigned genSurvive) {
     LifeState result = afterCatalyst ^ catalysts;
+    result.gen = firstGenSurvive;
 
     result.Step(maxgen - result.gen);
     uint64_t hash = result.GetHash();
 
     result = afterCatalyst ^ catalysts;
+    result.gen = firstGenSurvive;
 
     for (auto & category: categories) {
       if (category->BelongsTo(result, hash)) {
@@ -1025,6 +1020,7 @@ public:
     }
 
     LifeState categoryKey = afterCatalyst ^ catalysts;
+    categoryKey.gen = firstGenSurvive;
 
     SearchResult r(init, conf, firstGenSurvive, genSurvive);
     categories.push_back(new Category(categoryKey, r, catDelta, maxgen));
@@ -1281,6 +1277,14 @@ public:
     LifeState workspace = conf.startingCatalysts;
     workspace.JoinWSymChain(pat, params.symmetryChain);
 
+    LifeState catalystState = conf.startingCatalysts;
+
+    unsigned maxMatchingPop;
+    if(params.maxJunk != -1)
+      maxMatchingPop = workspace.GetPop() + params.maxJunk;
+    else
+      maxMatchingPop = 10000;
+
     std::vector<bool> filterPassed(params.filterGen.size(), false);
 
     unsigned stopTime;
@@ -1301,19 +1305,30 @@ public:
         bool shouldCheck = inSingle || inRange;
 
         bool succeeded = false;
+        LifeState junk;
+
+        // See whether there is a match at all
         if (shouldCheck && (params.filterType[k] == ANDFILTER ||
                             params.filterType[k] == ORFILTER)) {
           succeeded = workspace.Contains(targetFilter[k]);
+          junk = workspace & ~targetFilter[k].wanted & ~catalystState;
         }
         if (shouldCheck && (params.filterType[k] == MATCHFILTER)) {
-          for (auto sym : SymmetryGroupFromEnum(StaticSymmetry::D8)) {
-            LifeTarget transformed = targetFilter[k];
-            transformed.Transform(sym);
-            succeeded = succeeded || !workspace.Match(transformed).IsEmpty();
-          }
+          // if(workspace.GetPop() <= maxMatchingPop) {
+            for (auto sym : SymmetryGroupFromEnum(StaticSymmetry::D8)) {
+              LifeTarget transformed = targetFilter[k];
+              transformed.Transform(sym);
+              LifeState matches = workspace.Match(transformed);
+              if(!matches.IsEmpty()) {
+                succeeded = true;
+                junk = workspace & ~matches.Convolve(transformed.wanted) & ~catalystState;
+                break;
+              }
+            }
+          // }
         }
 
-        if (succeeded) {
+        if (succeeded && junk.GetPop() <= params.maxJunk) {
           filterPassed[k] = true;
 
           // If this was an OR filter, consider all the other OR filters passed
@@ -1336,6 +1351,7 @@ public:
       }
 
       workspace.Step();
+      catalystState.Step();
     }
 
     for (unsigned k = 0; k < params.filterGen.size(); k++)
@@ -1412,12 +1428,12 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, alsoRequired, LifeState(), masks, shiftedTargets,
+    RecursiveSearch(config, config.state, alsoRequired, LifeState(), masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>());
   }
 
   void
-  RecursiveSearch(Configuration config, const LifeState required, const LifeState antirequired,
+  RecursiveSearch(Configuration config, LifeState history, const LifeState required, const LifeState antirequired,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
@@ -1469,11 +1485,12 @@ public:
         LifeState next = config.state;
         next.Step();
 
-          LifeState activePart = config.state & ~config.catalystsState;
+        LifeState activePart = (~history).ZOI() & config.state & ~config.catalystsState;
 
+          if(!activePart.IsEmpty()) {
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if(catalysts[s].hasLocus) {
-              LifeState hitLocations = catalysts[s].locusAvoidMask.Convolve(activePart);
+              LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
               masks[s] |= hitLocations;
             }
           }
@@ -1484,10 +1501,7 @@ public:
             if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
               continue;
 
-            LifeState newPlacements =
-                catalysts[s]
-                    .phaseReactionMask[g % catalysts[s].period]
-                    .Convolve(activePart) & ~masks[s];
+            LifeState newPlacements = activePart.Convolve(catalysts[s].phaseReactionMask[g % catalysts[s].period]) & ~masks[s];
 
             while (!newPlacements.IsEmpty()) {
               // Do the placement
@@ -1608,7 +1622,7 @@ public:
               if (config.count == 0) {
                 std::cout << "Placing catalyst " << s << " at "
                           << newPlacement.first << ", " << newPlacement.second
-                  //                                            << ": " << GetRLE(newConfig.state)
+                  //                                                              << ": " << newConfig.state.RLE()
                           << std::endl;
               }
 
@@ -1646,16 +1660,19 @@ public:
                 }
               }
 
-              RecursiveSearch(newConfig, newRequired, newAntirequired, newMasks,
+              RecursiveSearch(newConfig, history, newRequired, newAntirequired, newMasks,
                               shiftedTargets, missingTime, recoveredTime);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
               newPlacements.Erase(newPlacement.first, newPlacement.second);
             }
           }
-
+          }
+          history |= activePart;
           config.state = next;
       } else {
+        // No need to update history, not used for anything
+        // history |= config.state;
         config.state.Step();
       }
       config.catalystsState.Step();
@@ -1713,8 +1730,6 @@ int main(int argc, char *argv[]) {
             << std::endl;
 
   searcher.Search();
-  // Print report one final time (update files with the final results).
-  searcher.Report();
 
   printf("\n\nFINISH\n");
   clock_t end = clock();

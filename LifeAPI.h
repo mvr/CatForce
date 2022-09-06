@@ -11,6 +11,7 @@
 #include <string.h>
 #include <vector>
 #include <iostream>
+#include <sstream>
 
 #include <immintrin.h>
 
@@ -671,7 +672,7 @@ public:
     memcpy(doubledother,     other.state, N * sizeof(uint64_t));
     memcpy(doubledother + N, other.state, N * sizeof(uint64_t));
 
-    for (unsigned j = min; j <= max; j++) {
+    for (unsigned j = 0; j < N; j++) {
       unsigned k = 64-j;
       uint64_t x = state[j];
 
@@ -875,6 +876,8 @@ public:
   }
 
   static LifeState Parse(const char *rle) { return Parse(rle, 0, 0); }
+
+  std::string RLE() const;
 
   static LifeState RandomState() {
     LifeState result;
@@ -1197,6 +1200,71 @@ int LifeState::Parse(LifeState &state, const char *rle, int starti) {
   state.RecalculateMinMax();
 
   return -1;
+}
+
+std::string LifeState::RLE() const {
+  std::stringstream result;
+
+  unsigned eol_count = 0;
+
+  for (unsigned j = 0; j < N; j++) {
+    bool last_val = GetCell(0 - 32, j - 32) == 1;
+    unsigned run_count = 0;
+
+    for (unsigned i = 0; i < N; i++) {
+      bool val = GetCell(i - 32, j - 32) == 1;
+
+      // Flush linefeeds if we find a live cell
+      if (val && eol_count > 0) {
+        if (eol_count > 1)
+          result << eol_count;
+
+        result << "$";
+
+        eol_count = 0;
+      }
+
+      // Flush current run if val changes
+      if (val == !last_val) {
+        if (run_count > 1)
+          result << run_count;
+
+        if (last_val == 1)
+          result << "o";
+        else
+          result << "b";
+
+        run_count = 0;
+      }
+
+      run_count++;
+      last_val = val;
+    }
+
+    // Flush run of live cells at end of line
+    if (last_val) {
+      if (run_count > 1)
+        result << run_count;
+
+      result << "o";
+
+      run_count = 0;
+    }
+
+    eol_count++;
+  }
+
+  // Flush trailing linefeeds
+  if (eol_count > 0) {
+    if (eol_count > 1)
+      result << eol_count;
+
+    result << "$";
+
+    eol_count = 0;
+  }
+
+  return result.str();
 }
 
 class LifeTarget {
