@@ -46,6 +46,7 @@ denote optional parameters.
 | `output`              | `filename`               | Output filename                                                         |
 | `(and/or)filter`      | `genOrRange rle dx dy`   | Filter that must be matched for the solution to be accepted (see below) |
 | `match`               | `genOrRange rle`         | Filter that checks whether the pattern occurs anywhere                  |
+| `max-junk`            | `n`                      | For filters, the maximum non-matching non-catalyst population           |
 | `full-report`         | `filename`               | Output filename for solutions ignoring all pattern filters              |
 | `max-category-size`   | `n`                      | Maximum output row length before more solutions are dropped             |
 | `fit-in-width-height` | `w h`                    | Only allow solutions where all catalysts fit in a `w` by `h` rectangle  |

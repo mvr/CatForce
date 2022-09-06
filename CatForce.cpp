@@ -59,6 +59,7 @@ public:
   std::pair<int, int> alsoRequiredXY;
 
   int stopAfterCatsDestroyed;
+  int maxJunk;
 
   SearchParams() {
     maxGen = 250;
@@ -84,6 +85,7 @@ public:
     alsoRequired = "";
     alsoRequiredXY = {0, 0};
     stopAfterCatsDestroyed = -1;
+    maxJunk = -1;
   }
 };
 
@@ -428,6 +430,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string symmetry = "symmetry";
   std::string alsoRequired = "also-required";
   std::string stopAfterCatsDestroyed = "stop-after-cats-destroyed";
+  std::string maxJunk = "max-junk";
 
   std::string line;
 
@@ -573,6 +576,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     }
     if (elems[0] == stopAfterCatsDestroyed){
       params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
+    }
+    if (elems[0] == maxJunk){
+      params.maxJunk = atoi(elems[1].c_str());
     }
   }
 
@@ -1210,6 +1216,12 @@ public:
     LifeState workspace = conf.startingCatalysts;
     workspace.JoinWSymChain(pat, params.symmetryChain);
 
+    unsigned maxMatchingPop;
+    if(params.maxJunk != -1)
+      maxMatchingPop = workspace.GetPop() + params.maxJunk;
+    else
+      maxMatchingPop = 10000;
+
     std::vector<bool> filterPassed(params.filterGen.size(), false);
 
     unsigned stopTime;
@@ -1230,19 +1242,30 @@ public:
         bool shouldCheck = inSingle || inRange;
 
         bool succeeded = false;
+        LifeState junk;
+
+        // See whether there is a match at all
         if (shouldCheck && (params.filterType[k] == ANDFILTER ||
                             params.filterType[k] == ORFILTER)) {
           succeeded = workspace.Contains(targetFilter[k]);
+          junk = workspace & ~targetFilter[k].wanted & ~conf.startingCatalysts;
         }
         if (shouldCheck && (params.filterType[k] == MATCHFILTER)) {
-          for (auto sym : SymmetryGroupFromEnum(StaticSymmetry::D8)) {
-            LifeTarget transformed = targetFilter[k];
-            transformed.Transform(sym);
-            succeeded = succeeded || !workspace.Match(transformed).IsEmpty();
+          if(workspace.GetPop() <= maxMatchingPop) {
+            for (auto sym : SymmetryGroupFromEnum(StaticSymmetry::D8)) {
+              LifeTarget transformed = targetFilter[k];
+              transformed.Transform(sym);
+              LifeState matches = workspace.Match(transformed);
+              if(!matches.IsEmpty()) {
+                succeeded = true;
+                junk = workspace & ~matches.Convolve(transformed.wanted) & ~conf.startingCatalysts;
+                break;
+              }
+            }
           }
         }
 
-        if (succeeded) {
+        if (succeeded && junk.GetPop() <= params.maxJunk) {
           filterPassed[k] = true;
 
           // If this was an OR filter, consider all the other OR filters passed

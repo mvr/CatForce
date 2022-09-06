@@ -8,6 +8,7 @@ stop-after-cats-destroyed 5
 symmetry C2even
 pat b2o$obo$o$obo$b2o! -5 6
 match 5-100 b2o$obo$o$obo$b2o!
+max-junk 10
 output p196_pi_hassler.rle
 full-report p196_pi_hassler_full.rle
 
