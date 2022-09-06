@@ -849,7 +849,7 @@ public:
 
   Category(LifeState &catalystRemoved, SearchResult &firstResult,
            unsigned catDeltaIn, unsigned maxGen) {
-    categoryKey.Copy(catalystRemoved);
+    categoryKey = catalystRemoved;
     results.push_back(firstResult);
     catDelta = catDeltaIn;
     maxgen = maxGen;
@@ -942,11 +942,13 @@ public:
            unsigned genSurvive) {
 
     LifeState result = afterCatalyst ^ catalysts;
+    result.gen = firstGenSurvive;
 
     result.Step(maxgen - result.gen);
     uint64_t hash = result.GetHash();
 
     result = afterCatalyst ^ catalysts;
+    result.gen = firstGenSurvive;
 
     for (auto & category: categories) {
       if (category->BelongsTo(result, hash)) {
@@ -957,6 +959,7 @@ public:
     }
 
     LifeState categoryKey = afterCatalyst ^ catalysts;
+    categoryKey.gen = firstGenSurvive;
 
     SearchResult r(init, conf, firstGenSurvive, genSurvive);
     categories.push_back(new Category(categoryKey, r, catDelta, maxgen));
