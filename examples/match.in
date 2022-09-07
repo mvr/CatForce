@@ -1,4 +1,3 @@
-start-gen 0
 last-gen 10
 max-gen 100
 stable-interval 15
