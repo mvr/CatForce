@@ -698,6 +698,7 @@ public:
       }
 
       unsigned runlength = __builtin_ctzll(~shifted);
+      runlength = std::min(runlength, (unsigned)32);
       uint64_t run = (1ULL << runlength) - 1;
 
       switch(run) {
@@ -732,6 +733,7 @@ public:
       case (1 << 29) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
       case (1 << 30) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
       case (1ULL << 31) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1ULL << 32) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
       default:           ConvolveInner(result, doubledother, run, k, postshift); break;
       }
 
