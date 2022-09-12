@@ -1212,7 +1212,7 @@ public:
     return false;
   }
 
-  bool ValidateFilters(Configuration &conf, unsigned failuretime) {
+  bool ValidateFilters(Configuration &conf, unsigned successtime, unsigned failuretime) {
     LifeState workspace = conf.startingCatalysts;
     workspace.JoinWSymChain(pat, params.symmetryChain);
 
@@ -1239,7 +1239,7 @@ public:
         bool inRange = params.filterGen[k] == -1 &&
                        params.filterGenRange[k].first <= workspace.gen &&
                        params.filterGenRange[k].second >= workspace.gen;
-        bool shouldCheck = inSingle || inRange;
+        bool shouldCheck = inSingle || (inRange && workspace.gen >= successtime);
 
         bool succeeded = false;
         LifeState junk;
@@ -1319,7 +1319,7 @@ public:
 
     // If has filter validate them;
     if (hasFilter) {
-      if (!ValidateFilters(conf, failuretime))
+      if (!ValidateFilters(conf, successtime, failuretime))
         return;
     }
 

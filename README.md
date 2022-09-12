@@ -70,6 +70,9 @@ for the solution to succeed. A `match` filter pattern-matches the
 solution for the specified pattern, and succeeds if the pattern occurs
 anywhere (and otherwise behaves like an `andfilter`).
 
+Filters that use a range of generations will only succeed after every
+catalyst has interacted.
+
 **Forbidden**: Checks for `rle` in the same location as the
 catalyst. If `rle` is matched in any generation, the solution is
 dropped. You can see `forbidden` as a "catalyst attached filter",
