@@ -1250,22 +1250,24 @@ public:
           succeeded = workspace.Contains(targetFilter[k]);
           junk = workspace & ~targetFilter[k].wanted & ~conf.startingCatalysts;
         }
+
         if (shouldCheck && (params.filterType[k] == MATCHFILTER)) {
           if(workspace.GetPop() <= maxMatchingPop) {
+            LifeState withoutCatalysts = workspace & ~conf.startingCatalysts;
             for (auto sym : SymmetryGroupFromEnum(StaticSymmetry::D8)) {
               LifeTarget transformed = targetFilter[k];
               transformed.Transform(sym);
-              LifeState matches = workspace.Match(transformed);
+              LifeState matches = withoutCatalysts.Match(transformed);
               if(!matches.IsEmpty()) {
                 succeeded = true;
-                junk = workspace & ~matches.Convolve(transformed.wanted) & ~conf.startingCatalysts;
+                junk = withoutCatalysts & ~matches.Convolve(transformed.wanted);
                 break;
               }
             }
           }
         }
 
-        if (succeeded && junk.GetPop() <= params.maxJunk) {
+        if (succeeded && (params.maxJunk != -1 || junk.GetPop() <= params.maxJunk)) {
           filterPassed[k] = true;
 
           // If this was an OR filter, consider all the other OR filters passed
