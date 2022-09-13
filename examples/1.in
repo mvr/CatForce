@@ -1,5 +1,4 @@
 max-gen 100
-start-gen 1
 num-catalyst 3
 stable-interval 10
 search-area -8 -8 16 16

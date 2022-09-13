@@ -698,6 +698,7 @@ public:
       }
 
       unsigned runlength = __builtin_ctzll(~shifted);
+      runlength = std::min(runlength, (unsigned)32);
       uint64_t run = (1ULL << runlength) - 1;
 
       switch(run) {
@@ -732,6 +733,7 @@ public:
       case (1 << 29) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
       case (1 << 30) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
       case (1ULL << 31) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+      case (1ULL << 32) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
       default:           ConvolveInner(result, doubledother, run, k, postshift); break;
       }
 
@@ -924,14 +926,30 @@ public:
   }
 #else
   std::pair<int, int> FirstOn() const {
-    for (int x = 0; x < N; x++) {
-      if (state[x] == 0ULL)
-        continue;
-
-      return std::make_pair(x, __builtin_ctzll(state[x]));
+    int foundq = 64;
+    for (int x = 0; x < N; x+=4) {
+      if (state[x] != 0ULL ||
+          state[x+1] != 0ULL ||
+          state[x+2] != 0ULL ||
+          state[x+3] != 0ULL) {
+        foundq = x;
+      }
+    }
+    if (foundq == 64) {
+      return std::make_pair(0, 0);
     }
 
-    return std::make_pair(0, 0);
+    int foundx;
+    if (state[foundq] != 0ULL) {
+      foundx = foundq;
+    } else if (state[foundq + 1] != 0ULL) {
+      foundx = foundq + 1;
+    } else if (state[foundq + 2] != 0ULL) {
+      foundx = foundq + 2;
+    } else if (state[foundq + 3] != 0ULL) {
+      foundx = foundq + 3;
+    }
+    return std::make_pair(foundx, __builtin_ctzll(state[foundx]));
   }
 #endif
 

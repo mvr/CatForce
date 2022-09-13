@@ -1,13 +1,11 @@
 ==Setup==
 
 max-gen 250
-start-gen 1
 num-catalyst 1
 stable-interval 30
 
 --search area---
 search-area -25 -30 51 45
-#fit-in-width-height 12 8
 
 -pattern--
 pat 2bo$bobo$2ob2o$bo2bo$bo3bo$bo! -3 0
@@ -22,6 +20,4 @@ cat 2o$obo$bo! 25 1 1 +
 cat 2o$obo$b2o! 35 1 1 |
 
 ==Output===
-#full-report full-Herschel.rle
 output Snark-1.rle 
-combine-results yes 1 5 10 15 18 20 25

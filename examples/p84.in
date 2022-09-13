@@ -1,14 +1,11 @@
 ==Setup==
 max-gen 100
-start-gen 1
 num-catalyst 2
 stable-interval 15
 
-search-area -18 -18 36 36
-
 symmetry C2|even
 pat 2bo$b3o$o3bo$b3o$2bo! 1 1
-output sym.rle
+output p84.rle
 
 cat 2o$2o 100 0 0 .
 cat 2o$o$b3o$3bo! 40 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6 required bo$o$b3o$3bo! -2 -2 

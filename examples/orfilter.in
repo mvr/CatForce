@@ -1,10 +1,8 @@
 ==Setup==
 max-gen 100
-start-gen 0
 num-catalyst 2
 stable-interval 10
 
-search-area -20 -20 40 40
 pat 2b2o$2bobo$4bo4b2o$4ob2o2bo2bo$o2bobobobob2o$3bobobobo$4b2obobo$8bo5$3b3o$2bo3bo$bo5bo$2bo3bo$3b3o! -4 -14
 output orfiltertest.rle
 

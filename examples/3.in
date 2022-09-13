@@ -1,17 +1,11 @@
 ==Setup==
 
 max-gen 150
-start-gen 1
 num-catalyst 1
 stable-interval 1
 
---search area---
-search-area -30 -30 60 60
-#fit-in-width-height 12 8
-
 -pattern--
 pat 4bo$2b2o$b2o$o$b5o$2bo!
-
 
 ==Catalysts==
 cat 2o$2o 60 0 0 . forbidden obo$b2o$bo2$2o$2o! 0 -4 forbidden 2o3bo$2ob2o$4b2o! 0 0 forbidden b2o$b2o2$bo$2o$obo! -1 0 forbidden 2o$b2ob2o$o3b2o! -4 -1 forbidden o3b2o$b2ob2o$2o! -4 0 forbidden obo$2o$bo2$b2o$b2o! -1 -4 forbidden 4b2o$2ob2o$2o3bo! 0 -1 forbidden 2o$2o2$bo$b2o$obo! 0 0 

@@ -1273,7 +1273,7 @@ public:
     return false;
   }
 
-  bool ValidateFilters(Configuration &conf, unsigned failuretime) {
+  bool ValidateFilters(Configuration &conf, unsigned successtime, unsigned failuretime) {
     LifeState workspace = conf.startingCatalysts;
     workspace.JoinWSymChain(pat, params.symmetryChain);
 
@@ -1302,7 +1302,7 @@ public:
         bool inRange = params.filterGen[k] == -1 &&
                        params.filterGenRange[k].first <= workspace.gen &&
                        params.filterGenRange[k].second >= workspace.gen;
-        bool shouldCheck = inSingle || inRange;
+        bool shouldCheck = inSingle || (inRange && workspace.gen >= successtime);
 
         bool succeeded = false;
         LifeState junk;
@@ -1313,22 +1313,24 @@ public:
           succeeded = workspace.Contains(targetFilter[k]);
           junk = workspace & ~targetFilter[k].wanted & ~catalystState;
         }
+
         if (shouldCheck && (params.filterType[k] == MATCHFILTER)) {
           // if(workspace.GetPop() <= maxMatchingPop) {
+            LifeState withoutCatalysts = workspace & ~catalystState;
             for (auto sym : SymmetryGroupFromEnum(StaticSymmetry::D8)) {
               LifeTarget transformed = targetFilter[k];
               transformed.Transform(sym);
-              LifeState matches = workspace.Match(transformed);
+              LifeState matches = withoutCatalysts.Match(transformed);
               if(!matches.IsEmpty()) {
                 succeeded = true;
-                junk = workspace & ~matches.Convolve(transformed.wanted) & ~catalystState;
+                junk = withoutCatalysts & ~matches.Convolve(transformed.wanted);
                 break;
               }
             }
           // }
         }
 
-        if (succeeded && junk.GetPop() <= params.maxJunk) {
+        if (succeeded && (params.maxJunk != -1 || junk.GetPop() <= params.maxJunk)) {
           filterPassed[k] = true;
 
           // If this was an OR filter, consider all the other OR filters passed
@@ -1386,7 +1388,7 @@ public:
 
     // If has filter validate them;
     if (hasFilter) {
-      if (!ValidateFilters(conf, failuretime))
+      if (!ValidateFilters(conf, successtime, failuretime))
         return;
     }
 
