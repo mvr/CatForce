@@ -1433,7 +1433,7 @@ public:
   }
 
   void
-  RecursiveSearch(Configuration config, LifeState history, const LifeState required, const LifeState antirequired,
+  RecursiveSearch(Configuration config, LifeState history, const LifeState requiredMask, const LifeState antirequired,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
@@ -1452,9 +1452,10 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      LifeState maskedState = (config.state & required) ^ (config.catalystsState & required);
+      LifeState desiredState = config.catalystsState | alsoRequired;
+      LifeState maskedDiff = (config.state ^ desiredState) & requiredMask;
 
-      if (!maskedState.IsEmpty() || !config.state.AreDisjoint(antirequired)) {
+      if (!maskedDiff.IsEmpty() || !config.state.AreDisjoint(antirequired)) {
           failure = true;
       }
 
@@ -1553,8 +1554,8 @@ public:
                 }
               }
 
-              LifeState newRequired = required;
-              newRequired.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
+              LifeState newRequiredMask = requiredMask;
+              newRequiredMask.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
 
               LifeState newAntirequired = antirequired;
               newAntirequired.Join(catalysts[s].antirequired, newPlacement.first, newPlacement.second);
@@ -1577,9 +1578,10 @@ public:
                   lookaheadcats.Step();
                   lookaheadcats.Step();
 
-                  lookahead = (lookahead & newRequired) ^ (lookaheadcats & newRequired);
+                  LifeState desiredState = lookaheadcats | alsoRequired;
+                  LifeState maskedDiff = (lookahead ^ desiredState) & newRequiredMask;
 
-                  if (!lookahead.IsEmpty()) {
+                  if (!maskedDiff.IsEmpty()) {
                     requiredFailed = true;
                   }
                 }
@@ -1660,7 +1662,7 @@ public:
                 }
               }
 
-              RecursiveSearch(newConfig, history, newRequired, newAntirequired, newMasks,
+              RecursiveSearch(newConfig, history, newRequiredMask, newAntirequired, newMasks,
                               shiftedTargets, missingTime, recoveredTime);
 
               masks[s].Set(newPlacement.first, newPlacement.second);
