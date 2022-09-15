@@ -43,6 +43,7 @@ denote optional parameters.
 |                       | `(mustinclude)`          | Solutions must use at least one `mustinclude` catalyst                  |
 |                       | `(transparent)`          | Marked as transparent for the purposes of `num-transparent`             |
 |                       | `(check-recovery)`       | Always check the catalyst is recovered after exactly `max-active` gens  |
+|                       | `(sacrificial)`          | Does not need to recover                                                |
 |                       | `(period n)`             | Periodic catalyst                                                       |
 |                       | `(isblinker)`            | Mark this catalyst for the phase-shifting blinker special case          |
 | `output`              | `filename`               | Output filename                                                         |

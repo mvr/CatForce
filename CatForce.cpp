@@ -107,6 +107,7 @@ public:
   bool transparent;
   bool mustInclude;
   bool checkRecovery;
+  bool sacrificial;
   unsigned period;
   bool isBlinker;
 
@@ -131,6 +132,7 @@ public:
     transparent = false;
     mustInclude = false;
     checkRecovery = false;
+    sacrificial = false;
     isBlinker = false;
     period = 1;
 
@@ -163,6 +165,9 @@ public:
         argi += 1;
       } else if (elems[argi] == "check-recovery") {
         checkRecovery = true;
+        argi += 1;
+      } else if (elems[argi] == "sacrificial") {
+        sacrificial = true;
         argi += 1;
       } else if (elems[argi] == "isblinker") {
         isBlinker = true;
@@ -627,6 +632,7 @@ public:
   bool transparent;
   bool mustInclude;
   bool checkRecovery;
+  bool sacrificial;
   unsigned period;
   bool isBlinker;
 
@@ -715,6 +721,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.period = input.period;
       result.mustInclude = input.mustInclude;
       result.checkRecovery = input.checkRecovery;
+      result.sacrificial = input.sacrificial;
       result.isBlinker = input.isBlinker;
 
       results.push_back(result);
@@ -1692,6 +1699,8 @@ public:
       if (config.count == params.numCatalysts && !success) {
         bool allRecovered = true;
         for (unsigned i = 0; i < config.count; i++) {
+          if (catalysts[config.curs[i]].sacrificial)
+            continue;
           if (recoveredTime[i] < params.stableInterval || missingTime[i] > 0) {
             allRecovered = false;
           }
