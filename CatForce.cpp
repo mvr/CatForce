@@ -107,6 +107,7 @@ public:
   bool transparent;
   bool mustInclude;
   bool checkRecovery;
+  bool sacrificial;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems;
@@ -129,6 +130,7 @@ public:
     transparent = false;
     mustInclude = false;
     checkRecovery = false;
+    sacrificial = false;
 
     unsigned argi = 6;
 
@@ -159,6 +161,9 @@ public:
         argi += 1;
       } else if (elems[argi] == "check-recovery") {
         checkRecovery = true;
+        argi += 1;
+      } else if (elems[argi] == "sacrificial") {
+        sacrificial = true;
         argi += 1;
       } else {
         std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
@@ -615,6 +620,7 @@ public:
   bool transparent;
   bool mustInclude;
   bool checkRecovery;
+  bool sacrificial;
 
   static std::vector<CatalystData> FromInput(CatalystInput &input);
 };
@@ -677,6 +683,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.transparent = input.transparent;
     result.mustInclude = input.mustInclude;
     result.checkRecovery = input.checkRecovery;
+    result.sacrificial = input.sacrificial;
 
     results.push_back(result);
   }
@@ -1584,6 +1591,8 @@ public:
       if (config.count == params.numCatalysts && !success) {
         bool allRecovered = true;
         for (unsigned i = 0; i < config.count; i++) {
+          if (catalysts[config.curs[i]].sacrificial)
+            continue;
           if (recoveredTime[i] < params.stableInterval || missingTime[i] > 0) {
             allRecovered = false;
           }

@@ -43,6 +43,7 @@ denote optional parameters.
 |                       | `(mustinclude)`          | Solutions must use at least one `mustinclude` catalyst                  |
 |                       | `(transparent)`          | Marked as transparent for the purposes of `num-transparent`             |
 |                       | `(check-recovery)`       | Always check the catalyst is recovered after exactly `max-active` gens  |
+|                       | `(sacrificial)`          | Does not need to recover                                                |
 | `output`              | `filename`               | Output filename                                                         |
 | `(and/or)filter`      | `genOrRange rle dx dy`   | Filter that must be matched for the solution to be accepted (see below) |
 | `match`               | `genOrRange rle`         | Filter that checks whether the pattern occurs anywhere                  |
