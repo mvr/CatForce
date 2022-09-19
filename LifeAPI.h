@@ -12,6 +12,7 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <random>
 
 #include <immintrin.h>
 
@@ -74,7 +75,9 @@ inline uint64_t convolve_uint64_t(uint64_t x, uint64_t y) {
 }
 
 namespace PRNG {
-
+  std::random_device rd;
+  std::mt19937_64 e2(rd());
+  std::uniform_int_distribution<uint64_t> dist(std::llround(std::pow(2,61)), std::llround(std::pow(2,62)));
 // Public domain PRNG by Sebastian Vigna 2014, see http://xorshift.di.unimi.it
 
 uint64_t s[16] = {0x12345678};
@@ -884,7 +887,7 @@ public:
   static LifeState RandomState() {
     LifeState result;
     for (int i = 0; i < N; i++)
-      result.state[i] = PRNG::rand64();
+      result.state[i] = PRNG::dist(PRNG::e2);
 
     result.RecalculateMinMax();
 

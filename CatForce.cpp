@@ -1337,7 +1337,7 @@ public:
           // }
         }
 
-        if (succeeded && (params.maxJunk != -1 || junk.GetPop() <= params.maxJunk)) {
+        if (succeeded && (params.maxJunk == -1 || junk.GetPop() <= params.maxJunk)) {
           filterPassed[k] = true;
 
           // If this was an OR filter, consider all the other OR filters passed

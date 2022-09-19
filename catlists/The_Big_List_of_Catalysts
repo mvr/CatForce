@@ -9,7 +9,7 @@ cat 2o$obo$bobo$2bo! 100 -1 -1 + transparent
 
 =True Spartan=
 cat 2o$2o! 20 0 0 / forbidden obo$b2o$bo2$2o$2o! 0 -4 forbidden 2o3bo$2ob2o$4b2o! 0 0 forbidden b2o$b2o2$bo$2o$obo! -1 0 forbidden 2o$b2ob2o$o3b2o! -4 -1 forbidden o3b2o$b2ob2o$2o! -4 0 forbidden obo$2o$bo2$b2o$b2o! -1 -4 forbidden 4b2o$2ob2o$2o3bo! 0 -1 forbidden 2o$2o2$bo$b2o$obo! 0 0 required o! 0 0 antirequired 2o$o! -1 -1
-cat 2o$o$b3o$3bo! 10 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6 required bo$o$b3o$3bo! -2 -2 locus 2o$o! -2 -2
+cat 2o$o$b3o$3bo! 10 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6 required bo$o$b3o$3bo! -2 -2
 cat 2o$obo$bo! 10 -1 -1 + required o! -1 -1 antirequired 5o$o2bo$obo$2o$o! -2 -2
 cat bo$obo$bo! 10 -1 -1 @ required bo$o! -1 -1
 
@@ -99,6 +99,7 @@ cat 8b2o$8bobo$10bo$9b2ob2o$12bo$4b2ob4obo$3bobobo3bo$3bobobob2o$b3obobobo$o3bob
 cat 2o3b2o$o2bo2bo$b5o2$b5o$o2bo2bo$2o3b2o! 20 -4 -4 / required o5bo$b5o2$b5o$o5bo! -4 -3
 cat 4b2ob2o$3bobobobo$3bobo3b3o$b3obobo4bo$o3bob2ob3o$2o2bo4bo$5b3o$7b2o! 20 -6 0 * required 9bo$3bo5b3o$b3obobo4bo$o3bob2ob3o$2o2bo4bo$5b3o$7b2o! -6 1 antirequired 5bo5bo$4b2o4b3o$3b3o2bo2b3o$2b3o7b4o$b4obobobo3b2o$3o3bobob4obo$2ob3obo2bo3b2o$2o2b2ob4ob4o$7o3b5o$b8o2b2o$6b6o$8b4o! -8 -2 locus b2ob2o$obobo$2bo! -3 0
 cat 5b2o$2o2bo2bo$obo2b2o$3b2o$4bo$4bob2o$b2obo2bo$b2ob2o! 20 -1 -6 * required 5b2o$2o2bo2bo$obo2b2o$3b2o$4bo$4bob2o$2bobo2bo$2bob2o! -1 -6 antirequired 6b4o$b10o$7o2b2o$2o2b2ob2obo$2obob2o2b2o$3obo2b4o$bo2b2ob5o$5bobo2b2o$5bob2ob2o$5bo2b4o$4b6o$5b4o! -3 -8 locus o$o! 0 0
+
 cat 6b2o$4bo2bo$bo2b2o$obobo$2o2bo2b2o$4bobobo$3b2o2bo$bo2bo$b2o! 15 -4 -4 x required 6b2o$4bo2bo$4b2o$obobo$2o2bo2b2o$4bobobo$3b2o$bo2bo$b2o! -4 -4 antirequired 5b6o$6b2o2bo$5bob2obo$3o2bo2b3o$2obobob6o$2o2b2ob2o2b2o$6obobob2o$2b3o2bo2b3o$2bob2obo$2bo2b2o$2b6o! -6 -5 locus 3bo$o4$6bo$3bo! -3 -3
 cat b2o2b2o$o2bo2bo$bobobo$2b2obobo$6b2o! 10 -5 0 * required b2o$o2bo2bo$bobobo$2b2obobo$6b2o! -5 0 antirequired 2o2bo4bo$ob2obo2b2o$2obobob3o$b2o2bobobo$2b5o2bo$6b4o! -6 0 locus 2o! 0 0
 cat 6b2o$2b2obobo$3bobo$3bob2o$2b2o2bo$bo2b2o$b2obo$2bobo$obob2o$2o! 15 -4 -5 * required 6b2o$3bobobo$3bobo$3bo3$4bo$2bobo$obobo$2o! -4 -5 antirequired 6b4o$4b3o2bo$5bobobo$3bobob3o$3bobo$5bo$4bo$4bobo$3obobo$obobo$o2b3o$4o! -5 -6
@@ -113,6 +114,8 @@ cat 2b2o$3bo$3bob2o$2obo2bo$bob2o$bo$2o$o$b3o$3bo! 10 0 -3 * required 2b2o$3bo$3
 cat 2o5b2o$o5bobo$b3obo$3bobob4o$4b2obo2bo! 10 -5 -4 * required 2o5b2o$o5bobo$b3obo$3bobob4o$7bo2bo! -5 -4 antirequired 4o3b4o$o2bo2b2o2bo$ob5obobo$2o3bob6o$b3obobo4bo$3bo3bob2obo$5bo2b5o! -6 -5
 cat b2o2b2o$obo3bo$obobo$bobob4o$3bobo2bo$3b2o! 10 -3 -4 * required b2o2b2o$obo3bo$obobo$bobob4o$3bo4bo! -3 -4 antirequired b8o$2o2b2o2bo$obob3obo$obobob5o$2obobo4bo$b3obob2obo$8b3o! -4 -5
 cat 3bo$b3o$o3b2o$obo3bo$b5o2$3bo$2bobo$3b2o! 12 -3 -5 * required 3bo$b3o$o3b2o$2bo3bo$2b4o2$3bo$4bo$3b2o! -3 -5 antirequired 3b3o$b3obo$2o3b3o$ob3o2b2o$2bob3obo$7b2o$2b6o$5b2o$4bobo$3bo2bo$3b4o! -4 -6
+cat 2ob2o$o3bo$b3o2$b3o$o3bo$2ob2o! 10 -2 -3 * required o3bo$b3o2$b3o$o3bo! -2 -2 antirequired ob3obo$2o3b2o$7o$2o3b2o$ob3obo! -3 -2
+cat 3b2o3b2o$3bobobobo$2obobobo$obobo3bo2b2o$4bob2o3bobo$3bobo7bo$3bobo7b2o$4bo! 20 -8 0 * required 3bo$3bo3bo$2obo3bo$obobo3bo3bo$4bob2o3bobo$3bobo7bo$3bobo7b2o$4bo! -8 0 antirequired 3b2o$3bo$4obobobob2o$o2bobo6b3o$obobob3obo3b2o$5obo2b2o2bobo$3bobob7ob2o$3bobobo5bo2bo$3b2ob2o5b4o$4b3o! -9 -1
 
 =As Yet Mysterious=
 # cat 2bo$bobobo2bo$bobob4o$2b2o$5b2o$4obobo$o2bobobo$6bo! 20 -4 -3 x forbidden 6bo$5bobobo2bo$5bobob4o$6b2o$9b2o$b2ob4obobo$obobo2bobobo$bo8bo! -8 -3 forbidden 6bo$5bobobo2bo$5bobob4o$6b2o$bo7b2o$obob4obobo$b2obo2bobobo$10bo! -8 -3 forbidden 2bo8bo$bobobo2bobobo$bobob4ob2o$2b2o$5b2o$4obobo$o2bobobo$6bo! -4 -3 forbidden 2bo$bobobo2bob2o$bobob4obobo$2b2o7bo$5b2o$4obobo$o2bobobo$6bo! -4 -3
