@@ -738,7 +738,6 @@ struct Configuration {
   std::array<int, MAX_CATALYSTS> curx;
   std::array<int, MAX_CATALYSTS> cury;
   std::array<int, MAX_CATALYSTS> curs;
-  std::array<int, MAX_CATALYSTS> placementGens;
   LifeState state;
   LifeState catalystsState;
   LifeState startingCatalysts;
@@ -1521,7 +1520,6 @@ public:
               newConfig.curx[config.count] = newPlacement.first;
               newConfig.cury[config.count] = newPlacement.second;
               newConfig.curs[config.count] = s;
-              newConfig.placementGens[config.count] = g;
               if (catalysts[s].transparent)
                 newConfig.transparentCount++;
               if (catalysts[s].mustInclude)
