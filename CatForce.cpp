@@ -13,6 +13,7 @@
 #include <algorithm>
 
 const int MAX_CATALYSTS = 5;
+const int MAX_PERIOD = 25;
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
@@ -169,6 +170,10 @@ public:
         argi += 1;
       } else if (elems[argi] == "period") {
         period = atoi(elems[argi + 1].c_str());
+        if (period > MAX_PERIOD){
+          std::cout << "Period too large: change MAX_PERIOD global const in CatForce.cpp" << std::endl;
+          exit(1);
+        } 
         argi += 2;
       } else {
         std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
@@ -613,7 +618,7 @@ class CatalystData {
 public:
   LifeState state;
   std::vector<LifeState> phases;
-  LifeTarget target;
+  std::vector<LifeTarget> targets;
   LifeState reactionMask;
   std::vector<LifeState> phaseReactionMask;
   unsigned maxDisappear;
@@ -643,11 +648,11 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
   for (auto &tran : trans) {
     LifeState pat = LifeState::Parse(rle, input.centerX, input.centerY, tran);
 
+
     for (unsigned i = 0; i < input.period; i++) {
       CatalystData result;
 
       result.state = pat;
-      result.target = LifeTarget(pat);
       result.reactionMask = pat.BigZOI();
       result.reactionMask.Transform(Rotate180OddBoth);
       result.reactionMask.RecalculateMinMax();
@@ -701,6 +706,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       LifeState tmp = pat;
       for (unsigned j = 0; j < input.period; j++) {
         result.phases.push_back(tmp);
+        result.targets.push_back(LifeTarget(tmp));
 
         LifeState phasemask = tmp.BigZOI();
         phasemask.Transform(Rotate180OddBoth);
@@ -732,6 +738,7 @@ struct Configuration {
   std::array<int, MAX_CATALYSTS> curx;
   std::array<int, MAX_CATALYSTS> cury;
   std::array<int, MAX_CATALYSTS> curs;
+  std::array<int, MAX_CATALYSTS> placementGens;
   LifeState state;
   LifeState catalystsState;
   LifeState startingCatalysts;
@@ -1074,6 +1081,8 @@ public:
   unsigned filterMaxGen{};
 
   LifeTarget blinkerTarget;
+
+  std::array<unsigned, MAX_CATALYSTS> periods;
 
   uint64_t AllCatalystsHash() const {
     uint64_t result = 0;
@@ -1428,7 +1437,7 @@ public:
       masks[s] = config.state.Convolve(catalysts[s].reactionMask) | ~bounds;
     }
 
-    std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
+    std::vector<std::array<LifeTarget, MAX_PERIOD>> shiftedTargets(params.numCatalysts);
 
     RecursiveSearch(config, config.state, alsoRequired, LifeState(), masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>());
@@ -1437,8 +1446,7 @@ public:
   void
   RecursiveSearch(Configuration config, LifeState history, const LifeState requiredMask, const LifeState antirequired,
                   std::vector<LifeState> masks,
-                  std::vector<LifeTarget> &shiftedTargets, // This can be shared
-
+                  std::vector<std::array<LifeTarget, MAX_PERIOD>> &shiftedTargets, // This can be shared
                   std::array<unsigned, MAX_CATALYSTS> missingTime,
                   std::array<unsigned, MAX_CATALYSTS> recoveredTime) {
     bool success = false;
@@ -1462,14 +1470,12 @@ public:
       }
 
       for (unsigned i = 0; i < config.count; i++) {
-        if (config.state.gen % catalysts[config.curs[i]].period != 0)
-          continue;
 
-        if (config.state.Contains(shiftedTargets[i])) {
+        if (config.state.Contains(shiftedTargets[i][g % periods[i]])) {
           missingTime[i] = 0;
-          recoveredTime[i] += catalysts[config.curs[i]].period;
+          recoveredTime[i] += 1;
         } else {
-          missingTime[i] += catalysts[config.curs[i]].period;
+          missingTime[i] += 1;
           recoveredTime[i] = 0;
         }
 
@@ -1515,6 +1521,7 @@ public:
               newConfig.curx[config.count] = newPlacement.first;
               newConfig.cury[config.count] = newPlacement.second;
               newConfig.curs[config.count] = s;
+              newConfig.placementGens[config.count] = g;
               if (catalysts[s].transparent)
                 newConfig.transparentCount++;
               if (catalysts[s].mustInclude)
@@ -1631,15 +1638,19 @@ public:
               }
 
               if (!catalysts[s].isBlinker) {
-                shiftedTargets[config.count].wanted = shiftedCatalyst;
-                shiftedTargets[config.count].unwanted = catalysts[s].target.unwanted;
-                shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
+                std::copy(catalysts[s].targets.begin(), catalysts[s].targets.end(), shiftedTargets[config.count].begin());
+                for( unsigned i = 0; i < catalysts[s].period; ++i){
+                  shiftedTargets[config.count][i].wanted.Move(newPlacement.first, newPlacement.second);
+                  shiftedTargets[config.count][i].unwanted.Move(newPlacement.first, newPlacement.second);
+                }
+                periods[config.count] = catalysts[s].period;
               } else {
-                shiftedTargets[config.count] = blinkerTarget;
-                shiftedTargets[config.count].wanted.Move(newPlacement.first, newPlacement.second);
-                shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
+                shiftedTargets[config.count][0].wanted = blinkerTarget.wanted;
+                shiftedTargets[config.count][0].wanted.Move(newPlacement.first, newPlacement.second);
+                shiftedTargets[config.count][0].unwanted = blinkerTarget.unwanted;
+                shiftedTargets[config.count][0].unwanted.Move(newPlacement.first, newPlacement.second);
+                periods[config.count] = 1;
               }
-
               std::vector<LifeState> newMasks = masks;
 
               // If we just placed the last catalyst, don't bother
