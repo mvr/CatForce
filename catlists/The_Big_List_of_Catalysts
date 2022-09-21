@@ -117,6 +117,15 @@ cat 3bo$b3o$o3b2o$obo3bo$b5o2$3bo$2bobo$3b2o! 12 -3 -5 * required 3bo$b3o$o3b2o$
 cat 2ob2o$o3bo$b3o2$b3o$o3bo$2ob2o! 10 -2 -3 * required o3bo$b3o2$b3o$o3bo! -2 -2 antirequired ob3obo$2o3b2o$7o$2o3b2o$ob3obo! -3 -2
 cat 3b2o3b2o$3bobobobo$2obobobo$obobo3bo2b2o$4bob2o3bobo$3bobo7bo$3bobo7b2o$4bo! 20 -8 0 * required 3bo$3bo3bo$2obo3bo$obobo3bo3bo$4bob2o3bobo$3bobo7bo$3bobo7b2o$4bo! -8 0 antirequired 3b2o$3bo$4obobobob2o$o2bobo6b3o$obobob3obo3b2o$5obo2b2o2bobo$3bobob7ob2o$3bobobo5bo2bo$3b2ob2o5b4o$4b3o! -9 -1
 
+cat 5b2o$5bo$6b3o$2o6bo$bo6bobo$bobo5b2o$2b2o$6b2o$5bobo$5b2o! 15 -10 -4 * required 5b2o$5bo$6b3o$2o6bo$bo$bobo$2bo3$5b2o! -10 -4 antirequired 5b4o$5bo2bo$5bob4o$4ob2o3bo$o2bo2b3ob2o$2ob6o$bobo2b4o$b2o3bo$2b3o$4bo2bo$5bo2bo$5b4o! -11 -5 locus 2o! -5 -4 check-recovery
+cat 6b2o$2b2o2bo2bo$bobo3b2obo$bo8bo$2o8b2o! 10 -6 0 * required 2bo3bo2bo$bobo3b2obo$bo8bo$2o8b2o! -6 1 antirequired 2b3o5b2o$b2o3bobo2b2o$bobo2b2o2bobo$2ob8ob2o$o2bo6bo2bo$4o6b4o! -7 0 locus 2o! 0 0
+cat 2o5b2o$o5bobo$b3obo$3bobob4o$4b2obo2bo! 10 -5 -4 * required 2o5b2o$o5bobo$b3obo$3bobob4o$7bo2bo! -5 -4 antirequired 4o3b4o$o2bo2b2o2bo$ob5obobo$2o3bob6o$b3obobo4bo$3bo3bob2obo$3b2o! -6 -5
+cat 5b2o$4bobo$2o2bo$obob2o$2bobo$bo2bo$b3o2$b3o$bo2bo$2bobo$obob2o$2o2bo$4bobo$5b2o! 15 -1 -7 @ required 5b2o$4bobo$2o2bo$obob2o$4bo$4bo$3bo2$3bo$4bo$4bo$obob2o$2o2bo$4bobo$5b2o! -1 -7 antirequired 5b4o$4b2o2bo$5obobo$o2b2ob3o$obobo2bo$2o2bob2o$bo2bobo$5b2o$2b4o$5b2o$bo2bobo$2o2bob2o$obobo2bo$o2b2ob3o$5obobo$4b2o2bo$5b4o! -2 8
+cat 5bo$4bobo$3bobo$b3obobo$o5b2o$2o! 15 -5 0 * required 3bobo$b3obobo$o5b2o$2o! -5 2 antirequired 3bo$b3obob3o$2o3bobobo$ob5o2bo$o2bo2b4o$4o! -6 1
+cat 4bo$o2bobobo$4ob2obo$4bo3bo$2bobo3b2o$2b2o! 15 -4 0 * required o2bobobo$4ob2obo$4bo3bo$2bobo3b2o$2b2o! -4 1 antirequired 4o3b3o$ob2obobob2o$o4bo2bobo$5ob3ob2o$2bobobobo2bo$2bo2b2ob4o$2b4o! -5 0
+cat 3b2o$3bobo$o4bo$5o2$2bo$bobo$2bo! 10 -3 -0 * required 4bo$3bobo$o4bo$5o2$2bo$bobo$2bo! -3 0 antirequired 5b2o$6b2o$3o2bobo$ob4obo$o5b2o$7o$b2ob2o$bobobo$b2ob2o$2b3o! -4 -1
+cat 5b2o$5bobo$7bo$6b2ob2obo$2b2o2bo2bob2o$bobo3b2o$bo$2o! 15 -5 0 * required 6bo$5bobo$7bo$7bob2obo$2bo3bo2bob2o$bobo3b2o$bo$2o! -5 0 antirequired 6b3o$8b2o$4bo2bobo$3b2o2bob6o$2b3o4bo2bobo$b2o3bob2obo2bo$bobo2b2o2b5o$2ob8o$o2bo$4o! -6 -1
+
 =As Yet Mysterious=
 # cat 2bo$bobobo2bo$bobob4o$2b2o$5b2o$4obobo$o2bobobo$6bo! 20 -4 -3 x forbidden 6bo$5bobobo2bo$5bobob4o$6b2o$9b2o$b2ob4obobo$obobo2bobobo$bo8bo! -8 -3 forbidden 6bo$5bobobo2bo$5bobob4o$6b2o$bo7b2o$obob4obobo$b2obo2bobobo$10bo! -8 -3 forbidden 2bo8bo$bobobo2bobobo$bobob4ob2o$2b2o$5b2o$4obobo$o2bobobo$6bo! -4 -3 forbidden 2bo$bobobo2bob2o$bobob4obobo$2b2o7bo$5b2o$4obobo$o2bobobo$6bo! -4 -3
 # cat 4b2o$3bobo$2bo2bobo$bob3ob3o$obo3bo3bo$bo2bobob2o$2b3o2bo$5bobo$4bobo$5bo! 12 -5 -5 * 
