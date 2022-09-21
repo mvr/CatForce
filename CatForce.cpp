@@ -1246,7 +1246,7 @@ public:
         bool inRange = params.filterGen[k] == -1 &&
                        params.filterGenRange[k].first <= workspace.gen &&
                        params.filterGenRange[k].second >= workspace.gen;
-        bool shouldCheck = inSingle || (inRange && workspace.gen >= successtime);
+        bool shouldCheck = inSingle || (inRange && workspace.gen + params.stableInterval >= successtime);
 
         bool succeeded = false;
         LifeState junk;
