@@ -14,7 +14,9 @@
 #include <sstream>
 #include <random>
 
+#ifdef __AVX2__
 #include <immintrin.h>
+#endif
 
 #define N 64
 
