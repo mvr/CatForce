@@ -1383,9 +1383,11 @@ public:
     unsigned successtime;
     unsigned failuretime;
 
-    for (unsigned g = config.state.gen; g < params.maxGen; g++) {
+    for (unsigned g = config.state.gen; g < filterMaxGen; g++) {
       if (config.count == 0 && g > params.lastGen)
-        return;
+        failure = true;
+      if (config.count < params.numCatalysts && g > params.maxGen)
+        failure = true;
 
       if (config.count == 0) {
         std::cout << "Collision at gen " << g << std::endl;
