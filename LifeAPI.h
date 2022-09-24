@@ -543,6 +543,8 @@ public:
       x += N;
     if (y < 0)
       y += 64;
+    x %= 64;
+    y %= 64;
 
     for (int i = 0; i < N; i++) {
       temp[i]   = RotateLeft(state[i], y);
