@@ -1544,11 +1544,8 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      if (!config.state.Contains(required) || !config.state.AreDisjoint(antirequired)) {
+      if (!config.state.Contains(required) || !config.state.AreDisjoint(antirequired))
         failure = true;
-        if (firstCatRight && secondCatRight)
-          std::cout << "   failure!" << std::endl;
-      }
 
       for (unsigned i = 0; i < config.count; i++) {
         if (config.state.Contains(shiftedTargets[i])) {
