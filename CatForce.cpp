@@ -1533,16 +1533,6 @@ public:
     bool failure = false;
     unsigned successtime;
     unsigned failuretime;
-    // g1 = 28, s1 = 1, x1 = 6, y1 = -17
-    // g2 = 35, s2 = 2, x1 = 10, y2 = 7
-    std::array<int, 4> firstCat = {28,1,6,-17};
-    std::array<int, 4> secondCat= {35,2,10,7};
-    std::pair<int,int> rightOffset = {-6,28};
-    bool firstCatRight = config.count > 0 && config.curs[0] == firstCat[1] &&
-                          config.curx[0] == (64+firstCat[2])%64 && config.cury[0] == (64+firstCat[3])%64;
-    bool secondCatRight = config.count > 1 && config.curs[1] == secondCat[1] &&
-                          config.curx[1] == (64+secondCat[2])%64 && config.cury[1] == (64+secondCat[3])%64;
-    bool offsetRight = curOffsets.GetCell(rightOffset.first, rightOffset.second);
     for (unsigned g = config.state.gen; g < params.maxGen; g++) {
       if (config.count == 0 && g > params.lastGen)
         return;
@@ -1553,21 +1543,12 @@ public:
       if (config.count == 0 && !config.postSymmetry) {
         std::cout << "Collision at gen " << g << std::endl;
       }
-      /*bool offsetRight = curOffsets.GetCell(64-7,64-2);
-      if (offsetRight && secondCatRight && firstCatRight && thirdCatRight){
-        std::cout << "all three right. gen " << g << std::endl;
-        config.state.Print();
-      }*/
 
       if (!config.state.Contains(required) || !config.state.AreDisjoint(antirequired)) {
         failure = true;
         if (firstCatRight && secondCatRight)
           std::cout << "   failure!" << std::endl;
       }
-
-      //if (config.count == 1 && firstCatRight && offsetRight){
-      //  config.state.Print();
-      //}
 
       for (unsigned i = 0; i < config.count; i++) {
         if (config.state.Contains(shiftedTargets[i])) {
@@ -1612,25 +1593,6 @@ public:
               continue;
 
             LifeState newPlacements = activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
-            /*if (firstCatRight && offsetRight && secondCatRight && g == 31 && (s == 0 || s == 7)){
-              std::cout << "here's the new placements when the third cat should happen " << std::endl;
-              newPlacements.Print();
-              std::cout << "here's the state when the third cat should be placed" << std::endl;
-              config.state.Print();
-              std::cout << "here's the active part when the third cat should be placed" << std::endl;
-              activePart.Print();
-              std::cout << "s is " << s << std::endl;
-              std::cout << "is the placement in there? ";
-              if (s == 0)
-                std::cout << newPlacements.GetCell(6,11) << std::endl;
-              else
-                std::cout << newPlacements.GetCell(-13,-13) << std::endl;
-              std::cout << "is it masked already? ";
-              if (s == 0)
-                std::cout << newPlacements.GetCell(6,11) << std::endl;
-              else
-                std::cout << newPlacements.GetCell(-13,-13) << std::endl; 
-            }*/
 
             while (!newPlacements.IsEmpty()) {
               // Do the placement
@@ -1829,6 +1791,8 @@ public:
         curOffsets.Copy(offsetsThatInteract, ANDNOT);
         if (g >= params.startSymInteraction && config.count >= params.minCatsPreSym){
           // if it isn't too early, send them off into post-symemtry mode
+          // TODO: sending things off into post-symmetry is pretty expensive.
+          // should probably do some sort of lookahead to make sure it's worthwhile.
           while( !offsetsThatInteract.IsEmpty()){
             std::pair<int,int> offset = offsetsThatInteract.FirstOn();
             offsetsThatInteract.Erase(offset.first, offset.second);
@@ -1859,16 +1823,6 @@ public:
 
             LifeState newOffsets = LifeState::SolidRect(offset.first, offset.second, 1,1);
             clock_t beginPostSym = clock();
-            /*std::cout << "gen " << g << " offset (" << offset.first << ", " << offset.second << ") ";
-            std::cout << "catalysts: ";
-            for (unsigned i = 0; i < config.count; ++i){
-              std::cout << config.curs[i] << " at (" << config.curx[i] << ", " << config.cury[i] << ")";
-              if (i + 1 != config.count)
-                std::cout << "   ";
-            }
-            std::cout << "  going into post symmetry mode" << std::endl;
-
-            std::cout << std::endl;*/
             RecursiveSearch(newConfig, newHistory, newOffsets, required, antirequired,
                     newMasks, shiftedTargets, missingTime, recoveredTime);
             postSymmetryTime += double(clock() - beginPostSym)/CLOCKS_PER_SEC;
@@ -1908,14 +1862,10 @@ public:
       config.state = next;
     }
 
-    if (!failure){
+    if (!failure)
       failuretime = filterMaxGen;
-      //std::cout << "ran until the end" << std::endl;
-      //std::cout << "success? " << std::to_string(success) << std::endl;
-      //config.state.Print();
-    }
-    // TODO: fix all the reporting results stuff.
-    // it'll likely need to offsest.
+    // TODO: should differentiate between filter met pre-symmetry
+    // versus filter met post-symmetry.
     if (success)
       ReportSolution(config, successtime, failuretime, config.loneOffset);
   }
