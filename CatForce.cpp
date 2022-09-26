@@ -607,7 +607,6 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     if (elems[0] == symmetry) {
       std::string symmetryString = "";
       symmetryString = elems[1];
-      std::cout << symmetryString << std::endl;
 
       params.symmetry = SymmetryFromString(symmetryString);
       params.symmetryChain = SymmetryChainFromEnum(params.symmetry);
@@ -1236,7 +1235,7 @@ public:
             LifeState reqMatch = catalysts[m].required;
             reqMatch.Move(64-matches.FirstOn().first, 64-matches.FirstOn().second);
             if (rotatedReq.Contains(reqMatch) && reqMatch.Contains(rotatedReq)){
-              std::cout << "found a match for catalyst " << j << std::endl;
+              //std::cout << "found a match for catalyst " << j << std::endl;
               rotatedCatMatches.push_back({static_cast<int>(m),
                              64-matches.FirstOn().first, 64-matches.FirstOn().second});
               break;
@@ -1447,11 +1446,10 @@ public:
 
   void ReportSolution(Configuration &conf, unsigned successtime,
                         unsigned failuretime, std::pair<int,int> offset) {
-    if (HasForbidden(conf, successtime + 3,offset))
-      return;
-
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
+      if (HasForbidden(conf, successtime + 3,offset))
+        return;
       LifeState workspace = Symmetricize(activeRegion, offset);
       workspace.Join(conf.startingCatalysts);
 
@@ -1465,21 +1463,24 @@ public:
       fullCategoryContainer->Add(init, afterCatalyst, conf.startingCatalysts, conf,
                                  successtime - params.stableInterval + 2, 0);
     }
-    // If has filter validate them;
+    // If has filter but no report all, we do filters then forbidden.
     if (hasFilter) {
       if (!ValidateFilters(conf, successtime, failuretime, offset))
         return;
-    }
+      if (!reportAll && HasForbidden(conf, successtime + 3, offset))
+        return;
+    } else if (HasForbidden(conf, successtime + 3, offset))
+      return;
 
     // If all filters validated update results
-    LifeState workspace = Symmetricize(activeRegion, offset);
-    workspace.Join(conf.startingCatalysts);
+    LifeState workspace2 = Symmetricize(activeRegion, offset);
+    workspace2.Join(conf.startingCatalysts);
 
-    LifeState init = workspace;
+    LifeState init = workspace2;
 
-    workspace.Step(successtime - params.stableInterval + 2);
+    workspace2.Step(successtime - params.stableInterval + 2);
 
-    LifeState afterCatalyst = workspace;
+    LifeState afterCatalyst = workspace2;
 
     categoryContainer->Add(init, afterCatalyst, conf.startingCatalysts, conf,
                            successtime - params.stableInterval + 2, 0);
@@ -1565,13 +1566,13 @@ public:
         failuretime = g;
         break;
       }
-
-      LifeState next = config.state;
-      next.Step();
+      LifeState next;
 
       // Try adding a catalyst
       if (config.state.gen >= params.startGen && config.count < params.numCatalysts
             && config.numCatsPostSym < params.numCatsPostSym) {
+        next = config.state;
+        next.Step();
         LifeState activePart = (~history).ZOI() & config.state & ~config.startingCatalysts;
 
 
@@ -1721,7 +1722,7 @@ public:
                 //  std::cout << "    ";
                 std::cout << "Placing catalyst " << s << " at "
                           << newPlacement.first << ", " << newPlacement.second
-                                                                                << ": " << newConfig.state.RLE()
+                          //                                    << ": " << newConfig.state.RLE()
                           << std::endl;
               }
 
@@ -1784,45 +1785,58 @@ public:
         // want all v such that -R + v intersects R.
         LifeState offsetsThatInteract = curOffsets;
         LifeState neighborhood = config.state.Convolve(LifeState::SolidRect(-1,-1,3,3));
+        // the below line seems to take a lot of time.
         offsetsThatInteract.Copy(neighborhood.Convolve(neighborhood), AND);
         curOffsets.Copy(offsetsThatInteract, ANDNOT);
-        if (g >= params.startSymInteraction && config.count >= params.minCatsPreSym){
-          // if it isn't too early, send them off into post-symemtry mode
-          // TODO: sending things off into post-symmetry is pretty expensive.
-          // should probably do some sort of lookahead to make sure it's worthwhile.
-          while( !offsetsThatInteract.IsEmpty()){
-            std::pair<int,int> offset = offsetsThatInteract.FirstOn();
-            offsetsThatInteract.Erase(offset.first, offset.second);
+        if (g >= params.startSymInteraction && config.count >= params.minCatsPreSym
+            && !offsetsThatInteract.IsEmpty()){
+          LifeState lookahead = config.state;
+          lookahead.Step();
+          lookahead.Step();
+          lookahead.Step();
+          lookahead.Step();
+          if (lookahead.Contains(required) && lookahead.AreDisjoint(antirequired)){
+            // if it isn't too early, send them off into post-symemtry mode
+            while( !offsetsThatInteract.IsEmpty()){
+              std::pair<int,int> offset = offsetsThatInteract.FirstOn();
+              offsetsThatInteract.Erase(offset.first, offset.second);
 
-            Configuration newConfig = config;
-            newConfig.postSymmetry = true;
-            newConfig.numCatsPostSym = 0; // as opposed to -1.
-            newConfig.firstSymInt = g;
-            newConfig.loneOffset = offset;
-            newConfig.state = Symmetricize(config.state, offset);
-            newConfig.startingCatalysts = Symmetricize(config.startingCatalysts, offset);
-            LifeState newHistory = Symmetricize(history, offset);
-            std::vector<LifeState> newMasks = masks;
-            for (unsigned s=0; s<catalysts.size(); ++s){
-              int rotatedS = rotatedCatMatches[s][0];
-              int rotatedX = rotatedCatMatches[s][1];
-              int rotatedY = rotatedCatMatches[s][2];
-              LifeState transfMask = masks[s];
-              transfMask.Transform(Rotate180OddBoth);
-              transfMask.Move(rotatedX + offset.first, rotatedY+offset.second);
-              newMasks[rotatedS].Join(transfMask);
-              // fundamental domain reasons...offset.first >= 0, want half rounded down.
-              //newMasks[s].Join(LifeState::SolidRect((64+offset.first)/2-32, -32, 32, 64));
+              Configuration newConfig = config;
+              newConfig.postSymmetry = true;
+              newConfig.numCatsPostSym = 0; // as opposed to -1.
+              newConfig.firstSymInt = g;
+              newConfig.loneOffset = offset;
+              newConfig.state = Symmetricize(config.state, offset);
+              newConfig.startingCatalysts = Symmetricize(config.startingCatalysts, offset);
+              LifeState newHistory = Symmetricize(history, offset);
+              std::vector<LifeState> newMasks;
+              // only make the new masks if there's more catalysts to place.
+              if (config.count < params.numCatalysts){
+                newMasks = masks;
+                for (unsigned s=0; s<catalysts.size(); ++s){
+                              
+          // post symmetry, catalyst s at (x,y) <=> catalyst rotatedS at (offsetX+rotatedX-x, offsetX+rotatedX-y)
+          // signs on x,y flip due to [shift by (x,y)] then rotate = rotate then [shift by (-x,-y)]
+          // so we rotate by 180 to get the (-x,-y), then Move
+                  int rotatedS = rotatedCatMatches[s][0];
+                  int rotatedX = rotatedCatMatches[s][1];
+                  int rotatedY = rotatedCatMatches[s][2];
+                  LifeState transfMask = masks[s];
+                  transfMask.Transform(Rotate180OddBoth);
+                  transfMask.Move(rotatedX + offset.first, rotatedY+offset.second);
+                  newMasks[rotatedS].Join(transfMask);
+                  // fundamental domain reasons...offset.first >= 0, want half rounded down.
+                  //newMasks[s].Join(LifeState::SolidRect((64+offset.first)/2-32, -32, 32, 64));
+                }
+              }
+
+              LifeState newOffsets;
+              newOffsets.Set(offset.first, offset.second);
+              // clock_t beginPostSym = clock();
+              RecursiveSearch(newConfig, newHistory, newOffsets, required, antirequired,
+                      newMasks, shiftedTargets, missingTime, recoveredTime);
+              //postSymmetryTime += double(clock() - beginPostSym)/CLOCKS_PER_SEC;
             }
-            // post symmetry, catalyst s at (x,y) <=> catalyst rotatedS at (offsetX+rotatedX-x, offsetX+rotatedX-y)
-            // signs on x,y flip due to [shift by (x,y)] then rotate = rotate then [shift by (-x,-y)]
-            // so we rotate by 180 to get the (-x,-y), then Move
-
-            LifeState newOffsets = LifeState::SolidRect(offset.first, offset.second, 1,1);
-            clock_t beginPostSym = clock();
-            RecursiveSearch(newConfig, newHistory, newOffsets, required, antirequired,
-                    newMasks, shiftedTargets, missingTime, recoveredTime);
-            postSymmetryTime += double(clock() - beginPostSym)/CLOCKS_PER_SEC;
           }
         }
       }
@@ -1835,6 +1849,9 @@ public:
         }
       }
 
+      // would be nice to be able to mark if everything has recovered
+      // before entering post-symmetry mode.
+      // Store successtime inside Configuration?
       if ( (config.numCatsPostSym == params.numCatsPostSym ||
             config.count == params.numCatalysts) && config.postSymmetry && !success) {
         bool allRecovered = true;
@@ -1854,9 +1871,13 @@ public:
 
       if (config.count == 0 && !config.postSymmetry)
         Report();
-
-      history |= config.state;
-      config.state = next;
+      if (config.state.gen >= params.startGen && config.count < params.numCatalysts
+            && config.numCatsPostSym < params.numCatsPostSym) {
+        history |= config.state;
+        config.state = next;
+      } else {
+        config.state.Step();
+      }
     }
 
     if (!failure)
