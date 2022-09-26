@@ -1,0 +1,34 @@
+active-region b3o$o3bo$2ob2o!
+search-area -32 -32 64 64
+offsets -30 -30 60 60
+
+stop-after-cats-destroyed 5
+symmetry C2
+
+num-catalyst 2
+num-cats-post-sym 0
+min-cats-pre-sym 2
+
+start-gen 5
+last-gen 50
+max-gen 150
+
+start-sym-int 20
+last-sym-int 120
+
+stable-interval 15
+
+object-reoccurs 1-150
+
+output Pi_hassler_search.rle
+
+cat 2o$o$b3o$3bo! 10 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6 required bo$o$b3o$3bo! -2 -2 antirequired 2bo$b3o$o$3o! -2 -2
+
+cat 2o$2o! 10 0 0 / forbidden obo$b2o$bo2$2o$2o! 0 -4 forbidden 2o3bo$2ob2o$4b2o! 0 0 forbidden b2o$b2o2$bo$2o$obo! -1 0 forbidden 2o$b2ob2o$o3b2o! -4 -1 forbidden o3b2o$b2ob2o$2o! -4 0 forbidden obo$2o$bo2$b2o$b2o! -1 -4 forbidden 4b2o$2ob2o$2o3bo! 0 -1 forbidden 2o$2o2$bo$b2o$obo! 0 0 required o! 0 0 antirequired 2o$o! -1 -1
+
+cat 2o$obo$bo! 10 -1 -1 + required o! -1 -1 antirequired 5o$o2bo$obo$2o$o! -2 -2
+
+cat bo$obo$bo! 10 -1 -1 @ required bo$o! -1 -1
+
+cat 2obo$2ob3o$6bo$2ob2obo$bob2ob2o$bo$2b3ob2o$4bob2o! 10 -3 -3 | forbidden 2bo$obo$b2o2$3b2obo$3b2ob3o$9bo$3b2ob2obo$4bob2ob2o$4bo$5b3ob2o$7bob2o! -6 -7 forbidden bo$2bo$3o2$3b2obo$3b2ob3o$9bo$3b2ob2obo$4bob2ob2o$4bo$5b3ob2o$7bob2o! -6 -7 forbidden 2bo$obo$b2o$4b2obo$4b2ob3o$10bo$4b2ob2obo$5bob2ob2o$5bo$6b3ob2o$8bob2o! -7 -6 forbidden bo$2bo$3o$4b2obo$4b2ob3o$10bo$4b2ob2obo$5bob2ob2o$5bo$6b3ob2o$8bob2o! -7 -6 forbidden 2obo$2ob3o$6bo$2ob2obo$bob2ob2o$bo$2b3ob2o$4bob2o$9b3o$9bo$10bo! -3 -3 forbidden 2obo$2ob3o$6bo$2ob2obo$bob2ob2o$bo$2b3ob2o$4bob2o$9b2o$9bobo$9bo! -3 -3 forbidden 2obo$2ob3o$6bo$2ob2obo$bob2ob2o$bo$2b3ob2o$4bob2o2$8b3o$8bo$9bo! -3 -3 forbidden 2obo$2ob3o$6bo$2ob2obo$bob2ob2o$bo$2b3ob2o$4bob2o2$8b2o$8bobo$8bo! -3 -3 required 3bo$3b3o$6bo$2ob2obo$bob2ob2o$bo$2b3o$4bo! -3 -3 antirequired 4b3o$6b2o$2b4obo$2bo2bobo$obo2bo$ob4o$2o$b3o! -3 -3 locus 2o$2o5$6b2o$6b2o! -3 -3
+

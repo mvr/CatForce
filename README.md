@@ -1,10 +1,18 @@
 # CatForce
-GoL Catalyst search utility based on LifeAPI library.
+An oscillator search program based on CatForce.
 
-The main advantage of CatForce is that it doesn't make any assumptions
-about the nature of the interaction. As long as the catalysts are back
-in place in a given number of generations, they all could be destroyed
-and reappear several times.
+Instead of fixing a location and offset for the active region,
+ then running CatForce, this program runs on a set of offsets at
+ once. Currently, only C2 symmetries are supported: the offset
+  is the vector between the active region, and the rotated active
+ region. Catalysts are placed in two phases: pre-symmetry and
+  post-symmetry. Pre-symmetry, the different images of the active
+  region evolve independently, so it's offset-independent. Each
+  the program steps the life algorithm or places a catalyst, it checks
+  which (if any) offsets will interact. For each offset, it then combines
+ the two regions and enters post-symmetry mode, running to completion.
+  Generally, the longer things stay in pre-symmetry, the faster the program runs.
+
 
 <!-- The torus centre is `(0, 0)` and left upper corner is `(-32, -->
 <!-- -32)` and lower right corner is `(31,31)`. It has the same Y axis as -->
@@ -16,7 +24,7 @@ Run `make`, and then `./CatForce inputfile.in`. Currently only tested with `clan
 
 Input File Format
 --
-See `examples/p83.in` etc. Some useful lists of catalysts are given in `catlists/`.
+See `examples/Pi_hassler_search.txt` etc. Some useful lists of catalysts are given in `catlists/`.
 
 Parameters are separated by `" "` - i.e. space. Parentheses below
 denote optional parameters.
@@ -26,11 +34,16 @@ denote optional parameters.
 | `max-gen`             | `n`                      | Overall maximum generation                                              |
 | `start-gen`           | `n`                      | The min gen the _first_ encounter occurs                                |
 | `last-gen`            | `n`                      | The max gen the _first_ encounter occurs                                |
-| `num-catalyst`        | `n`                      | The number of catalyst to place                                         |
+| `num-catalyst`        | `n`                      | The total number of catalyst to place, between pre- and post-symmetry   |
+| `num-cats-post-sym`   | `n`                      | The maximum number of catalyst to place post-symmetry                   |
+| `min-cats-pre-sym`    | `n`                      | The minimum number of catalysts that should be placed pre-symmetry      |
+| `start-sym-int`       | `n`                      | The earliest the symmetric interaction should start                     |
+| `last-sym-int`        | `n`                      | The latest the symmetric interaction should start                       |
 | `num-transparent`     | `n`                      | The number of catalysts marked `transparent` that may appear            |
 | `stable-interval`     | `n`                      | Gens the catalysts must remain untouched to be considered stable        |
 | `search-area`         | `x y w h`                | Search area                                                             |
-| `pat`                 | `rle`                    | The active pattern                                                      |
+| `offsets`             | `x y w h`                | Which offset vectors to search, as a bounding box                       |
+| `active-region`       | `rle`                    | The active pattern                                                      |
 |                       | `(dx dy)`                | Offset applied to the active pattern                                    |
 | `cat `                | `rle`                    | A catalyst                                                              |
 |                       | `max-active`             | Number of generations in a row the catalyst may be missing              |
@@ -46,6 +59,7 @@ denote optional parameters.
 |                       | `(sacrificial)`          | Does not need to recover                                                |
 | `output`              | `filename`               | Output filename                                                         |
 | `(and/or)filter`      | `genOrRange rle dx dy`   | Filter that must be matched for the solution to be accepted (see below) |
+| `object-reoccurs`     | `range`                  | Filter for active region reappearing in its original location           |
 | `match`               | `genOrRange rle`         | Filter that checks whether the pattern occurs anywhere                  |
 | `max-junk`            | `n`                      | For filters, the maximum non-matching non-catalyst population           |
 | `full-report`         | `filename`               | Output filename for solutions ignoring all pattern filters              |
@@ -71,8 +85,12 @@ for the solution to succeed. A `match` filter pattern-matches the
 solution for the specified pattern, and succeeds if the pattern occurs
 anywhere (and otherwise behaves like an `andfilter`).
 
-Filters that use a range of generations will only succeed after every
-catalyst has interacted.
+<!-- Filters that use a range of generations will only succeed after every -->
+<!-- catalyst has interacted.-->
+
+`object-reoccurs` with a given range is equivalent to an `andfilter`
+ for the `active-region` at coordinates `0 0`. It's just convenient
+ to not need to change the filter and the pattern.
 
 **Forbidden**: Checks for `rle` in the same location as the
 catalyst. If `rle` is matched in any generation, the solution is
