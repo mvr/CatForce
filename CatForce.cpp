@@ -73,7 +73,7 @@ public:
     searchArea[3] = 60;
     xPat = 0;
     yPat = 0;
-    startGen = 1;
+    startGen = 0;
     lastGen = 100;
     outputFile = "results.rle";
     fullReportFile = "";
@@ -1362,7 +1362,9 @@ public:
 
     std::vector<LifeState> masks(catalysts.size());
     for (unsigned s = 0; s < catalysts.size(); s++) {
-      masks[s] = config.state.Convolve(catalysts[s].reactionMask) | ~bounds;
+      LifeState zoi = catalyst.state.ZOI();
+      zoi.Transform(Rotate180OddBoth);
+      masks[s] = config.state.Convolve(zoi) | ~bounds;
     }
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
