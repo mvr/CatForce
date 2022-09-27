@@ -1109,6 +1109,9 @@ public:
             catalysts[t].transparent)
           continue;
 
+        if(catalysts[s].sacrificial || catalysts[t].sacrificial)
+          continue;
+
         catalystCollisionMasks[s * catalysts.size() + t] = LoadCollisionMask(catalysts[s], catalysts[t]);
         catalystCollisionMasks[s * catalysts.size() + t].RecalculateMinMax();
       }
@@ -1442,7 +1445,7 @@ public:
       }
 
       for (unsigned i = 0; i < config.count; i++) {
-        if (config.state.Contains(shiftedTargets[i])) {
+        if (config.state.Contains(shiftedTargets[i]) || catalysts[config.curs[i]].sacrificial) {
           missingTime[i] = 0;
           recoveredTime[i] += 1;
         } else {
