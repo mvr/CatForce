@@ -178,6 +178,25 @@ public:
   }
 };
 
+inline std::vector<SymmetryTransform> AllTransforms() {
+  return {Identity,
+          ReflectAcrossXEven,
+          ReflectAcrossX,
+          ReflectAcrossYEven,
+          ReflectAcrossY,
+          Rotate90Even,
+          Rotate90,
+          Rotate270Even,
+          Rotate270,
+          Rotate180OddBoth,
+          Rotate180EvenHorizontal,
+          Rotate180EvenVertical,
+          Rotate180EvenBoth,
+          ReflectAcrossYeqX,
+          ReflectAcrossYeqNegX,
+          ReflectAcrossYeqNegXP1};
+}
+
 inline std::vector<SymmetryTransform> SymmetryGroupFromEnum(const StaticSymmetry sym) {
   switch (sym) {
   case StaticSymmetry::C1:
@@ -314,6 +333,29 @@ LifeState FundamentalDomain(const StaticSymmetry sym) {
   case StaticSymmetry::D8:
   case StaticSymmetry::D8even:
     return LifeState::Parse("o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o!");
+  }
+}
+
+inline std::pair<int, int> CommuteTranslation(const SymmetryTransform sym, std::pair<int, int> vec) {
+  int x = vec.first;
+  int y = vec.second;
+  switch (sym) {
+  case Identity:                return std::make_pair(x  , y);
+  case ReflectAcrossXEven:      return std::make_pair(x  , -y);
+  case ReflectAcrossX:          return std::make_pair(x  , -y);
+  case ReflectAcrossYEven:      return std::make_pair(-x , y);
+  case ReflectAcrossY:          return std::make_pair(-x , y);
+  case Rotate90Even:            return std::make_pair(-y , x);
+  case Rotate90:                return std::make_pair(-y , x);
+  case Rotate270Even:           return std::make_pair(y  , -x);
+  case Rotate270:               return std::make_pair(y  , -x);
+  case Rotate180OddBoth:        return std::make_pair(-x , -y);
+  case Rotate180EvenHorizontal: return std::make_pair(-x , -y);
+  case Rotate180EvenVertical:   return std::make_pair(-x , -y);
+  case Rotate180EvenBoth:       return std::make_pair(-x , -y);
+  case ReflectAcrossYeqX:       return std::make_pair(y  , x);
+  case ReflectAcrossYeqNegX:    return std::make_pair(-y , -x);
+  case ReflectAcrossYeqNegXP1:  return std::make_pair(-y , -x);
   }
 }
 
