@@ -13,6 +13,7 @@
 #include <algorithm>
 
 const int MAX_CATALYSTS = 5;
+const bool DEBUG = true;
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
@@ -996,7 +997,7 @@ public:
   void Add(LifeState &init, const LifeState &afterCatalyst, const LifeState &catalysts,
            const Configuration &conf, unsigned firstGenSurvive,
            unsigned genSurvive) {
-
+    
     LifeState result = afterCatalyst ^ catalysts;
     result.gen = firstGenSurvive;
 
@@ -1251,6 +1252,15 @@ public:
         }
       }
     }
+    if (DEBUG){
+      for(unsigned i = 0; i < catalysts.size(); ++i){
+        LifeState ithCat = catalysts[i].state;
+        ithCat.Transform(Rotate180OddBoth);
+        LifeState mthCat = catalysts[rotatedCatMatches[i][0]].state;
+        mthCat.Move(rotatedCatMatches[i][1],rotatedCatMatches[i][2]);
+        assert (mthCat.Contains(ithCat) && ithCat.Contains(mthCat));
+      }
+    }
     beginSearch = clock();
     postSymmetryTime = 0;
   }
@@ -1447,6 +1457,29 @@ public:
   void ReportSolution(Configuration &conf, unsigned successtime,
                         unsigned failuretime, std::pair<int,int> offset) {
     // if reportAll - ignore filters and update fullReport
+    if (DEBUG){
+      LifeState required;
+      LifeState antirequired;
+      for (unsigned i = 0; i < conf.count; ++i){
+        required.Join(catalysts[conf.curs[i]].required, conf.curx[i], conf.cury[i]);
+        antirequired.Join(catalysts[conf.curs[i]].antirequired, conf.curx[i], conf.cury[i]);
+      }
+      LifeState init;
+      LifeState workspace = Symmetricize(activeRegion, offset);
+      workspace.Join(conf.startingCatalysts);
+      init = workspace;
+      for (unsigned g = 0; g < successtime; ++g){
+        if(!workspace.Contains(required) || !workspace.AreDisjoint(antirequired)){
+          std::ofstream outfile;
+          outfile.open("bad_results.txt", std::ios_base::app);
+          outfile << init.RLE() << std::endl;
+          outfile.close();
+          break;
+        }
+        workspace.Step();
+      }
+    }
+
     if (reportAll) {
       if (HasForbidden(conf, successtime + 3,offset))
         return;
@@ -1534,6 +1567,7 @@ public:
     bool failure = false;
     unsigned successtime;
     unsigned failuretime;
+    // TODO: implement D2?
     for (unsigned g = config.state.gen; g < params.maxGen; g++) {
       if (config.count == 0 && g > params.lastGen)
         return;
@@ -1736,8 +1770,8 @@ public:
               // updating the masks
               if (newConfig.count != params.numCatalysts &&
                       newConfig.numCatsPostSym < params.numCatsPostSym) {
-                LifeState bounds;
                 if (params.maxW != -1) {
+                  LifeState bounds;
                   LifeState rect = LifeState::SolidRect(newPlacement.first - params.maxW,
                                                         newPlacement.second - params.maxH,
                                                         2 * params.maxW - 1,
@@ -1778,13 +1812,13 @@ public:
       }
 
       if ( !config.postSymmetry ){
-        // figure out which offsets will interact next gen
-        // difficulty: we know catalyst-catalyst interactions aren't a problem due to offsetCatValid
-        // but a stray birth during a catalysis reaction could interact with the rotated, offset catalysts...
+        // figure out which offsets will interact next gen via "do the ZOI's overlap"
         // offset might interact <=> neighborhood of (offset, rotated state) overlaps with that of state
         // want all v such that -R + v intersects R.
+        // difficulty: we know catalyst-catalyst interactions aren't a problem due to offsetCatValid
+        // but a stray birth during a catalysis reaction could interact with the rotated, offset catalysts...
         LifeState offsetsThatInteract = curOffsets;
-        LifeState neighborhood = config.state.Convolve(LifeState::SolidRect(-1,-1,3,3));
+        LifeState neighborhood = config.state.ZOI();
         // the below line seems to take a lot of time.
         offsetsThatInteract.Copy(neighborhood.Convolve(neighborhood), AND);
         curOffsets.Copy(offsetsThatInteract, ANDNOT);
@@ -1832,6 +1866,12 @@ public:
 
               LifeState newOffsets;
               newOffsets.Set(offset.first, offset.second);
+              // long term TODO: influence of interaction takes time to spread
+              // so ideally we'd work with a same/different mask, instead of
+              // a boolean pre/post interaction. The challenge is making the data
+              // structures such that we only do the computation for the "same"
+              // region once.
+
               // clock_t beginPostSym = clock();
               RecursiveSearch(newConfig, newHistory, newOffsets, required, antirequired,
                       newMasks, shiftedTargets, missingTime, recoveredTime);
@@ -1849,7 +1889,7 @@ public:
         }
       }
 
-      // would be nice to be able to mark if everything has recovered
+      // TODO: would be nice to be able to mark if everything has recovered
       // before entering post-symmetry mode.
       // Store successtime inside Configuration?
       if ( (config.numCatsPostSym == params.numCatsPostSym ||
