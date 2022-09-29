@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <unordered_map>
 #include <algorithm>
 
 const int MAX_CATALYSTS = 5;
@@ -1055,7 +1056,7 @@ public:
   std::vector<LifeTarget> targetFilter;
   std::vector<LifeState> catalystCollisionMasks;
   // (s,x,y) in nth spot <=> jth catalyst at (0,0) transforms to nth catalyst at (x,y)
-  std::vector<std::array<int,3>> transfCatMatches;
+  std::unordered_map<int, std::array<int,3>> transfCatMatches;
 
   clock_t current{};
   long long idx{};
@@ -1072,6 +1073,7 @@ public:
   bool reportAll{};
 
   unsigned filterMaxGen{};
+  unsigned symGroupSize{};
 
   uint64_t AllCatalystsHash() const {
     uint64_t result = 0;
@@ -1238,50 +1240,62 @@ public:
 
     filterMaxGen = FilterMaxGen();
 
-    // initialize transfCatMatches. transfCatMatches[s] = (transfS, transfX, transfY)
+    symGroupSize = SymmetryGroupFromEnum(params.symmetry).size();
+
+    // initialize transfCatMatches. transfCatMatches[32*s+T] = (transfS, transfX, transfY)
     // means: T of catalyst s = catalyst transfS, shifted by (transfX, transfY).
     for(unsigned i=0; i+1<changeCatIndices.size(); ++i){
       for(unsigned j = changeCatIndices[i]; j < changeCatIndices[i+1]; ++j){
-        SymmetryTransform nonIdElement = params.symmetryChain[0];
-        LifeState transfCat = catalysts[j].state;
-        transfCat.Transform(nonIdElement);
-        LifeTarget transfTarget(transfCat);
-        for(unsigned m = changeCatIndices[i]; m < changeCatIndices[i+1]; ++m ){
-          LifeState matches = catalysts[m].state.Match(transfTarget);
-          if (!matches.IsEmpty()){
-            // check the that the required lines up too (consider a block)
-            LifeState rotatedReq = catalysts[j].required;
-            rotatedReq.Transform(nonIdElement);
-            LifeState reqMatch = catalysts[m].required;
-            reqMatch.Move(64-matches.FirstOn().first, 64-matches.FirstOn().second);
-            if (rotatedReq.Contains(reqMatch) && reqMatch.Contains(rotatedReq)){
-              //std::cout << "found a match for catalyst " << j << std::endl;
-              transfCatMatches.push_back({static_cast<int>(m),
-                             64-matches.FirstOn().first, 64-matches.FirstOn().second});
-              break;
+        for (SymmetryTransform transf : SymmetryGroupFromEnum(params.symmetry)){
+          if (transf == Identity)
+            continue;
+          bool matched = false;
+          LifeState transfCat = catalysts[j].state;
+          transfCat.Transform(transf);
+          LifeTarget transfTarget(transfCat);
+          for(unsigned m = changeCatIndices[i]; m < changeCatIndices[i+1]; ++m ){
+            LifeState matches = catalysts[m].state.Match(transfTarget);
+            if (!matches.IsEmpty()){
+              // check the that the required lines up too (consider a block)
+              LifeState rotatedReq = catalysts[j].required;
+              rotatedReq.Transform(transf);
+              LifeState reqMatch = catalysts[m].required;
+              reqMatch.Move(64-matches.FirstOn().first, 64-matches.FirstOn().second);
+              if (rotatedReq.Contains(reqMatch) && reqMatch.Contains(rotatedReq)){
+                //std::cout << "found a match for catalyst " << j << std::endl;
+                transfCatMatches.insert(std::make_pair<int, std::array<int,3>>(32*j+transf,{static_cast<int>(m),
+                              64-matches.FirstOn().first, 64-matches.FirstOn().second}));
+                matched = true;
+                break;
+              }
             }
           }
-        }
-        if (transfCatMatches.size() < j+1){
-          std::cout << "could not find a match for a rotated catalyst " << std::endl;
-          std::cout << "double check catalyst symmetry character for cat number " << i << std::endl;
-          std::cout << "(please use the full geometric symmetry group for each catalyst)" << std::endl;
-          transfCat.Print();
-          exit(0);
+          if (!matched){
+            std::cout << "could not find a match for a catalyst " << std::endl;
+            std::cout << "double check catalyst symmetry character for cat number " << i << std::endl;
+            std::cout << "(please use the full geometric symmetry group for each catalyst)" << std::endl;
+            transfCat.Print();
+            exit(0);
+          }
         }
       }
     }
     if (DEBUG){
       for(unsigned i = 0; i < catalysts.size(); ++i){
-        LifeState ithCat = catalysts[i].state;
-        ithCat.Transform(params.symmetryChain[0]);
-        LifeState mthCat = catalysts[transfCatMatches[i][0]].state;
-        mthCat.Move(transfCatMatches[i][1],transfCatMatches[i][2]);
-        assert (mthCat.Contains(ithCat) && ithCat.Contains(mthCat));
+        for (SymmetryTransform transf : SymmetryGroupFromEnum(params.symmetry)){
+          if (transf == Identity)
+            continue;
+          LifeState ithCat = catalysts[i].state;
+          ithCat.Transform(transf);
+          std::array<int,3> matchInfo = transfCatMatches[32*i+int(transf)];
+          LifeState mthCat = catalysts[matchInfo[0]].state;
+          mthCat.Move(matchInfo[1], matchInfo[2]);
+          assert (mthCat.Contains(ithCat) && ithCat.Contains(mthCat));
+        }
       }
     }
     beginSearch = clock();
-    postSymmetryTime = 0;
+    //postSymmetryTime = 0;
   }
 
   unsigned FilterMaxGen() {
@@ -1539,19 +1553,24 @@ public:
     found++;
   }
 
-  inline std::pair<int,int> CommuteOffsetWithSymmetry(std::pair<int,int> offset){
-    if (params.symmetry == C2)
-      return std::make_pair(-offset.first, -offset.second);
-    else if (params.symmetry == D2AcrossY)
-      return std::make_pair(-offset.first, offset.second);
-    else if (params.symmetry == D2AcrossX)
-      return std::make_pair(offset.first, -offset.second);
-    else if (params.symmetry == D2diagodd)
-      return std::make_pair(offset.second, offset.first);
-    else if (params.symmetry == D2negdiagodd)
-      return std::make_pair(-offset.second, -offset.first);
-    assert(false);
-    return std::make_pair(0,0);
+  inline std::pair<int,int> CommuteOffsetWithTransf(std::pair<int,int> offset, SymmetryTransform transf){
+    switch(transf){
+      case Identity:
+        return offset;
+      case Rotate180OddBoth:
+        return std::make_pair(-offset.first, -offset.second);
+      case ReflectAcrossY:
+        return std::make_pair(-offset.first, offset.second);
+      case ReflectAcrossX:
+        return std::make_pair(offset.first, -offset.second);
+      case ReflectAcrossYeqX:
+        return std::make_pair(offset.second, offset.first);
+      case ReflectAcrossYeqNegX:
+        return std::make_pair(-offset.second, -offset.first);
+      default:
+        assert(false);
+      return std::make_pair(0,0);
+    }
   }
 
   void Search() {
@@ -1583,6 +1602,7 @@ public:
   }
 
   inline LifeState Symmetricize(LifeState& state, std::pair<int,int> offset){
+    // for D4+, this will need to change.
     LifeState sym = state;
     sym.Transform(params.symmetryChain[0]);
     sym.Move(offset.first, offset.second);
@@ -1602,6 +1622,13 @@ public:
     unsigned successtime;
     unsigned failuretime;
     // TODO: test D2
+    // try D4+ next? 
+    // transfCatMatches would need to be a map (non-identity element, s)->(transfS, transfX, transfY)
+    // symmetricize would be: reflect across x
+    //                        translate by (0, offset.y) and join with unreflected
+    //                        reflect across y
+    //                        translate by (offset.x, 0) and join with unreflected
+    // catalyst 
     for (unsigned g = config.state.gen; g < params.maxGen; g++) {
       if (config.count == 0 && g > params.lastGen)
         return;
@@ -1669,14 +1696,20 @@ public:
                 // placing s at (x,y) <=> placing transfS at transfVec+commuted(placementVec)
                 // so need all offset vectors w such that w + transfVec+commuted(placementVec)
                 //  is not in masks[transfS].
-                int transfS = transfCatMatches[s][0];
-                int transfX0 = transfCatMatches[s][1];
-                int transfY0 = transfCatMatches[s][2];
-                std::pair<int,int> commuted = CommuteOffsetWithSymmetry(newPlacement);
-                LifeState transfCatMask = masks[transfS];
-                transfCatMask.Move(-1*(transfX0+commuted.first),
-                                      -1*(transfY0+commuted.second));
-                offsetCatValid.Copy(transfCatMask, ANDNOT);
+                for (SymmetryTransform transf : SymmetryGroupFromEnum(params.symmetry)){
+                  if (transf == Identity)
+                    continue;
+                  std::array<int,3> matchInfo = transfCatMatches[32*s+transf];
+                  int transfS = matchInfo[0];
+                  int transfX0 = matchInfo[1];
+                  int transfY0 = matchInfo[2];
+                  std::pair<int,int> commuted = CommuteOffsetWithTransf(newPlacement,
+                                                    transf);
+                  LifeState transfCatMask = masks[transfS];
+                  transfCatMask.Move(-1*(transfX0+commuted.first),
+                                        -1*(transfY0+commuted.second));
+                  offsetCatValid.Copy(transfCatMask, ANDNOT);
+                }                
                 if (offsetCatValid.IsEmpty()){
                   newPlacements.Erase(newPlacement.first, newPlacement.second);
                   masks[s].Set(newPlacement.first, newPlacement.second);
@@ -1829,13 +1862,18 @@ public:
                     // if post-symmetry, masks for inteference with rotated catalyst.
                     // placing s at (x,y) <=> placing transfS at rotatedVec+T(x,y)
                     // then apply offset.
-                    int transfT = transfCatMatches[t][0];
-                    int transfX = transfCatMatches[t][1];
-                    int transfY = transfCatMatches[t][2];
-                    transfMask.Transform(params.symmetryChain[0]);
-                    transfMask.Move(transfX + config.loneOffset.first,
-                                       transfY+config.loneOffset.second);
-                    newMasks[transfT].Join(transfMask);
+                    for (auto transf : SymmetryChainFromEnum(params.symmetry)){
+                      if (transf == Identity)
+                        continue;
+                      std::array<int,3> matchInfo = transfCatMatches[32*t+transf];
+                      int transfT = matchInfo[0];
+                      int transfX = matchInfo[1];
+                      int transfY = matchInfo[2];
+                      transfMask.Transform(params.symmetryChain[0]);
+                      transfMask.Move(transfX + config.loneOffset.first,
+                                        transfY+config.loneOffset.second);
+                      newMasks[transfT].Join(transfMask);
+                    }
                   }
                 }
               }
@@ -1868,7 +1906,7 @@ public:
         if (params.symmetry == D2negdiagodd)
           transfNeighborhood.Transform(ReflectAcrossYeqX);
         // the below line seems to take a lot of time.
-        offsetsThatInteract.Copy(neighborhood.Convolve(neighborhood), AND);
+        offsetsThatInteract.Copy(transfNeighborhood.Convolve(neighborhood), AND);
         curOffsets.Copy(offsetsThatInteract, ANDNOT);
         if (g >= params.startSymInteraction && config.count >= params.minCatsPreSym
             && !offsetsThatInteract.IsEmpty()){
@@ -1896,18 +1934,23 @@ public:
               if (config.count < params.numCatalysts){
                 newMasks = masks;
                 for (unsigned s=0; s<catalysts.size(); ++s){
-                              
+                  for (auto transf : SymmetryChainFromEnum(params.symmetry)){
+                    if (transf == Identity)
+                      continue;
+                    std::array<int,3> matchInfo = transfCatMatches[32*s+transf];
+                    int transfS = matchInfo[0];
+                    int transfX = matchInfo[1];
+                    int transfY = matchInfo[2];
+                    LifeState transfMask = masks[s];
+                    transfMask.Transform(transf);
+                    // for D4, this will need to be a bit different.
+                    transfMask.Move(transfX + offset.first, transfY+offset.second);
+                    newMasks[transfS].Join(transfMask);
+                  }
           // T of catalyst s at (x,y) <=> catalyst transformedS at offsetVec+transfVec+T(x,y)
           // T(x,y) due to T of [cat shifted by (x,y)] = [T of cat] shifted by T(x,y)
           // so we apply T to get the T(x,y), then shift by transfVec + offsetVec
-                  int transfS = transfCatMatches[s][0];
-                  int transfX = transfCatMatches[s][1];
-                  int transfY = transfCatMatches[s][2];
-                  LifeState transfMask = masks[s];
-                  transfMask.Transform(params.symmetryChain[0]);
-                  transfMask.Move(transfX + offset.first, transfY+offset.second);
-                  newMasks[transfS].Join(transfMask);
-                  // fundamental domain reasons...offset.first >= 0, want half rounded down.
+                  // fundamental domain reasons
                   //newMasks[s].Join(LifeState::SolidRect((64+offset.first)/2-32, -32, 32, 64));
                 }
               }
