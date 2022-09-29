@@ -1055,7 +1055,7 @@ public:
   std::vector<LifeTarget> targetFilter;
   std::vector<LifeState> catalystCollisionMasks;
   // (s,x,y) in nth spot <=> jth catalyst at (0,0) transforms to nth catalyst at (x,y)
-  std::vector<std::array<int,3>> rotatedCatMatches;
+  std::vector<std::array<int,3>> transfCatMatches;
 
   clock_t current{};
   long long idx{};
@@ -1135,6 +1135,22 @@ public:
       offsets.Join(LifeState::SolidRect(params.offsetBboxes[i], params.offsetBboxes[i+1],
                               params.offsetBboxes[i+2], params.offsetBboxes[i+3]));
     }
+    LifeState intersectWith;
+    if (params.symmetry == D2AcrossX){
+      intersectWith = LifeState::SolidRect(0,-32,1,64);
+    } else if (params.symmetry == D2AcrossY){
+      intersectWith = LifeState::SolidRect(-32,0,64,1);
+    } else if (params.symmetry == D2diagodd){
+      for (int i = 0; i < 64; ++i){
+        intersectWith.Set(i,64-i);
+      }
+    } else if (params.symmetry == D2negdiagodd){
+      for (int i = 0; i < 64; ++i){
+        intersectWith.Set(i,i);
+      }
+    }
+    if (! intersectWith.IsEmpty())
+      offsets &= intersectWith;
     // eliminate those such that active region overlaps with its image
     LifeTarget activeRegionTarget(activeRegion);
     std::array<int,4> xyBounds = activeRegion.XYBounds();
@@ -1159,10 +1175,12 @@ public:
 
     std::vector<CatalystInput> inputcats;
     ReadParams(inputFile, inputcats, params);
-    if(params.symmetry != StaticSymmetry::C2 && params.symmetry != StaticSymmetry::C2even
-         && params.symmetry != StaticSymmetry::C2horizontaleven
-         && params.symmetry != StaticSymmetry::C2verticaleven){
-      std::cout << "only C2 symmetries are supported at this time" << std::endl;
+    if(params.symmetry != StaticSymmetry::C2
+        && params.symmetry != StaticSymmetry::D2AcrossX
+         && params.symmetry != StaticSymmetry::D2AcrossY
+         && params.symmetry != StaticSymmetry::D2diagodd
+         && params.symmetry != StaticSymmetry::D2negdiagodd){
+      std::cout << "only C2 and D2 symmetries are supported at this time" << std::endl;
       std::cout << "symmetry provided was " << params.symmetry << std::endl;
       exit(0);
     }
@@ -1220,15 +1238,16 @@ public:
 
     filterMaxGen = FilterMaxGen();
 
-    // initialize rotatedCatMatches.
+    // initialize transfCatMatches. transfCatMatches[s] = (transfS, transfX, transfY)
+    // means: T of catalyst s = catalyst transfS, shifted by (transfX, transfY).
     for(unsigned i=0; i+1<changeCatIndices.size(); ++i){
       for(unsigned j = changeCatIndices[i]; j < changeCatIndices[i+1]; ++j){
         SymmetryTransform nonIdElement = params.symmetryChain[0];
-        LifeState rotatedCat = catalysts[j].state;
-        rotatedCat.Transform(nonIdElement);
-        LifeTarget rotatedTarget(rotatedCat);
+        LifeState transfCat = catalysts[j].state;
+        transfCat.Transform(nonIdElement);
+        LifeTarget transfTarget(transfCat);
         for(unsigned m = changeCatIndices[i]; m < changeCatIndices[i+1]; ++m ){
-          LifeState matches = catalysts[m].state.Match(rotatedTarget);
+          LifeState matches = catalysts[m].state.Match(transfTarget);
           if (!matches.IsEmpty()){
             // check the that the required lines up too (consider a block)
             LifeState rotatedReq = catalysts[j].required;
@@ -1237,17 +1256,17 @@ public:
             reqMatch.Move(64-matches.FirstOn().first, 64-matches.FirstOn().second);
             if (rotatedReq.Contains(reqMatch) && reqMatch.Contains(rotatedReq)){
               //std::cout << "found a match for catalyst " << j << std::endl;
-              rotatedCatMatches.push_back({static_cast<int>(m),
+              transfCatMatches.push_back({static_cast<int>(m),
                              64-matches.FirstOn().first, 64-matches.FirstOn().second});
               break;
             }
           }
         }
-        if (rotatedCatMatches.size() < j+1){
+        if (transfCatMatches.size() < j+1){
           std::cout << "could not find a match for a rotated catalyst " << std::endl;
           std::cout << "double check catalyst symmetry character for cat number " << i << std::endl;
           std::cout << "(please use the full geometric symmetry group for each catalyst)" << std::endl;
-          rotatedCat.Print();
+          transfCat.Print();
           exit(0);
         }
       }
@@ -1255,9 +1274,9 @@ public:
     if (DEBUG){
       for(unsigned i = 0; i < catalysts.size(); ++i){
         LifeState ithCat = catalysts[i].state;
-        ithCat.Transform(Rotate180OddBoth);
-        LifeState mthCat = catalysts[rotatedCatMatches[i][0]].state;
-        mthCat.Move(rotatedCatMatches[i][1],rotatedCatMatches[i][2]);
+        ithCat.Transform(params.symmetryChain[0]);
+        LifeState mthCat = catalysts[transfCatMatches[i][0]].state;
+        mthCat.Move(transfCatMatches[i][1],transfCatMatches[i][2]);
         assert (mthCat.Contains(ithCat) && ithCat.Contains(mthCat));
       }
     }
@@ -1520,6 +1539,21 @@ public:
     found++;
   }
 
+  inline std::pair<int,int> CommuteOffsetWithSymmetry(std::pair<int,int> offset){
+    if (params.symmetry == C2)
+      return std::make_pair(-offset.first, -offset.second);
+    else if (params.symmetry == D2AcrossY)
+      return std::make_pair(-offset.first, offset.second);
+    else if (params.symmetry == D2AcrossX)
+      return std::make_pair(offset.first, -offset.second);
+    else if (params.symmetry == D2diagodd)
+      return std::make_pair(offset.second, offset.first);
+    else if (params.symmetry == D2negdiagodd)
+      return std::make_pair(-offset.second, -offset.first);
+    assert(false);
+    return std::make_pair(0,0);
+  }
+
   void Search() {
     Configuration config;
     config.count = 0;
@@ -1550,7 +1584,7 @@ public:
 
   inline LifeState Symmetricize(LifeState& state, std::pair<int,int> offset){
     LifeState sym = state;
-    sym.Transform(SymmetryTransform::Rotate180OddBoth);
+    sym.Transform(params.symmetryChain[0]);
     sym.Move(offset.first, offset.second);
     sym.Join(state);
     return sym;
@@ -1567,7 +1601,7 @@ public:
     bool failure = false;
     unsigned successtime;
     unsigned failuretime;
-    // TODO: implement D2?
+    // TODO: test D2
     for (unsigned g = config.state.gen; g < params.maxGen; g++) {
       if (config.count == 0 && g > params.lastGen)
         return;
@@ -1631,16 +1665,18 @@ public:
               auto newPlacement = newPlacements.FirstOn();
               LifeState offsetCatValid = curOffsets;
               if( !config.postSymmetry ){
-                // for which offsets is offset(rotated(placement)) also valid?
-                // placing s at (x,y) <=> placing rotatedS at (rotatedX-x), (rotatedY-y)
-                // so need all offset vectors w such that w + rotatedVec-placementVec is
-                // not in masks[rotatedS].
-                int rotatedS = rotatedCatMatches[s][0];
-                int rotatedX0 = rotatedCatMatches[s][1];
-                int rotatedY0 = rotatedCatMatches[s][2];
-                LifeState rotatedCatMask = masks[rotatedS];
-                rotatedCatMask.Move(-rotatedX0+newPlacement.first, -rotatedY0+newPlacement.second);
-                offsetCatValid.Copy(rotatedCatMask, ANDNOT);
+                // for which offsets is offset(transformed(placement)) also valid?
+                // placing s at (x,y) <=> placing transfS at transfVec+commuted(placementVec)
+                // so need all offset vectors w such that w + transfVec+commuted(placementVec)
+                //  is not in masks[transfS].
+                int transfS = transfCatMatches[s][0];
+                int transfX0 = transfCatMatches[s][1];
+                int transfY0 = transfCatMatches[s][2];
+                std::pair<int,int> commuted = CommuteOffsetWithSymmetry(newPlacement);
+                LifeState transfCatMask = masks[transfS];
+                transfCatMask.Move(-1*(transfX0+commuted.first),
+                                      -1*(transfY0+commuted.second));
+                offsetCatValid.Copy(transfCatMask, ANDNOT);
                 if (offsetCatValid.IsEmpty()){
                   newPlacements.Erase(newPlacement.first, newPlacement.second);
                   masks[s].Set(newPlacement.first, newPlacement.second);
@@ -1791,12 +1827,15 @@ public:
                   newMasks[t].Join(transfMask);
                   if (config.postSymmetry){
                     // if post-symmetry, masks for inteference with rotated catalyst.
-                    int rotatedT = rotatedCatMatches[t][0];
-                    int rotatedX = rotatedCatMatches[t][1];
-                    int rotatedY = rotatedCatMatches[t][2];
-                    transfMask.Transform(Rotate180OddBoth);
-                    transfMask.Move(rotatedX + config.loneOffset.first, rotatedY+config.loneOffset.second);
-                    newMasks[rotatedT].Join(transfMask);
+                    // placing s at (x,y) <=> placing transfS at rotatedVec+T(x,y)
+                    // then apply offset.
+                    int transfT = transfCatMatches[t][0];
+                    int transfX = transfCatMatches[t][1];
+                    int transfY = transfCatMatches[t][2];
+                    transfMask.Transform(params.symmetryChain[0]);
+                    transfMask.Move(transfX + config.loneOffset.first,
+                                       transfY+config.loneOffset.second);
+                    newMasks[transfT].Join(transfMask);
                   }
                 }
               }
@@ -1814,11 +1853,20 @@ public:
       if ( !config.postSymmetry ){
         // figure out which offsets will interact next gen via "do the ZOI's overlap"
         // offset might interact <=> neighborhood of (offset, rotated state) overlaps with that of state
-        // want all v such that -R + v intersects R.
+        // want all v such that nonIdElem(R)+v intersects R, so v in rotate180(nonIdElem(R)) + R
         // difficulty: we know catalyst-catalyst interactions aren't a problem due to offsetCatValid
         // but a stray birth during a catalysis reaction could interact with the rotated, offset catalysts...
         LifeState offsetsThatInteract = curOffsets;
         LifeState neighborhood = config.state.ZOI();
+        LifeState transfNeighborhood = neighborhood;
+        if (params.symmetry == D2AcrossX)
+          transfNeighborhood.Transform(ReflectAcrossY);
+        if (params.symmetry == D2AcrossY)
+          transfNeighborhood.Transform(ReflectAcrossX);
+        if (params.symmetry == D2diagodd)
+          transfNeighborhood.Transform(ReflectAcrossYeqNegXP1);
+        if (params.symmetry == D2negdiagodd)
+          transfNeighborhood.Transform(ReflectAcrossYeqX);
         // the below line seems to take a lot of time.
         offsetsThatInteract.Copy(neighborhood.Convolve(neighborhood), AND);
         curOffsets.Copy(offsetsThatInteract, ANDNOT);
@@ -1849,16 +1897,16 @@ public:
                 newMasks = masks;
                 for (unsigned s=0; s<catalysts.size(); ++s){
                               
-          // post symmetry, catalyst s at (x,y) <=> catalyst rotatedS at (offsetX+rotatedX-x, offsetX+rotatedX-y)
-          // signs on x,y flip due to [shift by (x,y)] then rotate = rotate then [shift by (-x,-y)]
-          // so we rotate by 180 to get the (-x,-y), then Move
-                  int rotatedS = rotatedCatMatches[s][0];
-                  int rotatedX = rotatedCatMatches[s][1];
-                  int rotatedY = rotatedCatMatches[s][2];
+          // T of catalyst s at (x,y) <=> catalyst transformedS at offsetVec+transfVec+T(x,y)
+          // T(x,y) due to T of [cat shifted by (x,y)] = [T of cat] shifted by T(x,y)
+          // so we apply T to get the T(x,y), then shift by transfVec + offsetVec
+                  int transfS = transfCatMatches[s][0];
+                  int transfX = transfCatMatches[s][1];
+                  int transfY = transfCatMatches[s][2];
                   LifeState transfMask = masks[s];
-                  transfMask.Transform(Rotate180OddBoth);
-                  transfMask.Move(rotatedX + offset.first, rotatedY+offset.second);
-                  newMasks[rotatedS].Join(transfMask);
+                  transfMask.Transform(params.symmetryChain[0]);
+                  transfMask.Move(transfX + offset.first, transfY+offset.second);
+                  newMasks[transfS].Join(transfMask);
                   // fundamental domain reasons...offset.first >= 0, want half rounded down.
                   //newMasks[s].Join(LifeState::SolidRect((64+offset.first)/2-32, -32, 32, 64));
                 }
