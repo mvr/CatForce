@@ -621,6 +621,7 @@ public:
   std::vector<LifeTarget> targets;
   LifeState reactionMask;
   std::vector<LifeState> phaseReactionMask;
+  std::vector<LifeState> phaseAvoidMask;
   unsigned maxDisappear;
   std::vector<LifeTarget> forbidden;
   LifeState required;
@@ -648,7 +649,9 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
   for (auto &tran : trans) {
     LifeState pat = LifeState::Parse(rle, input.centerX, input.centerY, tran);
 
-
+    // why do we have p separate catalysts, when they all basically
+    // have the same data?
+    // add a "phaseshift" variable, to configuration
     for (unsigned i = 0; i < input.period; i++) {
       CatalystData result;
 
@@ -707,12 +710,17 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       for (unsigned j = 0; j < input.period; j++) {
         result.phases.push_back(tmp);
         result.targets.push_back(LifeTarget(tmp));
-
+        
         LifeState phasemask = tmp.BigZOI();
         phasemask.Transform(Rotate180OddBoth);
+        LifeState phaseAvoid = phasemask;
         phasemask &= result.locusReactionMask;
+        phaseAvoid &= result.locusAvoidMask;
         phasemask.RecalculateMinMax();
+        phaseAvoid.RecalculateMinMax();
         result.phaseReactionMask.push_back(phasemask);
+        if (result.hasLocus)
+          result.phaseAvoidMask.push_back(phasemask);
 
         tmp.Step();
       }
@@ -1498,7 +1506,7 @@ public:
           if(!activePart.IsEmpty()) {
           for (unsigned s = 0; s < catalysts.size(); s++) {
             if(catalysts[s].hasLocus) {
-              LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
+              LifeState hitLocations = activePart.Convolve(catalysts[s].phaseAvoidMask[g % catalysts[s].period]);
               masks[s] |= hitLocations;
             }
           }
