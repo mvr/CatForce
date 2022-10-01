@@ -720,7 +720,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
         phaseAvoid.RecalculateMinMax();
         result.phaseReactionMask.push_back(phasemask);
         if (result.hasLocus)
-          result.phaseAvoidMask.push_back(phasemask);
+          result.phaseAvoidMask.push_back(phaseAvoid);
 
         tmp.Step();
       }
