@@ -629,7 +629,7 @@ public:
   bool hasLocus;
   LifeState locus;
   LifeState locusReactionMask;
-  LifeState locusAvoidMask;
+  //LifeState locusAvoidMask;
   bool transparent;
   bool mustInclude;
   bool checkRecovery;
@@ -702,9 +702,9 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.locusReactionMask.RecalculateMinMax();
 
       // This is a little janky, it should probably be per phase
-      result.locusAvoidMask = result.reactionMask;
-      result.locusAvoidMask &= ~result.locusReactionMask;
-      result.locusAvoidMask.RecalculateMinMax();
+      //result.locusAvoidMask = result.reactionMask;
+      //result.locusAvoidMask &= ~result.locusReactionMask;
+      //result.locusAvoidMask.RecalculateMinMax();
 
       LifeState tmp = pat;
       for (unsigned j = 0; j < input.period; j++) {
@@ -715,7 +715,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
         phasemask.Transform(Rotate180OddBoth);
         LifeState phaseAvoid = phasemask;
         phasemask &= result.locusReactionMask;
-        phaseAvoid &= result.locusAvoidMask;
+        phaseAvoid &= (~phasemask);
         phasemask.RecalculateMinMax();
         phaseAvoid.RecalculateMinMax();
         result.phaseReactionMask.push_back(phasemask);
