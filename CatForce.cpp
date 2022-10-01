@@ -1,17 +1,19 @@
-// CatForce - Catalyst search utility based on LifeAPI using brute force.
-// Written by Michael Simkin 2015
+// CatForce depth first oscillator search
+// CatForce: catalyst search utility based on LifeAPI using brute force
+// depth first: Mitchell Riley rewrite
+// oscillator search: Luke Kiernan, trying to exploit overlapping subcases
 #include "LifeAPI.h"
 #include <algorithm>
+#include <array>
+#include <assert.h>
 #include <ctime>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <vector>
-#include <array>
 #include <unordered_map>
-#include <algorithm>
+#include <vector>
 
 const int MAX_CATALYSTS = 5;
 const bool DEBUG = true;
@@ -654,6 +656,7 @@ public:
   bool hasLocus;
   LifeState locus;
   LifeState locusReactionMask;
+  LifeState smallZOIMask;
   LifeState locusAvoidMask;
   bool transparent;
   bool mustInclude;
@@ -698,6 +701,9 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.locusAvoidMask = result.reactionMask & ~result.locusReactionMask;
     result.locusAvoidMask.RecalculateMinMax();
 
+    result.smallZOIMask = result.state.ZOI();
+    result.smallZOIMask.Transform(Rotate180OddBoth);
+
     result.maxDisappear = input.maxDisappear;
 
     for (unsigned k = 0; k < input.forbiddenRLE.size(); k++) {
@@ -738,6 +744,7 @@ struct Configuration {
   std::array<int, MAX_CATALYSTS> curs;
   LifeState state;
   LifeState startingCatalysts;
+  LifeState startingCatalystsZOI;
   // debugging purposes
   LifeState catalystsPreSymmetry;
   int firstSymInt;
@@ -1150,7 +1157,16 @@ public:
       for (int i = 0; i < 64; ++i){
         intersectWith.Set(i,i);
       }
+    } else if (params.symmetry == D4diag){
+      // if region lands at (x,y), vector to the rotated-by-180 one is
+      // (-2x,-2y) in D4xodd case, (-2(x+1/2),-2(y+1/2)) in D4xeven case.
+      // that's our offset vector, so components must have same parity
+      for (unsigned i = 0; i < 64; ++i){
+        for(unsigned j = 0; j < 64; ++j)
+          intersectWith.SetCell(i,j, i % 2 == j % 2);
+      }
     }
+    // D4 case: all offsets are okay.
     if (! intersectWith.IsEmpty())
       offsets &= intersectWith;
     // eliminate those such that active region overlaps with its image
@@ -1159,10 +1175,7 @@ public:
     for(int x = 2*xyBounds[0]-2; x <= 2*xyBounds[2]+2; ++x){
       for(int y = 2*xyBounds[1]-2; y <= 2*xyBounds[3]+2; ++y){
         if (offsets.GetCell(x,y) == 1){
-          LifeState combined = activeRegion;
-          combined.Transform(params.symmetryChain[0]);
-          combined.Move(x,y);
-          combined.Join(activeRegion);
+          LifeState combined = Symmetricize(activeRegion, std::make_pair(x,y));
           if(!combined.Contains(activeRegionTarget)){
             offsets.Erase(x,y);
           }
@@ -1181,8 +1194,10 @@ public:
         && params.symmetry != StaticSymmetry::D2AcrossX
          && params.symmetry != StaticSymmetry::D2AcrossY
          && params.symmetry != StaticSymmetry::D2diagodd
-         && params.symmetry != StaticSymmetry::D2negdiagodd){
-      std::cout << "only C2 and D2 symmetries are supported at this time" << std::endl;
+         && params.symmetry != StaticSymmetry::D2negdiagodd
+         && params.symmetry != StaticSymmetry::D4
+         && params.symmetry != StaticSymmetry::D4diag){
+      std::cout << "only C2, D2, D4+, and D4x symmetries are supported at this time" << std::endl;
       std::cout << "symmetry provided was " << params.symmetry << std::endl;
       exit(0);
     }
@@ -1296,6 +1311,23 @@ public:
     }
     beginSearch = clock();
     //postSymmetryTime = 0;
+
+    // some testing code for Symmetricize
+    /*LifeState pi = LifeState::Parse("3o$obo$obo");
+    std::vector<StaticSymmetry> symmetriesToTest({C2, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd, D4, D4diag});
+    std::vector<std::string> names({"C2", "D2-", "D2|", "D2\\", "D2/", "D4+", "D4x"});
+    std::ofstream outputStream;
+    outputStream.open("output.txt");
+    for (unsigned i = 0; i < symmetriesToTest.size(); ++i){
+      symGroupSize = SymmetryGroupFromEnum(symmetriesToTest[i]).size();
+      params.symmetry = symmetriesToTest[i];
+      params.symmetryChain = SymmetryChainFromEnum(symmetriesToTest[i]);
+      outputStream << "pi at the origin, symmetricized with offset (-10, 6), group " << names[i] << std::endl;
+      outputStream << Symmetricize(pi,std::make_pair(-10,6)).RLE() << std::endl;
+      outputStream << std::endl;
+    }
+    outputStream.close();
+    exit(0);*/
   }
 
   unsigned FilterMaxGen() {
@@ -1565,7 +1597,7 @@ public:
         return std::make_pair(offset.first, -offset.second);
       case ReflectAcrossYeqX:
         return std::make_pair(offset.second, offset.first);
-      case ReflectAcrossYeqNegX:
+      case ReflectAcrossYeqNegXP1:
         return std::make_pair(-offset.second, -offset.first);
       default:
         assert(false);
@@ -1596,17 +1628,105 @@ public:
     }
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
+    LifeState startingOffsets = GenerateOffsets();
+    std::cout << "starting offsets" << std::endl;
+    startingOffsets.Print();
 
-    RecursiveSearch(config, config.state, GenerateOffsets(), alsoRequired, LifeState(), masks, shiftedTargets,
+    RecursiveSearch(config, config.state, startingOffsets, alsoRequired, LifeState(), masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>());
   }
 
-  inline LifeState Symmetricize(LifeState& state, std::pair<int,int> offset){
-    // for D4+, this will need to change.
-    LifeState sym = state;
-    sym.Transform(params.symmetryChain[0]);
-    sym.Move(offset.first, offset.second);
-    sym.Join(state);
+  inline void PerpPreimage(SymmetryTransform transf, LifeState & state){
+    // look at "slices" parallel to the axis of reflection. if a slice 
+    // contains any on cell, then all cells in that slice should be on
+    switch (transf){
+      case ReflectAcrossX: {
+        uint64_t orOfCols = 0;
+        for (unsigned i = 0; i < 64; ++i)
+          orOfCols |= state.state[i];
+        for (unsigned j=0; j < 64; ++j)
+          state.state[j] = orOfCols;
+        break;
+      }
+      case ReflectAcrossY: {
+        for (unsigned i = 0; i < 64; ++i){
+          if (state.state[i] != 0)
+            state.state[i] = 0xFFFFFFFFFFFFFFFF;
+        }
+        break;
+      }
+      case ReflectAcrossYeqX:{
+        // looking at slices parallel to y = x. right edge of state[i] = top of col i.
+        uint64_t diagonalOr = 0;
+        for (unsigned i = 0; i < 64; ++i){
+          diagonalOr |= state.state[i];
+          diagonalOr = RotateLeft(diagonalOr);
+        }
+        for (unsigned i = 0; i < 64; ++i ){
+          state.state[i] = diagonalOr;
+          diagonalOr = RotateLeft(diagonalOr);
+        }
+        break;
+      }
+      case ReflectAcrossYeqNegXP1: {
+        // looking at slices parallel to y = -x.
+        uint64_t diagonalOr = 0;
+        for (unsigned i = 0; i < 64; ++i){
+          diagonalOr |= state.state[i];
+          diagonalOr = RotateRight(diagonalOr);
+        }
+        for (unsigned i = 0; i < 64; ++i ){
+          state.state[i] = diagonalOr;
+          diagonalOr = RotateRight(diagonalOr);
+        }
+        break;
+      }
+    }
+  }
+
+  inline std::pair<int,int> PerpComponent(SymmetryTransform transf, std::pair<int,int> offset){
+    switch (transf){
+      case ReflectAcrossX:
+        return std::make_pair(0,offset.second);
+      case ReflectAcrossY:
+        return std::make_pair(offset.first, 0);
+      case ReflectAcrossYeqX:{
+        assert((offset.first+64) % 2 == (offset.second+64) % 2);
+        return std::make_pair( ((offset.first-offset.second+64)/2)%64,
+                              ((-offset.first+offset.second+64)/2)%64 );
+
+      }
+      case ReflectAcrossYeqNegXP1:{
+        assert((offset.first+64) % 2 == (offset.second+64) % 2);
+        return std::make_pair( ((offset.first+offset.second)/2)%64,
+                              ((offset.first+offset.second)/2)%64 );
+      }
+      default:
+        return offset;
+    }
+  }
+
+  inline LifeState Symmetricize(const LifeState& state, std::pair<int,int> offset){
+    LifeState sym;
+    if (symGroupSize == 2){
+      sym = state;
+      SymmetryTransform nonIdElem = params.symmetryChain[0];
+      sym.Transform(nonIdElem);
+      sym.Move(PerpComponent(nonIdElem, offset).first,
+                PerpComponent(nonIdElem, offset).second);
+      sym.Join(state);
+      return sym;
+    }
+    // this should work for D4+ and D4x (but need to test it).
+    LifeState oldSym = state;
+    for (auto transf : params.symmetryChain){
+      sym = oldSym;
+      sym.Transform(transf);
+      sym.Move(PerpComponent(transf, offset).first,
+                PerpComponent(transf, offset).second);
+      sym.Join(oldSym);
+      oldSym = sym;
+    }
     return sym;
   }
 
@@ -1621,14 +1741,6 @@ public:
     bool failure = false;
     unsigned successtime;
     unsigned failuretime;
-    // TODO: test D2
-    // try D4+ next? 
-    // transfCatMatches would need to be a map (non-identity element, s)->(transfS, transfX, transfY)
-    // symmetricize would be: reflect across x
-    //                        translate by (0, offset.y) and join with unreflected
-    //                        reflect across y
-    //                        translate by (offset.x, 0) and join with unreflected
-    // catalyst 
     for (unsigned g = config.state.gen; g < params.maxGen; g++) {
       if (config.count == 0 && g > params.lastGen)
         return;
@@ -1684,8 +1796,17 @@ public:
               continue;
             if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
               continue;
-
-            LifeState newPlacements = activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
+            // resolves issue with existing catalysts + active leading to birth:
+            // e 0 a   e = on cell from existing catalyst (eg very tip of tail of fishhook)
+            // 0 0 0   a = on cell from active
+            // n 0 0   n = on cell from new placement. We need to test this placement
+            //             (and can't tell just from looking at active cells)
+            LifeState newPlacements = activePart.Convolve(catalysts[s].locusReactionMask);
+            LifeState overlap = activePart.ZOI();
+            overlap &= config.startingCatalystsZOI;
+            if (!overlap.IsEmpty())
+              newPlacements |= catalysts[s].smallZOIMask.Convolve(overlap);
+            newPlacements &= ~masks[s];
 
             while (!newPlacements.IsEmpty()) {
               // Do the placement
@@ -1694,8 +1815,8 @@ public:
               if( !config.postSymmetry ){
                 // for which offsets is offset(transformed(placement)) also valid?
                 // placing s at (x,y) <=> placing transfS at transfVec+commuted(placementVec)
-                // so need all offset vectors w such that w + transfVec+commuted(placementVec)
-                //  is not in masks[transfS].
+                // so need all offset vectors w such that
+                // perpComponent(w, T) + transfVec+commuted(placementVec) is not in masks[transfS].
                 for (SymmetryTransform transf : SymmetryGroupFromEnum(params.symmetry)){
                   if (transf == Identity)
                     continue;
@@ -1706,10 +1827,11 @@ public:
                   std::pair<int,int> commuted = CommuteOffsetWithTransf(newPlacement,
                                                     transf);
                   LifeState transfCatMask = masks[transfS];
-                  transfCatMask.Move(-1*(transfX0+commuted.first),
-                                        -1*(transfY0+commuted.second));
+                  transfCatMask.Move(-1*(transfX0+commuted.first)+64,
+                                        -1*(transfY0+commuted.second)+64);
+                  PerpPreimage(transf, transfCatMask);
                   offsetCatValid.Copy(transfCatMask, ANDNOT);
-                }                
+                }
                 if (offsetCatValid.IsEmpty()){
                   newPlacements.Erase(newPlacement.first, newPlacement.second);
                   masks[s].Set(newPlacement.first, newPlacement.second);
@@ -1735,14 +1857,14 @@ public:
               LifeState symCatalyst = shiftedCatalyst;
 
               if(!config.postSymmetry){
-                newConfig.state.Join(shiftedCatalyst);
-                newConfig.startingCatalysts.Join(shiftedCatalyst);
-                newConfig.catalystsPreSymmetry.Join(shiftedCatalyst);
+                newConfig.state |= shiftedCatalyst;
+                newConfig.startingCatalysts |= shiftedCatalyst;
+                newConfig.startingCatalystsZOI |= shiftedCatalyst.ZOI();
+                newConfig.catalystsPreSymmetry |= shiftedCatalyst;
               } else {
-                symCatalyst.Transform(params.symmetryChain[0]);
-                symCatalyst.Move(config.loneOffset.first, config.loneOffset.second);
-                symCatalyst.Join(shiftedCatalyst);
+                symCatalyst = Symmetricize(shiftedCatalyst, config.loneOffset);
                 newConfig.startingCatalysts |= symCatalyst;
+                newConfig.startingCatalystsZOI |= symCatalyst.ZOI();
                 newConfig.state |= symCatalyst;
               }
               // Do a one-step lookahead to see if the catalyst interacts
@@ -1854,6 +1976,7 @@ public:
                 // catalystCollisionMask[s * catalysts.size() + t]:
                 //        place catalyst[s] at (0,0), what positions of catalysts[t] collide?
                 for (unsigned t = 0; t < catalysts.size(); t++) {
+                  // identity case.
                   LifeState transfMask;
                   transfMask.Join(catalystCollisionMasks[s * catalysts.size() + t],
                                    newPlacement.first, newPlacement.second);
@@ -1861,7 +1984,7 @@ public:
                   if (config.postSymmetry){
                     // if post-symmetry, masks for inteference with rotated catalyst.
                     // placing s at (x,y) <=> placing transfS at rotatedVec+T(x,y)
-                    // then apply offset.
+                    // then apply PrepComponent(offset, T).
                     for (auto transf : SymmetryChainFromEnum(params.symmetry)){
                       if (transf == Identity)
                         continue;
@@ -1870,8 +1993,8 @@ public:
                       int transfX = matchInfo[1];
                       int transfY = matchInfo[2];
                       transfMask.Transform(params.symmetryChain[0]);
-                      transfMask.Move(transfX + config.loneOffset.first,
-                                        transfY+config.loneOffset.second);
+                      transfMask.Move(transfX + PerpComponent(transf, config.loneOffset).first,
+                                      transfY + PerpComponent(transf, config.loneOffset).second);
                       newMasks[transfT].Join(transfMask);
                     }
                   }
@@ -1890,23 +2013,34 @@ public:
 
       if ( !config.postSymmetry ){
         // figure out which offsets will interact next gen via "do the ZOI's overlap"
-        // offset might interact <=> neighborhood of (offset, rotated state) overlaps with that of state
-        // want all v such that nonIdElem(R)+v intersects R, so v in rotate180(nonIdElem(R)) + R
+        // want all v such that T(R)+PerpComponent(v,T) intersects R, where R = nbhd of state
+        // so we take PerpPreimage(R convolved with -T(R)) and union that over choices of T.
         // difficulty: we know catalyst-catalyst interactions aren't a problem due to offsetCatValid
         // but a stray birth during a catalysis reaction could interact with the rotated, offset catalysts...
-        LifeState offsetsThatInteract = curOffsets;
+        LifeState offsetsThatInteract;
         LifeState neighborhood = config.state.ZOI();
-        LifeState transfNeighborhood = neighborhood;
-        if (params.symmetry == D2AcrossX)
-          transfNeighborhood.Transform(ReflectAcrossY);
-        if (params.symmetry == D2AcrossY)
-          transfNeighborhood.Transform(ReflectAcrossX);
-        if (params.symmetry == D2diagodd)
-          transfNeighborhood.Transform(ReflectAcrossYeqNegXP1);
-        if (params.symmetry == D2negdiagodd)
-          transfNeighborhood.Transform(ReflectAcrossYeqX);
+        for (SymmetryTransform transf : SymmetryGroupFromEnum(params.symmetry)){
+          if (transf == Identity)
+            continue;
+          LifeState transfNeighborhood = neighborhood;
+          if (transf == ReflectAcrossX)
+            transfNeighborhood.Transform(ReflectAcrossY);
+          if (transf == ReflectAcrossY)
+            transfNeighborhood.Transform(ReflectAcrossX);
+          if (transf == ReflectAcrossYeqX)
+            transfNeighborhood.Transform(ReflectAcrossYeqNegXP1);
+          if (transf == ReflectAcrossYeqNegXP1)
+            transfNeighborhood.Transform(ReflectAcrossYeqX);
+          LifeState convolution = transfNeighborhood.Convolve(neighborhood);
+          PerpPreimage(transf,convolution);
+          offsetsThatInteract.Join(convolution);
+        }
+        // TODO: actually test and see which offsets interact
+        // TODO: only the outermost cells could actually
+        // interact, so really only need to take neighborhood of activepart.
+        // (then make sure to keep updating history until we're in post-symmetry)
         // the below line seems to take a lot of time.
-        offsetsThatInteract.Copy(transfNeighborhood.Convolve(neighborhood), AND);
+        offsetsThatInteract &= curOffsets;
         curOffsets.Copy(offsetsThatInteract, ANDNOT);
         if (g >= params.startSymInteraction && config.count >= params.minCatsPreSym
             && !offsetsThatInteract.IsEmpty()){
@@ -1928,6 +2062,7 @@ public:
               newConfig.loneOffset = offset;
               newConfig.state = Symmetricize(config.state, offset);
               newConfig.startingCatalysts = Symmetricize(config.startingCatalysts, offset);
+              newConfig.startingCatalystsZOI = Symmetricize(config.startingCatalystsZOI, offset);
               LifeState newHistory = Symmetricize(history, offset);
               std::vector<LifeState> newMasks;
               // only make the new masks if there's more catalysts to place.
@@ -1943,14 +2078,14 @@ public:
                     int transfY = matchInfo[2];
                     LifeState transfMask = masks[s];
                     transfMask.Transform(transf);
-                    // for D4, this will need to be a bit different.
-                    transfMask.Move(transfX + offset.first, transfY+offset.second);
+                    transfMask.Move(transfX + PerpComponent(transf, offset).first,
+                                    transfY + PerpComponent(transf, offset).second);
                     newMasks[transfS].Join(transfMask);
                   }
           // T of catalyst s at (x,y) <=> catalyst transformedS at offsetVec+transfVec+T(x,y)
           // T(x,y) due to T of [cat shifted by (x,y)] = [T of cat] shifted by T(x,y)
           // so we apply T to get the T(x,y), then shift by transfVec + offsetVec
-                  // fundamental domain reasons
+                  // TODO: work out fundamental domain.
                   //newMasks[s].Join(LifeState::SolidRect((64+offset.first)/2-32, -32, 32, 64));
                 }
               }
