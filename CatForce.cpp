@@ -1407,7 +1407,7 @@ public:
 
     std::vector<LifeState> masks(catalysts.size());
     for (unsigned s = 0; s < catalysts.size(); s++) {
-      LifeState zoi = catalyst.state.ZOI();
+      LifeState zoi = catalysts[s].state.ZOI();
       zoi.Transform(Rotate180OddBoth);
       masks[s] = config.state.Convolve(zoi) | ~bounds;
     }
