@@ -1419,6 +1419,181 @@ public:
   }
 
   void
+  TryAddingCatalyst(Configuration &config, LifeState &history,
+                 const LifeState &required, const LifeState &antirequired,
+                 std::vector<LifeState> &masks,
+                 std::vector<LifeTarget> &shiftedTargets, // This can be shared
+
+                 std::array<unsigned, MAX_CATALYSTS> &missingTime,
+                 std::array<unsigned, MAX_CATALYSTS> &recoveredTime) {
+
+    LifeState activePart =
+        (~history).ZOI() & config.state & ~config.startingCatalysts;
+
+    if (activePart.IsEmpty()) {
+      history |= config.state;
+      config.state.Step();
+      return;
+    }
+
+    LifeState next = config.state;
+    next.Step();
+
+    for (unsigned s = 0; s < catalysts.size(); s++) {
+      if (catalysts[s].hasLocus) {
+        LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
+        masks[s] |= hitLocations;
+      }
+    }
+
+    for (unsigned s = 0; s < catalysts.size(); s++) {
+      if (config.transparentCount == params.numTransparent &&
+          catalysts[s].transparent)
+        continue;
+      if (config.count == params.numCatalysts - 1 &&
+          config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
+        continue;
+
+      LifeState newPlacements =
+          activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
+
+      while (!newPlacements.IsEmpty()) {
+        // Do the placement
+        auto newPlacement = newPlacements.FirstOn();
+
+        Configuration newConfig = config;
+        newConfig.count += 1;
+        newConfig.curx[config.count] = newPlacement.first;
+        newConfig.cury[config.count] = newPlacement.second;
+        newConfig.curs[config.count] = s;
+        if (catalysts[s].transparent)
+          newConfig.transparentCount++;
+        if (catalysts[s].mustInclude)
+          newConfig.mustIncludeCount++;
+
+        LifeState shiftedCatalyst = catalysts[s].state;
+        shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
+
+        LifeState symCatalyst;
+        symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
+        newConfig.startingCatalysts |= symCatalyst;
+        newConfig.state |= symCatalyst;
+
+        // Do a one-step lookahead to see if the catalyst interacts
+        {
+          LifeState newnext = newConfig.state;
+          newnext.Step();
+
+          LifeState difference = newnext ^ next ^ symCatalyst;
+          if (difference.IsEmpty()) {
+            if (config.count == 0) {
+              std::cout << "Skipping catalyst " << s << " at "
+                        << newPlacement.first << ", " << newPlacement.second
+                        << " (no interaction) " << std::endl;
+            }
+
+            // Note: we deliberately don't set the mask,
+            // because it may turn out that a catalyst here
+            // interacts properly in a later generation.
+            newPlacements.Erase(newPlacement.first, newPlacement.second);
+            continue;
+          }
+        }
+
+        LifeState newRequired = required;
+        newRequired.Join(catalysts[s].required, newPlacement.first,
+                         newPlacement.second);
+
+        LifeState newAntirequired = antirequired;
+        newAntirequired.Join(catalysts[s].antirequired, newPlacement.first,
+                             newPlacement.second);
+
+        {
+          LifeState lookahead = newConfig.state;
+          lookahead.Step();
+          lookahead.Step();
+          lookahead.Step();
+          lookahead.Step();
+          if (!lookahead.Contains(newRequired) ||
+              !lookahead.AreDisjoint(newAntirequired)) {
+            if (config.count == 0) {
+              std::cout << "Skipping catalyst " << s << " at "
+                        << newPlacement.first << ", " << newPlacement.second
+                        << " (is destroyed) " << std::endl;
+            }
+
+            masks[s].Set(newPlacement.first, newPlacement.second);
+            newPlacements.Erase(newPlacement.first, newPlacement.second);
+            continue;
+          }
+        }
+
+        if (catalysts[s].checkRecovery) {
+          LifeState lookahead = newConfig.state;
+          for (unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
+            lookahead.Step();
+          }
+          if (!lookahead.Contains(shiftedCatalyst)) {
+            if (config.count == 0) {
+              std::cout << "Skipping catalyst " << s << " at "
+                        << newPlacement.first << ", " << newPlacement.second
+                        << " (failed to recover completely) " << std::endl;
+            }
+
+            masks[s].Set(newPlacement.first, newPlacement.second);
+            newPlacements.Erase(newPlacement.first, newPlacement.second);
+            continue;
+          }
+        }
+
+        if (config.count == 0) {
+          std::cout
+              << "Placing catalyst " << s << " at " << newPlacement.first
+              << ", " << newPlacement.second << std::endl;
+        }
+
+        shiftedTargets[config.count].wanted = shiftedCatalyst;
+        shiftedTargets[config.count].unwanted = catalysts[s].target.unwanted;
+        shiftedTargets[config.count].unwanted.Move(newPlacement.first,
+                                                   newPlacement.second);
+
+        std::vector<LifeState> newMasks = masks;
+
+        // If we just placed the last catalyst, don't bother
+        // updating the masks
+        if (newConfig.count != params.numCatalysts) {
+          LifeState bounds;
+          if (params.maxW != -1) {
+            LifeState rect =
+                LifeState::SolidRect(newPlacement.first - params.maxW,
+                                     newPlacement.second - params.maxH,
+                                     2 * params.maxW - 1, 2 * params.maxH - 1);
+            bounds.JoinWSymChain(rect, params.symmetryChain);
+
+            for (unsigned t = 0; t < catalysts.size(); t++) {
+              newMasks[t] |= ~bounds;
+            }
+          }
+
+          for (unsigned t = 0; t < catalysts.size(); t++) {
+            newMasks[t].Join(catalystCollisionMasks[s * catalysts.size() + t],
+                             newPlacement.first, newPlacement.second);
+          }
+        }
+
+        RecursiveSearch(newConfig, history, newRequired, newAntirequired,
+                        newMasks, shiftedTargets, missingTime, recoveredTime);
+
+        masks[s].Set(newPlacement.first, newPlacement.second);
+        newPlacements.Erase(newPlacement.first, newPlacement.second);
+      }
+    }
+
+    history |= config.state;
+    config.state = next;
+  }
+
+  void
   RecursiveSearch(Configuration config, LifeState history, const LifeState required, const LifeState antirequired,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
@@ -1431,17 +1606,41 @@ public:
     unsigned failuretime;
 
     for (unsigned g = config.state.gen; g < filterMaxGen; g++) {
+      // Block the locations that are hit too early
+      if (config.state.gen < params.startGen) {
+        for (unsigned s = 0; s < catalysts.size(); s++) {
+          LifeState hitLocations = config.state.Convolve(catalysts[s].reactionMask);
+          masks[s] |= hitLocations;
+        }
+        continue;
+      }
+
       if (config.count == 0 && g > params.lastGen)
         failure = true;
       if (config.count < params.numCatalysts && g > params.maxGen)
         failure = true;
+      if (!config.state.Contains(required) || !config.state.AreDisjoint(antirequired))
+        failure = true;
+
+      if (failure) {
+        failuretime = config.state.gen;
+        break;
+      }
 
       if (config.count == 0) {
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      if (!config.state.Contains(required) || !config.state.AreDisjoint(antirequired)) {
-          failure = true;
+      // Try adding a catalyst
+      if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
+        TryAddingCatalyst(config, history, required, antirequired, masks,
+                          shiftedTargets, missingTime, recoveredTime);
+        // The above also steps config.state
+      } else {
+        // No need to update history, not used for anything once all
+        // catalysts are placed
+        // history |= config.state;
+        config.state.Step();
       }
 
       for (unsigned i = 0; i < config.count; i++) {
@@ -1454,186 +1653,9 @@ public:
         }
 
         if (missingTime[i] > catalysts[config.curs[i]].maxDisappear) {
+          failuretime = config.state.gen;
           failure = true;
-        }
-      }
-
-      if (failure) {
-        failuretime = g;
-        break;
-      }
-
-      // Try adding a catalyst
-      if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
-        LifeState next = config.state;
-        next.Step();
-
-        LifeState activePart = (~history).ZOI() & config.state & ~config.startingCatalysts;
-
-          if(!activePart.IsEmpty()) {
-          for (unsigned s = 0; s < catalysts.size(); s++) {
-            if(catalysts[s].hasLocus) {
-              LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
-              masks[s] |= hitLocations;
-            }
-          }
-
-          for (unsigned s = 0; s < catalysts.size(); s++) {
-            if (config.transparentCount == params.numTransparent && catalysts[s].transparent)
-              continue;
-            if (config.count == params.numCatalysts - 1 && config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
-              continue;
-
-            LifeState newPlacements = activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
-
-            while (!newPlacements.IsEmpty()) {
-              // Do the placement
-              auto newPlacement = newPlacements.FirstOn();
-
-              Configuration newConfig = config;
-              newConfig.count += 1;
-              newConfig.curx[config.count] = newPlacement.first;
-              newConfig.cury[config.count] = newPlacement.second;
-              newConfig.curs[config.count] = s;
-              if (catalysts[s].transparent)
-                newConfig.transparentCount++;
-              if (catalysts[s].mustInclude)
-                newConfig.mustIncludeCount++;
-
-              LifeState shiftedCatalyst = catalysts[s].state;
-              shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
-
-              LifeState symCatalyst;
-              symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
-              newConfig.startingCatalysts |= symCatalyst;
-              newConfig.state |= symCatalyst;
-
-              // Do a one-step lookahead to see if the catalyst interacts
-              {
-                LifeState newnext = newConfig.state;
-                newnext.Step();
-
-                LifeState difference = newnext ^ next ^ symCatalyst;
-                if (difference.IsEmpty()) {
-                  if (config.count == 0) {
-                    std::cout << "Skipping catalyst " << s << " at "
-                              << newPlacement.first << ", "
-                              << newPlacement.second
-                              << " (no interaction) "
-                              << std::endl;
-                  }
-
-                  // Note: we deliberately don't set the mask,
-                  // because it may turn out that a catalyst here
-                  // interacts properly in a later generation.
-                  newPlacements.Erase(newPlacement.first, newPlacement.second);
-                  continue;
-                }
-              }
-
-              LifeState newRequired = required;
-              newRequired.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
-
-              LifeState newAntirequired = antirequired;
-              newAntirequired.Join(catalysts[s].antirequired, newPlacement.first, newPlacement.second);
-
-              {
-                LifeState lookahead = newConfig.state;
-                lookahead.Step();
-                lookahead.Step();
-                lookahead.Step();
-                lookahead.Step();
-                if (!lookahead.Contains(newRequired) || !lookahead.AreDisjoint(newAntirequired)) {
-                  if (config.count == 0) {
-                    std::cout << "Skipping catalyst " << s << " at "
-                              << newPlacement.first << ", "
-                              << newPlacement.second
-                              << " (is destroyed) "
-                              << std::endl;
-                  }
-
-                  masks[s].Set(newPlacement.first, newPlacement.second);
-                  newPlacements.Erase(newPlacement.first, newPlacement.second);
-                  continue;
-                }
-              }
-
-              if (catalysts[s].checkRecovery) {
-                LifeState lookahead = newConfig.state;
-                for (unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
-                  lookahead.Step();
-                }
-                if (!lookahead.Contains(shiftedCatalyst)) {
-                  if (config.count == 0) {
-                    std::cout << "Skipping catalyst " << s << " at "
-                              << newPlacement.first << ", "
-                              << newPlacement.second
-                              << " (failed to recover completely) "
-                              << std::endl;
-                  }
-
-                  masks[s].Set(newPlacement.first, newPlacement.second);
-                  newPlacements.Erase(newPlacement.first, newPlacement.second);
-                  continue;
-                }
-              }
-
-              if (config.count == 0) {
-                std::cout << "Placing catalyst " << s << " at "
-                          << newPlacement.first << ", " << newPlacement.second
-                  //                                                              << ": " << newConfig.state.RLE()
-                          << std::endl;
-              }
-
-              shiftedTargets[config.count].wanted = shiftedCatalyst;
-              shiftedTargets[config.count].unwanted = catalysts[s].target.unwanted;
-              shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
-
-              std::vector<LifeState> newMasks = masks;
-
-              // If we just placed the last catalyst, don't bother
-              // updating the masks
-              if (newConfig.count != params.numCatalysts) {
-                LifeState bounds;
-                if (params.maxW != -1) {
-                  LifeState rect = LifeState::SolidRect(newPlacement.first - params.maxW,
-                                                        newPlacement.second - params.maxH,
-                                                        2 * params.maxW - 1,
-                                                        2 * params.maxH - 1);
-                  bounds.JoinWSymChain(rect, params.symmetryChain);
-
-                  for (unsigned t = 0; t < catalysts.size(); t++) {
-                    newMasks[t] |= ~bounds;
-                  }
-                }
-
-                for (unsigned t = 0; t < catalysts.size(); t++) {
-                  newMasks[t].Join(catalystCollisionMasks[s * catalysts.size() + t],
-                                   newPlacement.first, newPlacement.second);
-                }
-              }
-
-              RecursiveSearch(newConfig, history, newRequired, newAntirequired, newMasks,
-                              shiftedTargets, missingTime, recoveredTime);
-
-              masks[s].Set(newPlacement.first, newPlacement.second);
-              newPlacements.Erase(newPlacement.first, newPlacement.second);
-            }
-          }
-          }
-          history |= config.state;
-          config.state = next;
-      } else {
-        // No need to update history, not used for anything
-        // history |= config.state;
-        config.state.Step();
-      }
-
-      // Still block the locations that are hit too early
-      if (g < params.startGen) {
-        for (unsigned s = 0; s < catalysts.size(); s++) {
-          LifeState hitLocations = config.state.Convolve(catalysts[s].reactionMask);
-          masks[s] |= hitLocations;
+          break;
         }
       }
 
