@@ -1051,12 +1051,8 @@ public:
   std::vector<LifeTarget> targetFilter;
   std::vector<LifeState> catalystCollisionMasks;
 
-  clock_t current{};
-  long long idx{};
   unsigned found{};
   unsigned fullfound{};
-  long long total{};
-  unsigned short int counter{};
 
   CategoryContainer *categoryContainer{};
   CategoryContainer *fullCategoryContainer{};
@@ -1161,8 +1157,8 @@ public:
 
     alsoRequired = LifeState::Parse(params.alsoRequired.c_str(), params.alsoRequiredXY.first, params.alsoRequiredXY.second);
 
-    current = clock();
     found = 0;
+    fullfound = 0;
 
     hasFilter = !params.targetFilter.empty();
     reportAll = params.fullReportFile.length() != 0;
@@ -1193,7 +1189,6 @@ public:
 
   void Report(bool saveFile = true) const {
     unsigned sec = (clock() - begin) / CLOCKS_PER_SEC + 1;
-    // unsigned checkPerSecond = idx / (sec * 1000);
 
     std::cout << "results: " << categoryContainer->categories.size() << "/"
               << found;
@@ -1204,8 +1199,6 @@ public:
     std::cout << ", now: ";
     PrintTime(sec);
     std::cout << std::endl;
-    // std::cout << ", " << std::setprecision(1) << std::fixed << checkPerSecond
-    //           << "K/sec" << std::endl;
 
     if (saveFile) {
       std::cout << "Saving " << params.outputFile << "... " << std::flush;
