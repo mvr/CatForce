@@ -1605,6 +1605,7 @@ public:
           LifeState hitLocations = config.state.Convolve(catalysts[s].reactionMask);
           masks[s] |= hitLocations;
         }
+        config.state.Step();
         continue;
       }
 
