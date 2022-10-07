@@ -22,6 +22,13 @@ void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   }
 }
 
+std::vector<std::string> splitwhitespace(std::string const &input) {
+    std::istringstream buffer(input);
+    std::vector<std::string> ret((std::istream_iterator<std::string>(buffer)),
+                                  std::istream_iterator<std::string>());
+    return ret;
+}
+
 enum FilterType {
   ANDFILTER,
   ORFILTER,
@@ -112,8 +119,7 @@ public:
   bool isBlinker;
 
   explicit CatalystInput(std::string &line) {
-    std::vector<std::string> elems;
-    split(line, ' ', elems);
+    std::vector<std::string> elems = splitwhitespace(line);
 
     if (elems.size() < 6) {
       std::cout << "The line " << line << "is invalid" << std::endl;
@@ -453,8 +459,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   bool hasLastGen = false;
 
   while (std::getline(infile, line)) {
-    std::vector<std::string> elems;
-    split(line, ' ', elems);
+    std::vector<std::string> elems = splitwhitespace(line);
 
     if (elems.size() < 2)
       continue;
