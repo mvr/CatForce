@@ -129,10 +129,9 @@ time, like the hive-pushes or the loaf-spin catalysts.
 Symmetric Searches
 ---
 
-
 `symmetry s` automatically applies the symmetry `s` to the active
 pattern and catalysts. The options for `s` are:
-- D2 symmetries: `D2|` (reflect across x = 0), `D2-` (y = 0), `D2\` (y=x) and `D2/` (y=-x)
+- D2 symmetries: `D2|` (reflect across x = 0), `D2|even` (x=-0.5), `D2-` (y=0), `D2-even` (y=-0.5), `D2\` (y=x) and `D2/` (y=-x)
 - C2 symmetries: `C2_1` (bounding box odd by odd), `C2_2` (odd by even), `C2_4` (even by even)
 - C4 symmetries: `C4_1`, (odd by odd) `C4_4` (even by even)
 - D4 symmetries: `D4_+1`, `D4_+2` (odd by even),`D4_+4`, `D4_x1`, and `D4_x4`
