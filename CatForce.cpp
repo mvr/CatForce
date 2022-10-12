@@ -1172,13 +1172,12 @@ public:
     // eliminate those such that active region overlaps with its image
     LifeTarget activeRegionTarget(activeRegion);
     std::array<int,4> xyBounds = activeRegion.XYBounds();
-    for(int x = 2*xyBounds[0]-2; x <= 2*xyBounds[2]+2; ++x){
-      for(int y = 2*xyBounds[1]-2; y <= 2*xyBounds[3]+2; ++y){
-        if (offsets.GetCell(x,y) == 1){
+    for(int x = 2*xyBounds[0]+(64-2); x <= 2*xyBounds[2]+(2+64); ++x){
+      for(int y = 2*xyBounds[1]+(64-2); y <= 2*xyBounds[3]+(2+64); ++y){
+        if (offsets.GetCell(x % 64,y % 64) == 1){
           LifeState combined = Symmetricize(activeRegion, std::make_pair(x,y));
-          if(!combined.Contains(activeRegionTarget)){
+          if(!combined.Contains(activeRegionTarget))
             offsets.Erase(x,y);
-          }
         }
       }
     }
@@ -1586,6 +1585,8 @@ public:
   }
 
   inline std::pair<int,int> CommuteOffsetWithTransf(std::pair<int,int> offset, SymmetryTransform transf){
+    // transform (shift by offset) = shift by ?? (transform )
+    // for reflections, we negate the component perp to the line we're reflecting across
     switch(transf){
       case Identity:
         return offset;
@@ -1624,13 +1625,12 @@ public:
 
     std::vector<LifeState> masks(catalysts.size());
     for (unsigned s = 0; s < catalysts.size(); s++) {
+      // this might be problematic, maybe we don't intersect with the bounds.
       masks[s] = config.state.Convolve(catalysts[s].reactionMask) | ~bounds;
     }
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
     LifeState startingOffsets = GenerateOffsets();
-    std::cout << "starting offsets" << std::endl;
-    startingOffsets.Print();
 
     RecursiveSearch(config, config.state, startingOffsets, alsoRequired, LifeState(), masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>());
@@ -1681,6 +1681,8 @@ public:
         }
         break;
       }
+      default:
+        break;
     }
   }
 
@@ -1691,15 +1693,22 @@ public:
       case ReflectAcrossY:
         return std::make_pair(offset.first, 0);
       case ReflectAcrossYeqX:{
+        // we're dealing with perpendicular circles on a torus
+        // so there's really a "long way around" and a "short way around,"
+        // one of the form (a,b) and one of the form (32+a, 32+b)
         assert((offset.first+64) % 2 == (offset.second+64) % 2);
-        return std::make_pair( ((offset.first-offset.second+64)/2)%64,
-                              ((-offset.first+offset.second+64)/2)%64 );
-
+        if( std::abs(offset.first - offset.second) < 32 ) // closer to y = x
+          return std::make_pair( ((offset.first-offset.second+128)/2)%64,
+                              ((-offset.first+offset.second+128)/2)%64 );
+        else // closer to y = x + 64 or y = x - 64
+          return std::make_pair( ((offset.first-offset.second+128+32)/2)%64,
+                              ((-offset.first+offset.second+128+32)/2)%64 );
       }
       case ReflectAcrossYeqNegXP1:{
         assert((offset.first+64) % 2 == (offset.second+64) % 2);
-        return std::make_pair( ((offset.first+offset.second)/2)%64,
-                              ((offset.first+offset.second)/2)%64 );
+        if( std::abs(offset.first-32) + std::abs(offset.second-32) < 32) // closer to y = 64-x
+          return std::make_pair( ((offset.first+offset.second)/2)%64,
+                                ((offset.first+offset.second)/2)%64 );
       }
       default:
         return offset;
@@ -1814,9 +1823,10 @@ public:
               LifeState offsetCatValid = curOffsets;
               if( !config.postSymmetry ){
                 // for which offsets is offset(transformed(placement)) also valid?
-                // placing s at (x,y) <=> placing transfS at transfVec+commuted(placementVec)
-                // so need all offset vectors w such that
+                // transf of [cat s placed at <x,y>] = cat transfS at transfVec+commuted(<x,y>, T)
+                // then apply offset. So need all offset vectors w such that
                 // perpComponent(w, T) + transfVec+commuted(placementVec) is not in masks[transfS].
+                // [if transf = rotate180, then we set perpComponent(w) = w]
                 for (SymmetryTransform transf : SymmetryGroupFromEnum(params.symmetry)){
                   if (transf == Identity)
                     continue;
@@ -1827,8 +1837,8 @@ public:
                   std::pair<int,int> commuted = CommuteOffsetWithTransf(newPlacement,
                                                     transf);
                   LifeState transfCatMask = masks[transfS];
-                  transfCatMask.Move(-1*(transfX0+commuted.first)+64,
-                                        -1*(transfY0+commuted.second)+64);
+                  transfCatMask.Move(-1*(transfX0+commuted.first)+128,
+                                        -1*(transfY0+commuted.second)+128);
                   PerpPreimage(transf, transfCatMask);
                   offsetCatValid.Copy(transfCatMask, ANDNOT);
                 }
