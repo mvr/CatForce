@@ -1441,7 +1441,9 @@ public:
 
     std::vector<LifeState> masks(catalysts.size());
     for (unsigned s = 0; s < catalysts.size(); s++) {
-      masks[s] = config.state.Convolve(catalysts[s].reactionMask) | ~bounds;
+      LifeState rotatedCat = catalysts[s].state;
+      rotatedCat.Transform(Rotate180OddBoth);
+      masks[s] = config.state.Convolve(rotatedCat) | ~bounds;
     }
 
     std::vector<std::array<LifeTarget, MAX_PERIOD>> shiftedTargets(params.numCatalysts);
