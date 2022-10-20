@@ -958,6 +958,13 @@ public:
   }
 #endif
 
+  LifeState FirstCell() const {
+    std::pair<int, int> pair = FirstOn();
+    LifeState result;
+    result.Set(pair.first, pair.second);
+    return result;
+  }
+
   static LifeState SolidRect(int x, int y, int w, int h) {
     uint64_t column;
     if (h < 64)
@@ -1017,6 +1024,35 @@ public:
     int bottomMargin = __builtin_clzll(orOfCols);
     return std::array<int, 4>(
         {minCol, topMargin - 32, maxCol, 31 - bottomMargin});
+  }
+
+  LifeState ComponentContaining(const LifeState &seed, const LifeState &corona) const {
+    LifeState result;
+    LifeState tocheck = seed;
+    while (!tocheck.IsEmpty()) {
+      LifeState neighbours = tocheck.Convolve(corona) & *this;
+      tocheck = neighbours & ~result;
+      result |= neighbours;
+    }
+
+    return result;
+  }
+
+  LifeState ComponentContaining(const LifeState &seed) const {
+    LifeState corona = LifeState::Parse("b3o$5o$5o$5o$b3o!");
+    corona.Move(-2, -2);
+    return ComponentContaining(seed, corona);
+  }
+
+  std::vector<LifeState> Components() const {
+    std::vector<LifeState> result;
+    LifeState remaining = *this;
+    while (!remaining.IsEmpty()) {
+      LifeState component = remaining.ComponentContaining(remaining.FirstCell());
+      result.push_back(component);
+      remaining &= ~component;
+    }
+    return result;
   }
 };
 
