@@ -374,7 +374,7 @@ public:
   unsigned GetPop() const {
     unsigned pop = 0;
 
-    for (int i = min; i <= max; i++) {
+    for (int i = 0; i <= N; i++) {
       pop += __builtin_popcountll(state[i]);
     }
 
