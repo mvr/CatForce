@@ -473,7 +473,7 @@ public:
     uint64_t differences = 0;
     #pragma clang loop vectorize(enable)
     for (int i = min; i <= max; i++) {
-      uint64_t difference = (~state[i] & pat.state[i]) ^ (pat.state[i]);
+      uint64_t difference = state[i] & pat.state[i];
       differences |= difference;
     }
 
@@ -487,7 +487,7 @@ public:
     uint64_t differences = 0;
     #pragma clang loop vectorize(enable)
     for (int i = min; i <= max; i++) {
-      uint64_t difference = (state[i] & pat.state[i]) ^ (pat.state[i]);
+      uint64_t difference = ~state[i] & pat.state[i];
       differences |= difference;
     }
 
