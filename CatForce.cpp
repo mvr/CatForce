@@ -1186,13 +1186,6 @@ public:
     return maxGen;
   }
 
-  void Report(const std::string& suffix) {
-    std::string temp = params.outputFile;
-    params.outputFile = params.outputFile + suffix + std::string(".rle");
-    Report();
-    params.outputFile = temp;
-  }
-
   void Report(bool saveFile = true) const {
     unsigned sec = (clock() - begin) / CLOCKS_PER_SEC + 1;
 
