@@ -413,6 +413,10 @@ public:
     return true;
   }
 
+  bool operator!=(const LifeState &b) const {
+    return !(*this == b);
+  }
+
   LifeState operator~() const {
     LifeState result;
     for (int i = 0; i < N; i++) {
