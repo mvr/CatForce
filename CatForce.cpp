@@ -11,11 +11,13 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <stdlib.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 const int MAX_CATALYSTS = 5;
+const int RAND_REGION_SIZE = 7;
 const bool DEBUG = true;
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
@@ -1184,7 +1186,7 @@ public:
     return offsets;
   }
 
-  void Init(const char *inputFile) {
+  void Init(const char *inputFile, bool randomActiveRegion) {
     begin = clock();
 
     std::vector<CatalystInput> inputcats;
@@ -1204,6 +1206,8 @@ public:
     changeCatIndices.push_back(0);
     unsigned total = 0;
 
+    std::cout << "made it this far" << std::endl;
+
     for (auto &input : inputcats) {
       std::vector<CatalystData> newcats = CatalystData::FromInput(input);
       catalysts.insert(catalysts.end(), newcats.begin(), newcats.end());
@@ -1222,8 +1226,24 @@ public:
       }
     }
 
-    activeRegion = LifeState::Parse(params.activeRegion.c_str(),
+    if (!randomActiveRegion){
+      activeRegion = LifeState::Parse(params.activeRegion.c_str(),
                            params.xActiveRegion, params.yActiveRegion);
+
+    } else {
+      for(unsigned j = 0; j < RAND_REGION_SIZE; ){
+        uint32_t randBits = rand();
+        for (unsigned i = 0; i + RAND_REGION_SIZE < 32 && j < RAND_REGION_SIZE; 
+                                                            i += RAND_REGION_SIZE)
+          activeRegion.state[j++] = (randBits & ((1ULL << RAND_REGION_SIZE) - 1) << i) >> i;
+      }
+      activeRegion.Move(64-RAND_REGION_SIZE/2, 64-RAND_REGION_SIZE/2);
+      activeRegion.Print();
+      params.activeRegion = activeRegion.RLE().c_str();
+      params.xActiveRegion =64-RAND_REGION_SIZE/2;
+      params.yActiveRegion = 64-RAND_REGION_SIZE/2;
+    }
+
     categoryContainer = new CategoryContainer(params.maxGen);
     fullCategoryContainer = new CategoryContainer(params.maxGen);
 
@@ -2170,12 +2190,16 @@ int main(int argc, char *argv[]) {
     std::cout << "Usage CatForce.exe <in file>" << std::endl;
     exit(0);
   }
+  srand(time(0));
+
+
 
   std::cout << "Input: " << argv[1] << std::endl
             << "Initializing please wait..." << std::endl;
 
   CatalystSearcher searcher;
-  searcher.Init(argv[1]);
+  bool randomActive = argc > 2 && std::string(argv[2]).compare("random") == 0;
+  searcher.Init(argv[1], randomActive);
 
   clock_t initialized = clock();
   printf("Total elapsed time: %f seconds\n",
