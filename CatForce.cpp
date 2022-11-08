@@ -64,6 +64,7 @@ public:
   std::vector<FilterType> filterType;
 
   int maxCatSize;
+  unsigned maxEnterSymPop;
 
   std::string alsoRequired;
   std::pair<int, int> alsoRequiredXY;
@@ -99,6 +100,8 @@ public:
     symmetry = StaticSymmetry::C1;
     symmetryChain = {};
     maxCatSize = -1;
+
+    maxEnterSymPop = 100000;
     alsoRequired = "";
     alsoRequiredXY = {0, 0};
     stopAfterCatsDestroyed = -1;
@@ -456,6 +459,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string lastSymInt = "last-sym-int";
   std::string offsets = "offsets";
   std::string objReoccurs = "object-reoccurs";
+  std::string enterSymPop = "max-enter-sym-pop";
 
   std::string symmetry = "symmetry";
   std::string alsoRequired = "also-required";
@@ -497,7 +501,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     
     if (elems[0] == lastSymInt)
       params.lastSymInteraction = atoi(elems[1].c_str());
-    
+
+    if (elems[0] == enterSymPop)
+      params.maxEnterSymPop = atoi(elems[1].c_str());
 
     if (elems[0] == offsets){
       assert(elems.size() >= 5);
@@ -2072,8 +2078,10 @@ public:
         // the below line seems to take a lot of time.
         offsetsThatInteract &= curOffsets;
         curOffsets.Copy(offsetsThatInteract, ANDNOT);
+        LifeState noCatState = config.state;
+        noCatState.Copy(config.startingCatalysts, ANDNOT);
         if (g >= params.startSymInteraction && config.count >= params.minCatsPreSym
-            && !offsetsThatInteract.IsEmpty()){
+          && !offsetsThatInteract.IsEmpty() && noCatState.GetPop() < params.maxEnterSymPop){
           LifeState lookahead = config.state;
           lookahead.Step();
           lookahead.Step();
