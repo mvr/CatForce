@@ -366,6 +366,13 @@ inline std::pair<int, int> CommuteTranslation(const SymmetryTransform sym, std::
   }
 }
 
+inline std::pair<int, int> HalveOffset(const StaticSymmetry sym,
+                                       std::pair<int, int> vec) {
+  int x = (((vec.first + 32) % 64 - 32) / 2 + 64) % 64;
+  int y = (((vec.second + 32) % 64 - 32) / 2 + 64) % 64;
+  return std::make_pair(x, y);
+}
+
 StaticSymmetry SymmetryFromString(const std::string &name) {
   std::string start = name.substr(0, 2);
   std::string rest = name.substr(2);
@@ -427,6 +434,53 @@ StaticSymmetry SymmetryFromString(const std::string &name) {
     }
   }
   return StaticSymmetry::C1;
+}
+
+std::string SymmetryToString(StaticSymmetry sym) {
+  switch (sym) {
+  case StaticSymmetry::C1:
+    return "C1";
+  case StaticSymmetry::D2AcrossX:
+    return "D2-";
+  case StaticSymmetry::D2AcrossXEven:
+    return "D2-even";
+  case StaticSymmetry::D2AcrossY:
+    return "D2|";
+  case StaticSymmetry::D2AcrossYEven:
+    return "D2|even";
+  case StaticSymmetry::D2diagodd:
+    return "D2\\";
+  case StaticSymmetry::D2negdiagodd:
+    return "D2/";
+  case StaticSymmetry::C2:
+    return "C2";
+  case StaticSymmetry::C2even:
+    return "C2even";
+  case StaticSymmetry::C2horizontaleven:
+    return "C2|even";
+  case StaticSymmetry::C2verticaleven:
+    return "C2-even";
+  case StaticSymmetry::C4:
+    return "C4";
+  case StaticSymmetry::C4even:
+    return "C4even";
+  case StaticSymmetry::D4:
+    return "D4+";
+  case StaticSymmetry::D4even:
+    return "D4+even";
+  case StaticSymmetry::D4horizontaleven:
+    return "D4+|even";
+  case StaticSymmetry::D4verticaleven:
+    return "D4+-even";
+  case StaticSymmetry::D4diag:
+    return "D4x";
+  case StaticSymmetry::D4diageven:
+    return "D4xeven";
+  case StaticSymmetry::D8:
+    return "D8";
+  case StaticSymmetry::D8even:
+    return "D8even";
+  }
 }
 
 std::vector<SymmetryTransform> CharToTransforms(char ch) {
@@ -747,6 +801,9 @@ struct Configuration {
   std::array<int, MAX_CATALYSTS> curs;
   LifeState state;
   LifeState startingCatalysts;
+
+  StaticSymmetry symmetry;
+  std::pair<int, int> symmetryOffset;
 };
 
 // Fix a, what positions of b causes a collision?
@@ -1046,6 +1103,56 @@ public:
   }
 };
 
+inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
+                              std::pair<int, int> offset) {
+  switch (sym) {
+  case C1:
+    return state;
+    break;
+  case C2: {
+    LifeState sym = state;
+    sym.Transform(Rotate180OddBoth);
+    sym.Move(offset);
+    sym.Join(state);
+    return sym;
+    break;
+  }
+  case D2AcrossX: {
+    LifeState sym = state;
+    sym.Transform(ReflectAcrossX);
+    sym.Move(offset);
+    sym.Join(state);
+    return sym;
+    break;
+  }
+  case D2AcrossY: {
+    LifeState sym = state;
+    sym.Transform(ReflectAcrossY);
+    sym.Move(offset);
+    sym.Join(state);
+    return sym;
+    break;
+  }
+  case D2diagodd: {
+    LifeState sym = state;
+    sym.Transform(ReflectAcrossYeqX);
+    sym.Move(offset);
+    sym.Join(state);
+    return sym;
+    break;
+  }
+  case D2negdiagodd: {
+    LifeState sym = state;
+    sym.Transform(ReflectAcrossYeqNegXP1);
+    sym.Move(offset);
+    sym.Join(state);
+    return sym;
+    break;
+  }
+  default:
+    __builtin_unreachable();
+  }
+}
 
 class CatalystSearcher {
 public:
@@ -1347,10 +1454,16 @@ public:
     if (HasForbidden(conf, successtime + 3))
       return;
 
+    std::pair<int, int> shift = HalveOffset(C2, conf.symmetryOffset);
+    shift.first = -shift.first;
+    shift.second = -shift.second;
+
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
-      LifeState workspace = conf.startingCatalysts;
-      workspace.JoinWSymChain(pat, params.symmetryChain);
+      LifeState workspace =
+          Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
+      workspace.Join(conf.startingCatalysts);
+      workspace.Move(shift);
 
       LifeState init = workspace;
 
@@ -1370,8 +1483,9 @@ public:
     }
 
     // If all filters validated update results
-    LifeState workspace = conf.startingCatalysts;
-    workspace.JoinWSymChain(pat, params.symmetryChain);
+    LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
+    workspace.Join(conf.startingCatalysts);
+    workspace.Move(shift);
 
     LifeState init = workspace;
 
@@ -1384,12 +1498,82 @@ public:
     found++;
   }
 
+  int OffsetIndexForSym(StaticSymmetry sym) {
+    switch (sym) {
+    case C2:
+      return 0;
+    case D2AcrossX:
+      return 1;
+    case D2AcrossY:
+      return 2;
+    case D2diagodd:
+      return 3;
+    case D2negdiagodd:
+      return 4;
+    default:
+      __builtin_unreachable();
+    }
+  }
+
+  LifeState OffsetsFor(LifeState &active, StaticSymmetry sym) {
+    LifeState transformed;
+    switch (sym) {
+    case C2:
+      return active.Convolve(active);
+    case D2AcrossX:
+      transformed = active;
+      transformed.Transform(ReflectAcrossY);
+      return active.Convolve(transformed);
+    case D2AcrossY:
+      transformed = active;
+      transformed.Transform(ReflectAcrossX);
+      return active.Convolve(transformed);
+    case D2diagodd:
+      transformed = active;
+      transformed.Transform(ReflectAcrossYeqNegXP1);
+      return active.Convolve(transformed);
+    case D2negdiagodd:
+      transformed = active;
+      transformed.Transform(ReflectAcrossYeqX);
+      return active.Convolve(transformed);
+    default:
+      __builtin_unreachable();
+    }
+  }
+
+  std::array<LifeState, 5> StartingOffsets(LifeState &starting) {
+    std::array<LifeState, 5> result;
+    result[OffsetIndexForSym(C2)] = OffsetsFor(starting, C2);
+    result[OffsetIndexForSym(D2AcrossX)] =
+        OffsetsFor(starting, D2AcrossX) | ~LifeState::SolidRect(0, -32, 1, 64);
+    result[OffsetIndexForSym(D2AcrossY)] =
+        OffsetsFor(starting, D2AcrossY) | ~LifeState::SolidRect(-32, 0, 64, 1);
+
+    LifeState diag;
+    for (int i = 0; i < 64; ++i) {
+      diag.SetCell(i, 64 - i, 1);
+    }
+
+    result[OffsetIndexForSym(D2diagodd)] =
+        OffsetsFor(starting, D2diagodd) | ~diag;
+
+    LifeState negdiag;
+    for (int i = 0; i < 64; ++i) {
+      negdiag.SetCell(i, i, 1);
+    }
+    result[OffsetIndexForSym(D2negdiagodd)] =
+        OffsetsFor(starting, D2negdiagodd) | ~negdiag;
+
+    return result;
+  }
+
   void Search() {
     Configuration config;
     config.count = 0;
     config.transparentCount = 0;
     config.mustIncludeCount = 0;
     config.state.JoinWSymChain(pat, params.symmetryChain);
+    config.symmetry = C1;
 
     LifeState bounds =
         LifeState::SolidRect(params.searchArea[0], params.searchArea[1],
@@ -1404,39 +1588,135 @@ public:
       masks[s] = config.state.Convolve(zoi) | ~bounds;
     }
 
+    LifeState patzoi = pat.ZOI();
+    std::array<LifeState, 5> triedOffsets = StartingOffsets(patzoi);
+
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, config.state, alsoRequired, LifeState(), masks, shiftedTargets,
-                    std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>());
+    RecursiveSearch(config, config.state, alsoRequired, LifeState(), masks,
+                    shiftedTargets, triedOffsets,
+                    std::array<unsigned, MAX_CATALYSTS>(),
+                    std::array<unsigned, MAX_CATALYSTS>());
   }
 
-  void
-  TryAddingCatalyst(Configuration &config, LifeState &history,
-                 const LifeState &required, const LifeState &antirequired,
-                 std::vector<LifeState> &masks,
-                 std::vector<LifeTarget> &shiftedTargets, // This can be shared
+  void TryApplyingSymmetry(
+      Configuration &config, LifeState &history, const LifeState &required,
+      const LifeState &antirequired, std::vector<LifeState> &masks,
+      std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
-                 std::array<unsigned, MAX_CATALYSTS> &missingTime,
-                 std::array<unsigned, MAX_CATALYSTS> &recoveredTime) {
+      std::array<LifeState, 5> &triedOffsets,
 
-    LifeState activePart =
-        (~history).ZOI() & config.state & ~config.startingCatalysts;
+      std::array<unsigned, MAX_CATALYSTS> &missingTime,
+      std::array<unsigned, MAX_CATALYSTS> &recoveredTime,
 
-    if (activePart.IsEmpty()) {
-      history |= config.state;
-      config.state.Step();
-      return;
+      LifeState &activePart) {
+
+    switch (config.symmetry) {
+    case C1:
+      for (auto sym : {C2, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd})
+        TryApplyingSpecificSymmetry(
+            config, history, required, antirequired, masks, shiftedTargets,
+            triedOffsets, missingTime, recoveredTime, activePart, sym);
+      break;
+      // case C2:
+      //   TryApplyingSpecificSymmetry(config, history, required, antirequired,
+      //                               masks, shiftedTargets, triedOffsets,
+      //                               missingTime, recoveredTime, activePart,
+      //                               C4);
+      //   break;
+      // case D2AcrossX:
+      //   TryApplyingSpecificSymmetry(config, history, required, antirequired,
+      //                               masks, shiftedTargets, triedOffsets,
+      //                               missingTime, recoveredTime, activePart,
+      //                               D4);
+      //   break;
+      // case D2diagodd:
+      //   TryApplyingSpecificSymmetry(config, history, required, antirequired,
+      //                               masks, shiftedTargets, triedOffsets,
+      //                               missingTime, recoveredTime, activePart,
+      //                               D4diag);
+      //   break;
+
+    default:
+      break;
     }
+  }
 
-    LifeState next = config.state;
-    next.Step();
+  void TryApplyingSpecificSymmetry(
+      Configuration &config, LifeState &history, const LifeState &required,
+      const LifeState &antirequired, std::vector<LifeState> &masks,
+      std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
-    for (unsigned s = 0; s < catalysts.size(); s++) {
-      if (catalysts[s].hasLocus) {
-        LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
-        masks[s] |= hitLocations;
+      std::array<LifeState, 5> &triedOffsets,
+
+      std::array<unsigned, MAX_CATALYSTS> &missingTime,
+      std::array<unsigned, MAX_CATALYSTS> &recoveredTime,
+
+      LifeState &activePart, StaticSymmetry newSym) {
+
+    LifeState activezoi = activePart.ZOI();
+    LifeState newOffsets = OffsetsFor(activezoi, newSym) &
+                           ~triedOffsets[OffsetIndexForSym(newSym)];
+    triedOffsets[OffsetIndexForSym(newSym)] |= newOffsets;
+
+    while (!newOffsets.IsEmpty()) {
+      // Do the placement
+      auto newOffset = newOffsets.FirstOn();
+      Configuration newConfig = config;
+      newConfig.symmetry = newSym;
+      newConfig.symmetryOffset = newOffset;
+
+      newConfig.state = Symmetricize(newConfig.state, newSym, newOffset);
+      {
+        LifeState lookahead = config.state;
+        lookahead.Step();
+        lookahead.Step();
+        lookahead.Step();
+        lookahead.Step();
+        if (!lookahead.Contains(required) ||
+            !lookahead.AreDisjoint(antirequired)) {
+          newOffsets.Erase(newOffset.first, newOffset.second);
+          continue;
+        }
       }
+
+      newConfig.startingCatalysts =
+          Symmetricize(newConfig.startingCatalysts, newSym, newOffset);
+
+      LifeState newHistory = history;
+      newHistory = Symmetricize(history, newSym, newOffset);
+
+      std::vector<LifeState> newMasks = masks;
+
+      if (newConfig.count != params.numCatalysts) {
+        LifeState fundamentalDomain = FundamentalDomain(newSym);
+        fundamentalDomain.Move(HalveOffset(newSym, newOffset));
+        for (unsigned t = 0; t < catalysts.size(); t++) {
+          newMasks[t] |= fundamentalDomain;
+        }
+      }
+
+      if (config.count == 0) {
+        std::cout << "Trying offset " << SymmetryToString(newSym) << " "
+                  << newOffset.first << ", " << newOffset.second << std::endl;
+      }
+
+      RecursiveSearch(newConfig, newHistory, required, antirequired, newMasks,
+                      shiftedTargets, triedOffsets, missingTime, recoveredTime);
+      newOffsets.Erase(newOffset.first, newOffset.second);
     }
+  }
+
+  void TryAddingCatalyst(
+      Configuration &config, LifeState &history, const LifeState &required,
+      const LifeState &antirequired, std::vector<LifeState> &masks,
+      std::vector<LifeTarget> &shiftedTargets, // This can be shared
+
+      std::array<LifeState, 5> &triedOffsets,
+
+      std::array<unsigned, MAX_CATALYSTS> &missingTime,
+      std::array<unsigned, MAX_CATALYSTS> &recoveredTime, LifeState &activePart,
+      LifeState &next) {
 
     for (unsigned s = 0; s < catalysts.size(); s++) {
       if (config.transparentCount == params.numTransparent &&
@@ -1466,8 +1746,9 @@ public:
         LifeState shiftedCatalyst = catalysts[s].state;
         shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
 
-        LifeState symCatalyst;
-        symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
+        LifeState symCatalyst = shiftedCatalyst;
+        symCatalyst = Symmetricize(symCatalyst, newConfig.symmetry,
+                                   newConfig.symmetryOffset);
         newConfig.startingCatalysts |= symCatalyst;
         newConfig.state |= symCatalyst;
 
@@ -1478,7 +1759,7 @@ public:
 
           LifeState difference = newnext ^ next ^ symCatalyst;
           if (difference.IsEmpty()) {
-            if (config.count == 0) {
+            if (config.count == 0 && config.symmetry == C1) {
               std::cout << "Skipping catalyst " << s << " at "
                         << newPlacement.first << ", " << newPlacement.second
                         << " (no interaction) " << std::endl;
@@ -1508,7 +1789,7 @@ public:
           lookahead.Step();
           if (!lookahead.Contains(newRequired) ||
               !lookahead.AreDisjoint(newAntirequired)) {
-            if (config.count == 0) {
+            if (config.count == 0 && config.symmetry == C1) {
               std::cout << "Skipping catalyst " << s << " at "
                         << newPlacement.first << ", " << newPlacement.second
                         << " (is destroyed) " << std::endl;
@@ -1526,7 +1807,7 @@ public:
             lookahead.Step();
           }
           if (!lookahead.Contains(shiftedCatalyst)) {
-            if (config.count == 0) {
+            if (config.count == 0 && config.symmetry == C1) {
               std::cout << "Skipping catalyst " << s << " at "
                         << newPlacement.first << ", " << newPlacement.second
                         << " (failed to recover completely) " << std::endl;
@@ -1538,16 +1819,17 @@ public:
           }
         }
 
-        if (config.count == 0) {
-          std::cout
-              << "Placing catalyst " << s << " at " << newPlacement.first
-              << ", " << newPlacement.second << std::endl;
+        if (config.count == 0 && config.symmetry == C1) {
+          std::cout << "Placing catalyst " << s << " at " << newPlacement.first
+                    << ", " << newPlacement.second << std::endl;
         }
 
         shiftedTargets[config.count].wanted = shiftedCatalyst;
         shiftedTargets[config.count].unwanted = catalysts[s].target.unwanted;
         shiftedTargets[config.count].unwanted.Move(newPlacement.first,
                                                    newPlacement.second);
+
+        std::array<LifeState, 5> newOffsets = triedOffsets;
 
         std::vector<LifeState> newMasks = masks;
 
@@ -1574,7 +1856,8 @@ public:
         }
 
         RecursiveSearch(newConfig, history, newRequired, newAntirequired,
-                        newMasks, shiftedTargets, missingTime, recoveredTime);
+                        newMasks, shiftedTargets, newOffsets, missingTime,
+                        recoveredTime);
 
         masks[s].Set(newPlacement.first, newPlacement.second);
         newPlacements.Erase(newPlacement.first, newPlacement.second);
@@ -1582,13 +1865,15 @@ public:
     }
 
     history |= config.state;
-    config.state = next;
   }
 
   void
-  RecursiveSearch(Configuration config, LifeState history, const LifeState required, const LifeState antirequired,
+  RecursiveSearch(Configuration config, LifeState history,
+                  const LifeState required, const LifeState antirequired,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
+
+                  std::array<LifeState, 5> &triedOffsets,
 
                   std::array<unsigned, MAX_CATALYSTS> missingTime,
                   std::array<unsigned, MAX_CATALYSTS> recoveredTime) {
@@ -1620,19 +1905,47 @@ public:
         break;
       }
 
-      if (config.count == 0) {
+      if (config.count == 0 && config.symmetry == C1) {
         std::cout << "Collision at gen " << g << std::endl;
       }
 
+      LifeState activePart =
+          (~history).ZOI() & config.state & ~config.startingCatalysts;
+
+      bool hasActivePart = !activePart.IsEmpty();
+
+      if (hasActivePart) {
+        for (unsigned s = 0; s < catalysts.size(); s++) {
+          if (catalysts[s].hasLocus) {
+            LifeState hitLocations =
+                activePart.Convolve(catalysts[s].locusAvoidMask);
+            masks[s] |= hitLocations;
+          }
+        }
+      }
+
+      if (hasActivePart) {
+        TryApplyingSymmetry(config, history, required, antirequired, masks,
+                            shiftedTargets, triedOffsets, missingTime,
+                            recoveredTime, activePart);
+      }
+
       // Try adding a catalyst
-      if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
+      if (hasActivePart && config.state.gen >= params.startGen &&
+          config.count != params.numCatalysts) {
+        LifeState next = config.state;
+        next.Step();
+
         TryAddingCatalyst(config, history, required, antirequired, masks,
-                          shiftedTargets, missingTime, recoveredTime);
+                          shiftedTargets, triedOffsets, missingTime,
+                          recoveredTime, activePart, next);
+        config.state = next;
         // The above also steps config.state
       } else {
         // No need to update history, not used for anything once all
         // catalysts are placed
-        // history |= config.state;
+        if (config.count != params.numCatalysts)
+          history |= config.state;
         config.state.Step();
       }
 
@@ -1667,7 +1980,7 @@ public:
         }
       }
 
-      if (config.count == 0)
+      if (config.count == 0 && config.symmetry == C1)
         Report();
     }
 

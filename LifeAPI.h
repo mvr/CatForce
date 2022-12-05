@@ -340,6 +340,10 @@ public:
     max = N - 1;
   }
 
+  void Join(const LifeState &delta, std::pair<int, int> vec) {
+    Join(delta, vec.first, vec.second);
+  }
+
   void JoinWSymChain(const LifeState &state, int x, int y,
                      const std::vector<SymmetryTransform> &symChain) {
     // instead of passing in the symmetry group {id, g_1, g_2,...g_n} and
@@ -567,6 +571,9 @@ public:
       min = 0;
       max = N - 1;
     }
+  }
+  void Move(std::pair<int, int> vec) {
+    Move(vec.first, vec.second);
   }
 
   void BitReverse() {
