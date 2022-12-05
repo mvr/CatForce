@@ -256,6 +256,11 @@ public:
   }
 #endif
 
+  void ResetMinMax() {
+    min = 0;
+    max = N - 1;
+  }
+
 public:
   void Print() const;
 
@@ -287,12 +292,12 @@ public:
     if (op == ORNOT) {
       for (int i = 0; i < N; i++)
         state[i] |= ~delta.state[i];
-      RecalculateMinMax();
+      ResetMinMax();
     }
     if (op == XOR) {
       for (int i = 0; i < N; i++)
         state[i] ^= delta.state[i];
-      RecalculateMinMax();
+      ResetMinMax();
     }
   }
 
