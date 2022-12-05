@@ -1336,8 +1336,8 @@ public:
  }
 
   bool HasForbidden(Configuration &conf, unsigned curIter) {
-    LifeState workspace = conf.startingCatalysts;
-    workspace.JoinWSymChain(pat, params.symmetryChain);
+    LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
+    workspace.Join(conf.startingCatalysts);
 
     for (unsigned i = 0; i <= curIter + 1; i++) {
       for (unsigned j = 0; j < params.numCatalysts; j++) {
@@ -1364,8 +1364,8 @@ public:
   }
 
   bool ValidateFilters(Configuration &conf, unsigned successtime, unsigned failuretime) {
-    LifeState workspace = conf.startingCatalysts;
-    workspace.JoinWSymChain(pat, params.symmetryChain);
+    LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
+    workspace.Join(conf.startingCatalysts);
 
     unsigned maxMatchingPop;
     if(params.maxJunk != -1)
