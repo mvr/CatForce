@@ -2039,6 +2039,8 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
+      if(config.symmetry == C1 || config.count != params.numCatalysts) {
+
       LifeState activePart =
           (~history).ZOI() & config.state & ~config.startingCatalysts;
 
@@ -2076,6 +2078,9 @@ public:
         // catalysts are placed
         if (config.count != params.numCatalysts)
           history |= config.state;
+        config.state.Step();
+      }
+      } else {
         config.state.Step();
       }
 
