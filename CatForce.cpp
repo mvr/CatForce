@@ -1575,6 +1575,8 @@ public:
     config.state.JoinWSymChain(pat, params.symmetryChain);
     config.symmetry = C1;
 
+    LifeState history = config.state;
+
     LifeState bounds =
         LifeState::SolidRect(params.searchArea[0], params.searchArea[1],
                              params.searchArea[2], params.searchArea[3]);
@@ -1593,7 +1595,7 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, config.state, alsoRequired, LifeState(), masks,
+    RecursiveSearch(config, history, alsoRequired, LifeState(), masks,
                     shiftedTargets, triedOffsets,
                     std::array<unsigned, MAX_CATALYSTS>(),
                     std::array<unsigned, MAX_CATALYSTS>());
@@ -1683,8 +1685,7 @@ public:
       newConfig.startingCatalysts =
           Symmetricize(newConfig.startingCatalysts, newSym, newOffset);
 
-      LifeState newHistory = history;
-      newHistory = Symmetricize(history, newSym, newOffset);
+      LifeState newHistory = Symmetricize(history, newSym, newOffset);
 
       std::vector<LifeState> newMasks = masks;
 
@@ -1692,7 +1693,7 @@ public:
         LifeState fundamentalDomain = FundamentalDomain(newSym);
         fundamentalDomain.Move(HalveOffset(newSym, newOffset));
         for (unsigned t = 0; t < catalysts.size(); t++) {
-          newMasks[t] |= fundamentalDomain;
+          newMasks[t] |= fundamentalDomain | newHistory.Convolve(catalysts[t].reactionMask);
         }
       }
 
@@ -1831,6 +1832,7 @@ public:
 
         std::array<LifeState, 5> newOffsets = triedOffsets;
 
+        LifeState newHistory = history | symCatalyst;
         std::vector<LifeState> newMasks = masks;
 
         // If we just placed the last catalyst, don't bother
@@ -1855,7 +1857,7 @@ public:
           }
         }
 
-        RecursiveSearch(newConfig, history, newRequired, newAntirequired,
+        RecursiveSearch(newConfig, newHistory, newRequired, newAntirequired,
                         newMasks, shiftedTargets, newOffsets, missingTime,
                         recoveredTime);
 
