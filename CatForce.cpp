@@ -308,61 +308,189 @@ inline std::vector<SymmetryTransform> SymmetryChainFromEnum(const StaticSymmetry
   }
 }
 
-LifeState FundamentalDomain(const StaticSymmetry sym) {
+const LifeState C1Domain = LifeState::Parse(
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
+
+const LifeState D2YDomain = LifeState::Parse(
+        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
+        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
+        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
+        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o!");
+
+const LifeState D2XDomain = LifeState::Parse(
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
+
+const LifeState D2DiagDomain = LifeState::Parse(
+        "64o$63o$62o$61o$60o$59o$58o$57o$56o$55o$54o$53o$52o$51o$50o$49o$48o$"
+        "47o$46o$45o$44o$43o$42o$41o$40o$39o$38o$37o$36o$35o$34o$33o$32o$31o$"
+        "30o$29o$28o$27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$"
+        "13o$12o$11o$10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
+
+const LifeState D2NegDiagDomain = LifeState::Parse(
+    "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
+    "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$33o$34o$35o$36o$37o$"
+    "38o$39o$40o$41o$42o$43o$44o$45o$46o$47o$48o$49o$50o$51o$52o$53o$54o$"
+    "55o$56o$57o$58o$59o$60o$61o$62o$63o$64o!");
+
+const LifeState C2Domain = LifeState::Parse(
+    "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
+    "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
+
+const LifeState C4Domain = LifeState::Parse(
+    "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
+    "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o!");
+
+const LifeState D4DiagDomain = LifeState::Parse(
+    "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
+    "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$32o$31o$30o$29o$28o$"
+    "27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$13o$12o$11o$"
+    "10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
+
+const LifeState D8Domain = LifeState::Parse(
+        "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
+        "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o!");
+
+LifeState FundamentalDomainFast(const StaticSymmetry sym) {
   switch (sym) {
   case StaticSymmetry::C1:
-    return LifeState::Parse("64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
+    return C1Domain;
   case StaticSymmetry::D2AcrossY:
   case StaticSymmetry::D2AcrossYEven:
-    return LifeState::Parse("32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o!");
+    return D2YDomain;
   case StaticSymmetry::D2AcrossX:
   case StaticSymmetry::D2AcrossXEven:
-    return LifeState::Parse("64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
+    return D2XDomain;
   case StaticSymmetry::D2diagodd:
-    return LifeState::Parse("64o$63o$62o$61o$60o$59o$58o$57o$56o$55o$54o$53o$52o$51o$50o$49o$48o$47o$46o$45o$44o$43o$42o$41o$40o$39o$38o$37o$36o$35o$34o$33o$32o$31o$30o$29o$28o$27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$13o$12o$11o$10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
+    return D2DiagDomain;
   case StaticSymmetry::D2negdiagodd:
-    return LifeState::Parse("o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$33o$34o$35o$36o$37o$38o$39o$40o$41o$42o$43o$44o$45o$46o$47o$48o$49o$50o$51o$52o$53o$54o$55o$56o$57o$58o$59o$60o$61o$62o$63o$64o!");
+    return D2NegDiagDomain;
   case StaticSymmetry::C2:
   case StaticSymmetry::C2even:
   case StaticSymmetry::C2horizontaleven:
   case StaticSymmetry::C2verticaleven:
-    return LifeState::Parse("64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
+    return C2Domain;
   case StaticSymmetry::C4:
   case StaticSymmetry::C4even:
   case StaticSymmetry::D4:
   case StaticSymmetry::D4even:
   case StaticSymmetry::D4horizontaleven:
   case StaticSymmetry::D4verticaleven:
-    return LifeState::Parse("32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o!");
+    return C4Domain;
   case StaticSymmetry::D4diag:
   case StaticSymmetry::D4diageven:
-    return LifeState::Parse("o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$32o$31o$30o$29o$28o$27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$13o$12o$11o$10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
+    return D4DiagDomain;
   case StaticSymmetry::D8:
   case StaticSymmetry::D8even:
-    return LifeState::Parse("o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o!");
+    return D8Domain;
   }
 }
 
-inline std::pair<int, int> CommuteTranslation(const SymmetryTransform sym, std::pair<int, int> vec) {
+LifeState FundamentalDomain(const StaticSymmetry sym) {
+  switch (sym) {
+  case StaticSymmetry::C1:
+    return LifeState::Parse(
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
+  case StaticSymmetry::D2AcrossY:
+  case StaticSymmetry::D2AcrossYEven:
+    return LifeState::Parse(
+        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
+        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
+        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
+        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o!");
+  case StaticSymmetry::D2AcrossX:
+  case StaticSymmetry::D2AcrossXEven:
+    return LifeState::Parse(
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
+  case StaticSymmetry::D2diagodd:
+    return LifeState::Parse(
+        "64o$63o$62o$61o$60o$59o$58o$57o$56o$55o$54o$53o$52o$51o$50o$49o$48o$"
+        "47o$46o$45o$44o$43o$42o$41o$40o$39o$38o$37o$36o$35o$34o$33o$32o$31o$"
+        "30o$29o$28o$27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$"
+        "13o$12o$11o$10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
+  case StaticSymmetry::D2negdiagodd:
+    return LifeState::Parse(
+        "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
+        "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$33o$34o$35o$36o$37o$"
+        "38o$39o$40o$41o$42o$43o$44o$45o$46o$47o$48o$49o$50o$51o$52o$53o$54o$"
+        "55o$56o$57o$58o$59o$60o$61o$62o$63o$64o!");
+  case StaticSymmetry::C2:
+  case StaticSymmetry::C2even:
+  case StaticSymmetry::C2horizontaleven:
+  case StaticSymmetry::C2verticaleven:
+    return LifeState::Parse(
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
+        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
+  case StaticSymmetry::C4:
+  case StaticSymmetry::C4even:
+  case StaticSymmetry::D4:
+  case StaticSymmetry::D4even:
+  case StaticSymmetry::D4horizontaleven:
+  case StaticSymmetry::D4verticaleven:
+    return LifeState::Parse(
+        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
+        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o!");
+  case StaticSymmetry::D4diag:
+  case StaticSymmetry::D4diageven:
+    return LifeState::Parse(
+        "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
+        "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$32o$31o$30o$29o$28o$"
+        "27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$13o$12o$11o$"
+        "10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
+  case StaticSymmetry::D8:
+  case StaticSymmetry::D8even:
+    return LifeState::Parse(
+        "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
+        "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o!");
+  }
+}
+
+
+
+inline std::pair<int, int> CommuteTranslation(const SymmetryTransform sym,
+                                              std::pair<int, int> vec) {
   int x = vec.first;
   int y = vec.second;
   switch (sym) {
-  case Identity:                return std::make_pair(x  , y);
-  case ReflectAcrossXEven:      return std::make_pair(x  , -y);
-  case ReflectAcrossX:          return std::make_pair(x  , -y);
-  case ReflectAcrossYEven:      return std::make_pair(-x , y);
-  case ReflectAcrossY:          return std::make_pair(-x , y);
-  case Rotate90Even:            return std::make_pair(-y , x);
-  case Rotate90:                return std::make_pair(-y , x);
-  case Rotate270Even:           return std::make_pair(y  , -x);
-  case Rotate270:               return std::make_pair(y  , -x);
-  case Rotate180OddBoth:        return std::make_pair(-x , -y);
-  case Rotate180EvenHorizontal: return std::make_pair(-x , -y);
-  case Rotate180EvenVertical:   return std::make_pair(-x , -y);
-  case Rotate180EvenBoth:       return std::make_pair(-x , -y);
-  case ReflectAcrossYeqX:       return std::make_pair(y  , x);
-  case ReflectAcrossYeqNegX:    return std::make_pair(-y , -x);
-  case ReflectAcrossYeqNegXP1:  return std::make_pair(-y , -x);
+  case Identity:
+    return std::make_pair(x, y);
+  case ReflectAcrossXEven:
+    return std::make_pair(x, -y);
+  case ReflectAcrossX:
+    return std::make_pair(x, -y);
+  case ReflectAcrossYEven:
+    return std::make_pair(-x, y);
+  case ReflectAcrossY:
+    return std::make_pair(-x, y);
+  case Rotate90Even:
+    return std::make_pair(-y, x);
+  case Rotate90:
+    return std::make_pair(-y, x);
+  case Rotate270Even:
+    return std::make_pair(y, -x);
+  case Rotate270:
+    return std::make_pair(y, -x);
+  case Rotate180OddBoth:
+    return std::make_pair(-x, -y);
+  case Rotate180EvenHorizontal:
+    return std::make_pair(-x, -y);
+  case Rotate180EvenVertical:
+    return std::make_pair(-x, -y);
+  case Rotate180EvenBoth:
+    return std::make_pair(-x, -y);
+  case ReflectAcrossYeqX:
+    return std::make_pair(y, x);
+  case ReflectAcrossYeqNegX:
+    return std::make_pair(-y, -x);
+  case ReflectAcrossYeqNegXP1:
+    return std::make_pair(-y, -x);
   }
 }
 
@@ -1581,7 +1709,7 @@ public:
         LifeState::SolidRect(params.searchArea[0], params.searchArea[1],
                              params.searchArea[2], params.searchArea[3]);
 
-    bounds &= FundamentalDomain(params.symmetry);
+    bounds &= FundamentalDomainFast(params.symmetry);
 
     std::vector<LifeState> masks(catalysts.size());
     for (unsigned s = 0; s < catalysts.size(); s++) {
@@ -1690,10 +1818,10 @@ public:
       std::vector<LifeState> newMasks = masks;
 
       if (newConfig.count != params.numCatalysts) {
-        LifeState fundamentalDomain = FundamentalDomain(newSym);
+        LifeState fundamentalDomain = FundamentalDomainFast(newSym);
         fundamentalDomain.Move(HalveOffset(newSym, newOffset));
         for (unsigned t = 0; t < catalysts.size(); t++) {
-          newMasks[t] |= fundamentalDomain | newHistory.Convolve(catalysts[t].reactionMask);
+          newMasks[t] |= ~fundamentalDomain | newHistory.Convolve(catalysts[t].reactionMask);
         }
       }
 
