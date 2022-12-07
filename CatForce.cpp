@@ -1958,9 +1958,15 @@ public:
         shiftedTargets[config.count].unwanted.Move(newPlacement.first,
                                                    newPlacement.second);
 
-        std::array<LifeState, 5> newOffsets = triedOffsets;
-
         LifeState newHistory = history | symCatalyst;
+
+        std::array<LifeState, 5> newOffsets = triedOffsets;
+        if(newConfig.symmetry == C1) {
+          for (auto sym : {C2, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
+            newOffsets[OffsetIndexForSym(sym)] |= OffsetsFor(newHistory, sym);
+          }
+        }
+
         std::vector<LifeState> newMasks = masks;
 
         // If we just placed the last catalyst, don't bother
