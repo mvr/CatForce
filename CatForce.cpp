@@ -497,64 +497,50 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     if (elems.size() < 2)
       continue;
 
-    if (elems[0] == Cat)
+    if (elems[0] == Cat) {
       catalysts.emplace_back(line);
-
-    if (elems[0] == maxGen)
+    } else if (elems[0] == maxGen) {
       params.maxGen = atoi(elems[1].c_str());
-
-    if (elems[0] == numCat)
+    } else if (elems[0] == numCat) {
       params.numCatalysts = atoi(elems[1].c_str());
-
-    if (elems[0] == numTransp)
+    } else if (elems[0] == numTransp) {
       params.numTransparent = atoi(elems[1].c_str());
-
-    if (elems[0] == stable)
+    } else if (elems[0] == numLimited) {
+      params.numLimited = atoi(elems[1].c_str());
+    } else if (elems[0] == stable) {
       params.stableInterval = atoi(elems[1].c_str());
-
-    if (elems[0] == pat) {
+    } else if (elems[0] == pat) {
       params.pat = elems[1];
 
       if (elems.size() > 3) {
         params.xPat = atoi(elems[2].c_str());
         params.yPat = atoi(elems[3].c_str());
       }
-    }
-
-    if (elems[0] == area) {
+    } else if (elems[0] == area) {
       params.searchArea[0] = atoi(elems[1].c_str());
       params.searchArea[1] = atoi(elems[2].c_str());
       params.searchArea[2] = atoi(elems[3].c_str());
       params.searchArea[3] = atoi(elems[4].c_str());
-    }
-
-    if (elems[0] == startGen)
+    } else if (elems[0] == startGen) {
       params.startGen = atoi(elems[1].c_str());
-
-    if (elems[0] == lastGen) {
+    } else if (elems[0] == lastGen) {
       params.lastGen = atoi(elems[1].c_str());
       hasLastGen = true;
-    }
-
-    if (elems[0] == outputFile) {
+    } else if (elems[0] == outputFile) {
       params.outputFile = elems[1];
 
       for (unsigned i = 2; i < elems.size(); i++) {
         params.outputFile.append(" ");
         params.outputFile.append(elems[i]);
       }
-    }
-
-    if (elems[0] == fullReport) {
+    } else if (elems[0] == fullReport) {
       params.fullReportFile = elems[1];
 
       for (unsigned i = 2; i < elems.size(); i++) {
         params.fullReportFile.append(" ");
         params.fullReportFile.append(elems[i]);
       }
-    }
-
-    if (elems[0] == filter || elems[0] == orfilter || elems[0] == andfilter || elems[0] == matchfilter) {
+    } else if (elems[0] == filter || elems[0] == orfilter || elems[0] == andfilter || elems[0] == matchfilter) {
       std::vector<std::string> rangeElems;
       split(elems[1], '-', rangeElems);
 
@@ -589,18 +575,12 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         params.filterdy.push_back(atoi(elems[4].c_str()));
         params.filterType.push_back(ANDFILTER);
       }
-    }
-
-    if (elems[0] == maxWH) {
+    } else if (elems[0] == maxWH) {
       params.maxW = atoi(elems[1].c_str());
       params.maxH = atoi(elems[2].c_str());
-    }
-
-    if (elems[0] == maxCatSize) {
+    } else if (elems[0] == maxCatSize) {
       params.maxCatSize = atoi(elems[1].c_str());
-    }
-
-    if (elems[0] == symmetry) {
+    } else if (elems[0] == symmetry) {
       std::string symmetryString = "";
       // reverse-compatibility reasons.
       if (elems[1] == "horizontal") {
@@ -622,16 +602,18 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
       params.symmetry = SymmetryFromString(symmetryString);
       params.symmetryChain = SymmetryChainFromEnum(params.symmetry);
-    }
-    if (elems[0] == alsoRequired) {
+    } else if (elems[0] == alsoRequired) {
       params.alsoRequired = elems[1].c_str();
       params.alsoRequiredXY = std::make_pair(atoi(elems[2].c_str()), atoi(elems[3].c_str()));
-    }
-    if (elems[0] == stopAfterCatsDestroyed){
+    } else if (elems[0] == stopAfterCatsDestroyed){
       params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
-    }
-    if (elems[0] == maxJunk){
+    } else if (elems[0] == maxJunk){
       params.maxJunk = atoi(elems[1].c_str());
+    } else {
+      if(std::isalpha(elems[0][0])) {
+        std::cout << "Unknown input parameter: " << elems[0] << std::endl;
+        exit(1);
+      }
     }
   }
 
