@@ -163,7 +163,7 @@ public:
       } else if (elems[argi] == "transparent") {
         transparent = true;
         argi += 1;
-      } else if (elems[argi] == "mustinclude") {
+      } else if (elems[argi] == "mustinclude" || elems[argi] == "must-include") {
         mustInclude = true;
         argi += 1;
       } else if (elems[argi] == "check-recovery") {
