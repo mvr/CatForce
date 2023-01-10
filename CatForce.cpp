@@ -496,9 +496,22 @@ inline std::pair<int, int> CommuteTranslation(const SymmetryTransform sym,
 
 inline std::pair<int, int> HalveOffset(const StaticSymmetry sym,
                                        std::pair<int, int> vec) {
-  int x = (((vec.first + 32) % 64 - 32) / 2 + 64) % 64;
-  int y = (((vec.second + 32) % 64 - 32) / 2 + 64) % 64;
-  return std::make_pair(x, y);
+  switch (sym) {
+  case C4: { // This is the center of rotation for offset rotation by 90
+    int x = (vec.first + 32) % 64 - 32;
+    int y = (vec.second + 32) % 64 - 32;
+    int y2 = (y - x) / 2;
+    int x2 = (x + y2);
+    int x3 = (x2 + 64) % 64;
+    int y3 = (y2 + 64) % 64;
+    return std::make_pair(x3, y3);
+  }
+  default: {
+    int x = (((vec.first + 32) % 64 - 32) / 2 + 64) % 64;
+    int y = (((vec.second + 32) % 64 - 32) / 2 + 64) % 64;
+    return std::make_pair(x, y);
+  }
+  }
 }
 
 StaticSymmetry SymmetryFromString(const std::string &name) {
@@ -1243,7 +1256,19 @@ inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
     sym.Move(offset);
     sym.Join(state);
     return sym;
-    break;
+  }
+  case C4: {
+    LifeState sym = state;
+    sym.Transform(Rotate90);
+    sym.Move(offset);
+    sym.Join(state);
+    sym.Transform(Rotate90);
+    sym.Move(offset);
+    sym.Join(state);
+    sym.Transform(Rotate90);
+    sym.Move(offset);
+    sym.Join(state);
+    return sym;
   }
   case D2AcrossX: {
     LifeState sym = state;
@@ -1251,7 +1276,6 @@ inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
     sym.Move(offset);
     sym.Join(state);
     return sym;
-    break;
   }
   case D2AcrossY: {
     LifeState sym = state;
@@ -1259,7 +1283,6 @@ inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
     sym.Move(offset);
     sym.Join(state);
     return sym;
-    break;
   }
   case D2diagodd: {
     LifeState sym = state;
@@ -1267,7 +1290,6 @@ inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
     sym.Move(offset);
     sym.Join(state);
     return sym;
-    break;
   }
   case D2negdiagodd: {
     LifeState sym = state;
@@ -1275,7 +1297,6 @@ inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
     sym.Move(offset);
     sym.Join(state);
     return sym;
-    break;
   }
   default:
     __builtin_unreachable();
@@ -1630,15 +1651,22 @@ public:
     switch (sym) {
     case C2:
       return 0;
-    case D2AcrossX:
+    case C4:
       return 1;
-    case D2AcrossY:
+    case D2AcrossX:
       return 2;
-    case D2diagodd:
+    case D2AcrossY:
       return 3;
-    case D2negdiagodd:
+    case D2diagodd:
       return 4;
+    case D2negdiagodd:
+      return 5;
+    case D4:
+      return 0;
+    case D4diag:
+      return 0;
     default:
+      exit(1);
       __builtin_unreachable();
     }
   }
@@ -1648,6 +1676,10 @@ public:
     switch (sym) {
     case C2:
       return active.Convolve(active);
+    case C4:
+      transformed = active;
+      transformed.Transform(Rotate270);
+      return active.Convolve(transformed);
     case D2AcrossX:
       transformed = active;
       transformed.Transform(ReflectAcrossY);
@@ -1669,29 +1701,51 @@ public:
     }
   }
 
-  std::array<LifeState, 5> StartingOffsets(LifeState &starting) {
-    std::array<LifeState, 5> result;
-    result[OffsetIndexForSym(C2)] = OffsetsFor(starting, C2);
-    result[OffsetIndexForSym(D2AcrossX)] =
-        OffsetsFor(starting, D2AcrossX) | ~LifeState::SolidRect(0, -32, 1, 64);
-    result[OffsetIndexForSym(D2AcrossY)] =
-        OffsetsFor(starting, D2AcrossY) | ~LifeState::SolidRect(-32, 0, 64, 1);
-
-    LifeState diag;
-    for (int i = 0; i < 64; ++i) {
-      diag.SetCell(i, 64 - i, 1);
+  LifeState AllowedOffsets(StaticSymmetry sym) {
+    switch (sym) {
+    case C2:
+      return ~LifeState();
+    case C4:
+      return ~LifeState();
+    // {
+    //   LifeState checkerboard;
+    //   for (int i = 0; i < 64; ++i) {
+    //     if(i % 2 == 0)
+    //       checkerboard.state[i] = 0xAAAAAAAAAAAAAAAAULL;
+    //     else
+    //       checkerboard.state[i] = RotateLeft(0xAAAAAAAAAAAAAAAAULL);
+    //   }
+    //   return checkerboard;
+    // }
+    case D2AcrossX:
+      return LifeState::SolidRect(0, -32, 1, 64);
+    case D2AcrossY:
+      return LifeState::SolidRect(-32, 0, 64, 1);
+    case D2diagodd: {
+      LifeState diag;
+      for (int i = 0; i < 64; ++i) {
+        diag.SetCell(i, 64 - i, 1);
+      }
+      return diag;
     }
-
-    result[OffsetIndexForSym(D2diagodd)] =
-        OffsetsFor(starting, D2diagodd) | ~diag;
-
-    LifeState negdiag;
-    for (int i = 0; i < 64; ++i) {
-      negdiag.SetCell(i, i, 1);
+    case D2negdiagodd: {
+      LifeState negdiag;
+      for (int i = 0; i < 64; ++i) {
+        negdiag.SetCell(i, i, 1);
+      }
+      return negdiag;
     }
-    result[OffsetIndexForSym(D2negdiagodd)] =
-        OffsetsFor(starting, D2negdiagodd) | ~negdiag;
+    default:
+      exit(1);
+      __builtin_unreachable();
+    }
+  }
 
+  std::array<LifeState, 6> StartingOffsets(LifeState &starting) {
+    std::array<LifeState, 6> result;
+    for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}){
+      result[OffsetIndexForSym(sym)] = OffsetsFor(starting, sym) | ~AllowedOffsets(sym);
+    }
     return result;
   }
 
@@ -1719,7 +1773,7 @@ public:
     }
 
     LifeState patzoi = pat.ZOI();
-    std::array<LifeState, 5> triedOffsets = StartingOffsets(patzoi);
+    std::array<LifeState, 6> triedOffsets = StartingOffsets(patzoi);
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
@@ -1734,7 +1788,7 @@ public:
       const LifeState &antirequired, std::vector<LifeState> &masks,
       std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
-      std::array<LifeState, 5> &triedOffsets,
+      std::array<LifeState, 6> &triedOffsets,
 
       std::array<unsigned, MAX_CATALYSTS> &missingTime,
       std::array<unsigned, MAX_CATALYSTS> &recoveredTime,
@@ -1743,7 +1797,7 @@ public:
 
     switch (config.symmetry) {
     case C1:
-      for (auto sym : {C2, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd})
+      for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd})
         TryApplyingSpecificSymmetry(
             config, history, required, antirequired, masks, shiftedTargets,
             triedOffsets, missingTime, recoveredTime, activePart, sym);
@@ -1777,7 +1831,7 @@ public:
       const LifeState &antirequired, std::vector<LifeState> &masks,
       std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
-      std::array<LifeState, 5> &triedOffsets,
+      std::array<LifeState, 6> &triedOffsets,
 
       std::array<unsigned, MAX_CATALYSTS> &missingTime,
       std::array<unsigned, MAX_CATALYSTS> &recoveredTime,
@@ -1841,7 +1895,7 @@ public:
       const LifeState &antirequired, std::vector<LifeState> &masks,
       std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
-      std::array<LifeState, 5> &triedOffsets,
+      std::array<LifeState, 6> &triedOffsets,
 
       std::array<unsigned, MAX_CATALYSTS> &missingTime,
       std::array<unsigned, MAX_CATALYSTS> &recoveredTime, LifeState &activePart,
@@ -1960,9 +2014,9 @@ public:
 
         LifeState newHistory = history | symCatalyst;
 
-        std::array<LifeState, 5> newOffsets = triedOffsets;
+        std::array<LifeState, 6> newOffsets = triedOffsets;
         if(newConfig.symmetry == C1) {
-          for (auto sym : {C2, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
+          for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
             newOffsets[OffsetIndexForSym(sym)] |= OffsetsFor(newHistory, sym);
           }
         }
@@ -2009,7 +2063,7 @@ public:
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
-                  std::array<LifeState, 5> &triedOffsets,
+                  std::array<LifeState, 6> &triedOffsets,
 
                   std::array<unsigned, MAX_CATALYSTS> missingTime,
                   std::array<unsigned, MAX_CATALYSTS> recoveredTime) {
