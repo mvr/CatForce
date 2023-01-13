@@ -43,6 +43,7 @@ public:
   unsigned maxGen;
   unsigned numCatalysts;
   unsigned numTransparent;
+  unsigned numLimited;
   unsigned stableInterval;
   std::string pat;
   int xPat;
@@ -77,6 +78,7 @@ public:
     maxGen = 250;
     numCatalysts = 2;
     numTransparent = 100;
+    numLimited = 100;
     stableInterval = 15;
     pat = "";
     searchArea[0] = -30;
@@ -121,6 +123,7 @@ public:
   std::string locusRLE;
   std::pair<int, int> locusXY;
   bool transparent;
+  bool limited;
   bool mustInclude;
   bool checkRecovery;
   bool sacrificial;
@@ -144,6 +147,7 @@ public:
     symmType = elems[5].at(0);
 
     transparent = false;
+    limited = false;
     mustInclude = false;
     checkRecovery = false;
     sacrificial = false;
@@ -173,7 +177,10 @@ public:
       } else if (elems[argi] == "transparent") {
         transparent = true;
         argi += 1;
-      } else if (elems[argi] == "mustinclude") {
+      } else if (elems[argi] == "limited") {
+        limited = true;
+        argi += 1;
+      } else if (elems[argi] == "mustinclude" || elems[argi] == "must-include") {
         mustInclude = true;
         argi += 1;
       } else if (elems[argi] == "check-recovery") {
@@ -677,6 +684,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
   std::string numCat = "num-catalyst";
   std::string numTransp = "num-transparent";
+  std::string numLimited = "num-limited";
   std::string stable = "stable-interval";
   std::string area = "search-area";
   std::string pat = "pat";
@@ -883,6 +891,7 @@ public:
   LifeState locusReactionMask;
   LifeState locusAvoidMask;
   bool transparent;
+  bool limited;
   bool mustInclude;
   bool checkRecovery;
   bool sacrificial;
@@ -954,6 +963,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     }
 
     result.transparent = input.transparent;
+    result.limited = input.limited;
     result.mustInclude = input.mustInclude;
     result.checkRecovery = input.checkRecovery;
     result.sacrificial = input.sacrificial;
@@ -970,6 +980,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 struct Configuration {
   unsigned count;
   unsigned transparentCount;
+  unsigned limitedCount;
   unsigned mustIncludeCount;
   std::array<int, MAX_CATALYSTS> curx;
   std::array<int, MAX_CATALYSTS> cury;
@@ -1831,6 +1842,7 @@ public:
     Configuration config;
     config.count = 0;
     config.transparentCount = 0;
+    config.limitedCount = 0;
     config.mustIncludeCount = 0;
     config.state.JoinWSymChain(pat, params.symmetryChain);
     config.symmetry = C1;
@@ -2014,6 +2026,8 @@ public:
       if (config.transparentCount == params.numTransparent &&
           catalysts[s].transparent)
         continue;
+      if (config.limitedCount == params.numLimited && catalysts[s].limited)
+        continue;
       if (config.count == params.numCatalysts - 1 &&
           config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
@@ -2032,6 +2046,8 @@ public:
         newConfig.curs[config.count] = s;
         if (catalysts[s].transparent)
           newConfig.transparentCount++;
+        if (catalysts[s].limited)
+          newConfig.limitedCount++;
         if (catalysts[s].mustInclude)
           newConfig.mustIncludeCount++;
 
