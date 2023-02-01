@@ -1298,6 +1298,18 @@ inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
     sym.Join(state);
     return sym;
   }
+  case D4: {
+    LifeState acrossx = state;
+    acrossx.Transform(ReflectAcrossX);
+    acrossx.Move(0, offset.second);
+    acrossx.Join(state);
+    LifeState acrossy = acrossx;
+    acrossy.Transform(ReflectAcrossY);
+    acrossy.Move(offset.first, 0);
+    acrossy.Join(acrossx);
+    return acrossy;
+  }
+
   default:
     __builtin_unreachable();
   }
@@ -1647,8 +1659,12 @@ public:
     found++;
   }
 
-  int OffsetIndexForSym(StaticSymmetry sym) {
-    switch (sym) {
+  int OffsetIndexForSym(StaticSymmetry oldsym, StaticSymmetry newsym) {
+    if (oldsym != C1) {
+      newsym = D2Continuation(oldsym);
+    }
+
+    switch (newsym) {
     case C2:
       return 0;
     case C4:
@@ -1661,19 +1677,48 @@ public:
       return 4;
     case D2negdiagodd:
       return 5;
-    case D4:
-      return 0;
-    case D4diag:
-      return 0;
     default:
       exit(1);
       __builtin_unreachable();
     }
   }
 
-  LifeState OffsetsFor(LifeState &active, StaticSymmetry sym) {
+  bool SymIsD2(StaticSymmetry sym) {
+    switch (sym){
+    case D2AcrossX:
+    case D2AcrossY:
+    case D2diagodd:
+    case D2negdiagodd:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  StaticSymmetry D2Continuation(StaticSymmetry sym) {
+    switch (sym){
+    case D2AcrossX:
+      return D2AcrossY;
+    case D2AcrossY:
+      return D2AcrossX;
+    case D2diagodd:
+      return D2negdiagodd;
+    case D2negdiagodd:
+      return D2diagodd;
+    default:
+      exit(1);
+      __builtin_unreachable();
+    }
+  }
+
+  LifeState CollidingOffsets(LifeState &active, StaticSymmetry oldsym,
+                       StaticSymmetry newsym) {
+    if (oldsym != C1) {
+      newsym = D2Continuation(oldsym);
+    }
+
     LifeState transformed;
-    switch (sym) {
+    switch (newsym) {
     case C2:
       return active.Convolve(active);
     case C4:
@@ -1744,7 +1789,7 @@ public:
   std::array<LifeState, 6> StartingOffsets(LifeState &starting) {
     std::array<LifeState, 6> result;
     for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}){
-      result[OffsetIndexForSym(sym)] = OffsetsFor(starting, sym) | ~AllowedOffsets(sym);
+      result[OffsetIndexForSym(C1, sym)] = CollidingOffsets(starting, C1, sym) | ~AllowedOffsets(sym);
     }
     return result;
   }
@@ -1802,24 +1847,20 @@ public:
             config, history, required, antirequired, masks, shiftedTargets,
             triedOffsets, missingTime, recoveredTime, activePart, sym);
       break;
-      // case C2:
-      //   TryApplyingSpecificSymmetry(config, history, required, antirequired,
-      //                               masks, shiftedTargets, triedOffsets,
-      //                               missingTime, recoveredTime, activePart,
-      //                               C4);
-      //   break;
-      // case D2AcrossX:
-      //   TryApplyingSpecificSymmetry(config, history, required, antirequired,
-      //                               masks, shiftedTargets, triedOffsets,
-      //                               missingTime, recoveredTime, activePart,
-      //                               D4);
-      //   break;
-      // case D2diagodd:
-      //   TryApplyingSpecificSymmetry(config, history, required, antirequired,
-      //                               masks, shiftedTargets, triedOffsets,
-      //                               missingTime, recoveredTime, activePart,
-      //                               D4diag);
-      //   break;
+
+    case D2AcrossX:
+    case D2AcrossY:
+      TryApplyingSpecificSymmetry(
+          config, history, required, antirequired, masks, shiftedTargets,
+          triedOffsets, missingTime, recoveredTime, activePart, D4);
+      break;
+
+    // case D2diagodd:
+    // case D2negdiagodd:
+    //   TryApplyingSpecificSymmetry(
+    //       config, history, required, antirequired, masks, shiftedTargets,
+    //       triedOffsets, missingTime, recoveredTime, activePart, D4diag);
+    //   break;
 
     default:
       break;
@@ -1839,9 +1880,9 @@ public:
       LifeState &activePart, StaticSymmetry newSym) {
 
     LifeState activezoi = activePart.ZOI();
-    LifeState newOffsets = OffsetsFor(activezoi, newSym) &
-                           ~triedOffsets[OffsetIndexForSym(newSym)];
-    triedOffsets[OffsetIndexForSym(newSym)] |= newOffsets;
+    LifeState newOffsets = CollidingOffsets(activezoi, config.symmetry, newSym) &
+      ~triedOffsets[OffsetIndexForSym(config.symmetry, newSym)];
+    triedOffsets[OffsetIndexForSym(config.symmetry, newSym)] |= newOffsets;
 
     while (!newOffsets.IsEmpty()) {
       // Do the placement
@@ -1884,8 +1925,20 @@ public:
                   << newOffset.first << ", " << newOffset.second << std::endl;
       }
 
-      RecursiveSearch(newConfig, newHistory, required, antirequired, newMasks,
-                      shiftedTargets, triedOffsets, missingTime, recoveredTime);
+      if (SymIsD2(newSym)) {
+        int continuationIndex = OffsetIndexForSym(C1, D2Continuation(newSym));
+        // We need to update the masks for the continuation.
+        std::array<LifeState, 6> newTriedOffsets;
+        newTriedOffsets[continuationIndex] = triedOffsets[continuationIndex];
+        newTriedOffsets[continuationIndex].Move(newOffset);
+
+        RecursiveSearch(newConfig, newHistory, required, antirequired, newMasks,
+                        shiftedTargets, newTriedOffsets, missingTime, recoveredTime);
+      } else {
+        RecursiveSearch(newConfig, newHistory, required, antirequired, newMasks,
+                        shiftedTargets, triedOffsets, missingTime, recoveredTime);
+      }
+
       newOffsets.Erase(newOffset.first, newOffset.second);
     }
   }
@@ -2017,8 +2070,11 @@ public:
         std::array<LifeState, 6> newOffsets = triedOffsets;
         if(newConfig.symmetry == C1) {
           for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-            newOffsets[OffsetIndexForSym(sym)] |= OffsetsFor(newHistory, sym);
+            newOffsets[OffsetIndexForSym(C1, sym)] |= CollidingOffsets(newHistory, C1, sym);
           }
+        }
+        if (SymIsD2(newConfig.symmetry)) {
+          newOffsets[OffsetIndexForSym(newConfig.symmetry, D2Continuation(newConfig.symmetry))] |= CollidingOffsets(newHistory, newConfig.symmetry, D2Continuation(newConfig.symmetry));
         }
 
         std::vector<LifeState> newMasks = masks;
