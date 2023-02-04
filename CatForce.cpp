@@ -325,16 +325,16 @@ const LifeState D2XDomain = LifeState::Parse(
         "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
 
 const LifeState D2DiagDomain = LifeState::Parse(
-        "64o$63o$62o$61o$60o$59o$58o$57o$56o$55o$54o$53o$52o$51o$50o$49o$48o$"
-        "47o$46o$45o$44o$43o$42o$41o$40o$39o$38o$37o$36o$35o$34o$33o$32o$31o$"
-        "30o$29o$28o$27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$"
-        "13o$12o$11o$10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
-
-const LifeState D2NegDiagDomain = LifeState::Parse(
     "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
     "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$33o$34o$35o$36o$37o$"
     "38o$39o$40o$41o$42o$43o$44o$45o$46o$47o$48o$49o$50o$51o$52o$53o$54o$"
     "55o$56o$57o$58o$59o$60o$61o$62o$63o$64o!");
+
+const LifeState D2NegDiagDomain = LifeState::Parse(
+    "64o$63o$62o$61o$60o$59o$58o$57o$56o$55o$54o$53o$52o$51o$50o$49o$48o$"
+    "47o$46o$45o$44o$43o$42o$41o$40o$39o$38o$37o$36o$35o$34o$33o$32o$31o$"
+    "30o$29o$28o$27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$"
+    "13o$12o$11o$10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
 
 const LifeState C2Domain = LifeState::Parse(
     "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
@@ -411,16 +411,16 @@ LifeState FundamentalDomain(const StaticSymmetry sym) {
         "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
   case StaticSymmetry::D2diagodd:
     return LifeState::Parse(
-        "64o$63o$62o$61o$60o$59o$58o$57o$56o$55o$54o$53o$52o$51o$50o$49o$48o$"
-        "47o$46o$45o$44o$43o$42o$41o$40o$39o$38o$37o$36o$35o$34o$33o$32o$31o$"
-        "30o$29o$28o$27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$"
-        "13o$12o$11o$10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
-  case StaticSymmetry::D2negdiagodd:
-    return LifeState::Parse(
         "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
         "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$33o$34o$35o$36o$37o$"
         "38o$39o$40o$41o$42o$43o$44o$45o$46o$47o$48o$49o$50o$51o$52o$53o$54o$"
         "55o$56o$57o$58o$59o$60o$61o$62o$63o$64o!");
+  case StaticSymmetry::D2negdiagodd:
+    return LifeState::Parse(
+        "64o$63o$62o$61o$60o$59o$58o$57o$56o$55o$54o$53o$52o$51o$50o$49o$48o$"
+        "47o$46o$45o$44o$43o$42o$41o$40o$39o$38o$37o$36o$35o$34o$33o$32o$31o$"
+        "30o$29o$28o$27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$"
+        "13o$12o$11o$10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
   case StaticSymmetry::C2:
   case StaticSymmetry::C2even:
   case StaticSymmetry::C2horizontaleven:
