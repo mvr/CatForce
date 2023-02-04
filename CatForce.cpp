@@ -1743,6 +1743,10 @@ public:
     }
   }
 
+  bool SymIsTerminal(StaticSymmetry sym) {
+    return sym != C1 && !SymIsD2(sym);
+  }
+
   StaticSymmetry D2Continuation(StaticSymmetry sym) {
     switch (sym){
     case D2AcrossX:
@@ -2206,7 +2210,7 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      if(config.symmetry == C1 || config.count != params.numCatalysts) {
+      if(!SymIsTerminal(config.symmetry) || config.count != params.numCatalysts) {
 
       LifeState activePart =
           (~history).ZOI() & config.state & ~config.startingCatalysts;
