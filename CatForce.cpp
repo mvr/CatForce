@@ -2051,11 +2051,11 @@ public:
 
           LifeState difference = newnext ^ next ^ symCatalyst;
           if (difference.IsEmpty()) {
-            if (config.count == 0 && config.symmetry == C1) {
-              std::cout << "Skipping catalyst " << s << " at "
-                        << newPlacement.first << ", " << newPlacement.second
-                        << " (no interaction) " << std::endl;
-            }
+            // if (config.count == 0 && config.symmetry == C1) {
+            //   std::cout << "Skipping catalyst " << s << " at "
+            //             << newPlacement.first << ", " << newPlacement.second
+            //             << " (no interaction) " << std::endl;
+            // }
 
             // Note: we deliberately don't set the mask,
             // because it may turn out that a catalyst here
@@ -2087,11 +2087,11 @@ public:
           lookahead.Step();
           if (!lookahead.Contains(newRequired) ||
               !lookahead.AreDisjoint(newAntirequired)) {
-            if (config.count == 0 && config.symmetry == C1) {
-              std::cout << "Skipping catalyst " << s << " at "
-                        << newPlacement.first << ", " << newPlacement.second
-                        << " (is destroyed) " << std::endl;
-            }
+            // if (config.count == 0 && config.symmetry == C1) {
+            //   std::cout << "Skipping catalyst " << s << " at "
+            //             << newPlacement.first << ", " << newPlacement.second
+            //             << " (is destroyed) " << std::endl;
+            // }
 
             masks[s].Set(newPlacement.first, newPlacement.second);
             newPlacements.Erase(newPlacement.first, newPlacement.second);
@@ -2104,11 +2104,11 @@ public:
           lookahead.Step(catalysts[s].maxDisappear);
 
           if (!lookahead.Contains(shiftedCatalyst)) {
-            if (config.count == 0 && config.symmetry == C1) {
-              std::cout << "Skipping catalyst " << s << " at "
-                        << newPlacement.first << ", " << newPlacement.second
-                        << " (failed to recover completely) " << std::endl;
-            }
+            // if (config.count == 0 && config.symmetry == C1) {
+            //   std::cout << "Skipping catalyst " << s << " at "
+            //             << newPlacement.first << ", " << newPlacement.second
+            //             << " (failed to recover completely) " << std::endl;
+            // }
 
             masks[s].Set(newPlacement.first, newPlacement.second);
             newPlacements.Erase(newPlacement.first, newPlacement.second);
