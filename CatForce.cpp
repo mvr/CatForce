@@ -1609,8 +1609,10 @@ public:
         // See whether there is a match at all
         if (shouldCheck && (params.filterType[k] == ANDFILTER ||
                             params.filterType[k] == ORFILTER)) {
-          succeeded = workspace.Contains(targetFilter[k]);
-          junk = workspace & ~targetFilter[k].wanted & ~conf.startingCatalysts;
+          LifeState filtersym = Symmetricize(targetFilter[k].wanted, conf.symmetry, conf.symmetryOffset);
+          filtersym.Step(10);
+          succeeded = workspace.Contains(filtersym);
+          junk = workspace & ~filtersym & ~conf.startingCatalysts;
         }
 
         if (shouldCheck && (params.filterType[k] == MATCHFILTER)) {
