@@ -799,6 +799,19 @@ public:
 
   LifeState Match(const LifeTarget &target) const;
 
+  static LifeState Checkerboard() {
+    LifeState checkerboard;
+    for (int i = 0; i < N; ++i) {
+      if(i % 2 == 0)
+        checkerboard.state[i] = 0xAAAAAAAAAAAAAAAAULL;
+      else
+        checkerboard.state[i] = RotateLeft(0xAAAAAAAAAAAAAAAAULL);
+    }
+    return checkerboard;
+  }
+
+
+
 private:
   void inline Add(uint64_t &b1, uint64_t &b0, const uint64_t &val) {
     b1 |= b0 & val;

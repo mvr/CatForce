@@ -1244,12 +1244,45 @@ public:
   }
 };
 
+inline std::pair<int, int> PerpComponent(SymmetryTransform transf,
+                                         std::pair<int, int> offset) {
+  switch (transf) {
+  case ReflectAcrossX:
+    return std::make_pair(0, offset.second);
+  case ReflectAcrossY:
+    return std::make_pair(offset.first, 0);
+  case ReflectAcrossYeqX: {
+    // we're dealing with perpendicular circles on a torus
+    // so there's really a "long way around" and a "short way around,"
+    // one of the form (a,b) and one of the form (32+a, 32+b)
+    assert((offset.first + 64) % 2 == (offset.second + 64) % 2);
+    if (std::abs(offset.first - offset.second) < 32) // closer to y = x
+      return std::make_pair(((offset.first - offset.second + 128) / 2) % 64,
+                            ((-offset.first + offset.second + 128) / 2) % 64);
+    else // closer to y = x + 64 or y = x - 64
+      return std::make_pair(
+          ((offset.first - offset.second + 128 + 64) / 2) % 64,
+          ((-offset.first + offset.second + 128 + 64) / 2) % 64);
+  }
+  case ReflectAcrossYeqNegXP1: {
+    assert((offset.first + 64) % 2 == (offset.second + 64) % 2);
+    if (std::abs(offset.first - 32) + std::abs(offset.second - 32) < 32) // closer to y = 64-x
+      return std::make_pair(((offset.first + offset.second) / 2) % 64,
+                            ((offset.first + offset.second) / 2) % 64);
+    else
+      return std::make_pair(((offset.first + offset.second + 64) / 2) % 64,
+                            ((offset.first + offset.second + 64) / 2) % 64);
+  }
+  default:
+    return offset;
+  }
+}
+
 inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
                               std::pair<int, int> offset) {
   switch (sym) {
   case C1:
     return state;
-    break;
   case C2: {
     LifeState sym = state;
     sym.Transform(Rotate180OddBoth);
@@ -1301,11 +1334,26 @@ inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
   case D4: {
     LifeState acrossx = state;
     acrossx.Transform(ReflectAcrossX);
-    acrossx.Move(0, offset.second);
+    auto xoffset = PerpComponent(ReflectAcrossX, offset);
+    acrossx.Move(xoffset);
     acrossx.Join(state);
     LifeState acrossy = acrossx;
     acrossy.Transform(ReflectAcrossY);
-    acrossy.Move(offset.first, 0);
+    auto yoffset = PerpComponent(ReflectAcrossY, offset);
+    acrossy.Move(yoffset);
+    acrossy.Join(acrossx);
+    return acrossy;
+  }
+  case D4diag: {
+    LifeState acrossx = state;
+    acrossx.Transform(ReflectAcrossYeqNegXP1);
+    auto xoffset = PerpComponent(ReflectAcrossYeqNegXP1, offset);
+    acrossx.Move(xoffset);
+    acrossx.Join(state);
+    LifeState acrossy = acrossx;
+    acrossy.Transform(ReflectAcrossYeqX);
+    auto yoffset = PerpComponent(ReflectAcrossYeqX, offset);
+    acrossy.Move(yoffset);
     acrossy.Join(acrossx);
     return acrossy;
   }
@@ -1855,12 +1903,12 @@ public:
           triedOffsets, missingTime, recoveredTime, activePart, D4);
       break;
 
-    // case D2diagodd:
-    // case D2negdiagodd:
-    //   TryApplyingSpecificSymmetry(
-    //       config, history, required, antirequired, masks, shiftedTargets,
-    //       triedOffsets, missingTime, recoveredTime, activePart, D4diag);
-    //   break;
+    case D2diagodd:
+    case D2negdiagodd:
+      TryApplyingSpecificSymmetry(
+          config, history, required, antirequired, masks, shiftedTargets,
+          triedOffsets, missingTime, recoveredTime, activePart, D4diag);
+      break;
 
     default:
       break;
@@ -1931,6 +1979,9 @@ public:
         std::array<LifeState, 6> newTriedOffsets;
         newTriedOffsets[continuationIndex] = triedOffsets[continuationIndex];
         newTriedOffsets[continuationIndex].Move(newOffset);
+
+        if(newSym == D2diagodd || newSym == D2negdiagodd)
+          newTriedOffsets[continuationIndex] |= LifeState::Checkerboard();
 
         RecursiveSearch(newConfig, newHistory, required, antirequired, newMasks,
                         shiftedTargets, newTriedOffsets, missingTime, recoveredTime);
