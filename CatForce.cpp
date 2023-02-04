@@ -13,6 +13,8 @@
 #include <array>
 #include <algorithm>
 
+#include <cassert>
+
 const int MAX_CATALYSTS = 5;
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
@@ -1804,16 +1806,6 @@ public:
       return ~LifeState();
     case C4:
       return ~LifeState();
-    // {
-    //   LifeState checkerboard;
-    //   for (int i = 0; i < 64; ++i) {
-    //     if(i % 2 == 0)
-    //       checkerboard.state[i] = 0xAAAAAAAAAAAAAAAAULL;
-    //     else
-    //       checkerboard.state[i] = RotateLeft(0xAAAAAAAAAAAAAAAAULL);
-    //   }
-    //   return checkerboard;
-    // }
     case D2AcrossX:
       return LifeState::SolidRect(0, -32, 1, 64);
     case D2AcrossY:
@@ -2094,9 +2086,8 @@ public:
 
         if (catalysts[s].checkRecovery) {
           LifeState lookahead = newConfig.state;
-          for (unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
-            lookahead.Step();
-          }
+          lookahead.Step(catalysts[s].maxDisappear);
+
           if (!lookahead.Contains(shiftedCatalyst)) {
             if (config.count == 0 && config.symmetry == C1) {
               std::cout << "Skipping catalyst " << s << " at "
