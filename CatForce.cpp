@@ -2253,7 +2253,7 @@ public:
       } else {
         // No need to update history, not used for anything once all
         // catalysts are placed
-        if (config.count != params.numCatalysts)
+        if (!SymIsTerminal(config.symmetry) || config.count != params.numCatalysts)
           history |= config.state;
         config.state.Step();
       }
