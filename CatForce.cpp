@@ -1938,8 +1938,15 @@ public:
       newConfig.symmetryOffset = newOffset;
 
       newConfig.state = Symmetricize(newConfig.state, newSym, newOffset);
+
       {
         LifeState lookahead = config.state;
+        lookahead.Step();
+        lookahead.Step();
+        lookahead.Step();
+        lookahead.Step();
+        lookahead.Step();
+        lookahead.Step();
         lookahead.Step();
         lookahead.Step();
         lookahead.Step();
@@ -2068,6 +2075,12 @@ public:
 
         {
           LifeState lookahead = newConfig.state;
+          lookahead.Step();
+          lookahead.Step();
+          lookahead.Step();
+          lookahead.Step();
+          lookahead.Step();
+          lookahead.Step();
           lookahead.Step();
           lookahead.Step();
           lookahead.Step();
