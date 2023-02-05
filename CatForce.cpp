@@ -1254,26 +1254,16 @@ inline std::pair<int, int> PerpComponent(SymmetryTransform transf,
   case ReflectAcrossY:
     return std::make_pair(offset.first, 0);
   case ReflectAcrossYeqX: {
-    // we're dealing with perpendicular circles on a torus
-    // so there's really a "long way around" and a "short way around,"
-    // one of the form (a,b) and one of the form (32+a, 32+b)
-    assert((offset.first + 64) % 2 == (offset.second + 64) % 2);
-    if (std::abs(offset.first - offset.second) < 32) // closer to y = x
-      return std::make_pair(((offset.first - offset.second + 128) / 2) % 64,
-                            ((-offset.first + offset.second + 128) / 2) % 64);
-    else // closer to y = x + 64 or y = x - 64
-      return std::make_pair(
-          ((offset.first - offset.second + 128 + 64) / 2) % 64,
-          ((-offset.first + offset.second + 128 + 64) / 2) % 64);
+    int x = (offset.first + 32) % 64 - 32;
+    int y = (offset.second + 32) % 64 - 32;
+    return std::make_pair(((x - y + 128) / 2) % 64,
+                          ((-x + y + 128) / 2) % 64);
   }
   case ReflectAcrossYeqNegXP1: {
-    assert((offset.first + 64) % 2 == (offset.second + 64) % 2);
-    if (std::abs(offset.first - 32) + std::abs(offset.second - 32) < 32) // closer to y = 64-x
-      return std::make_pair(((offset.first + offset.second) / 2) % 64,
-                            ((offset.first + offset.second) / 2) % 64);
-    else
-      return std::make_pair(((offset.first + offset.second + 64) / 2) % 64,
-                            ((offset.first + offset.second + 64) / 2) % 64);
+    int x = (offset.first + 32) % 64 - 32;
+    int y = (offset.second + 32) % 64 - 32;
+    return std::make_pair(((x + y + 128) / 2) % 64,
+                          ((x + y + 128) / 2) % 64);
   }
   default:
     return offset;
@@ -1933,6 +1923,27 @@ public:
     while (!newOffsets.IsEmpty()) {
       // Do the placement
       auto newOffset = newOffsets.FirstOn();
+
+      // HACK: avoid some bad wrapping cases
+      if (newSym == D4diag) {
+        if (config.symmetry == D2diagodd) {
+          auto perp = PerpComponent(ReflectAcrossYeqX, newOffset);
+          if (!(perp.first == config.symmetryOffset.first &&
+                perp.second == config.symmetryOffset.second)) {
+            newOffsets.Erase(newOffset.first, newOffset.second);
+            continue;
+          }
+        }
+        if (config.symmetry == D2negdiagodd) {
+          auto perp = PerpComponent(ReflectAcrossYeqNegXP1, newOffset);
+          if (!(perp.first == config.symmetryOffset.first &&
+                perp.second == config.symmetryOffset.second)) {
+            newOffsets.Erase(newOffset.first, newOffset.second);
+            continue;
+          }
+        }
+      }
+
       Configuration newConfig = config;
       newConfig.symmetry = newSym;
       newConfig.symmetryOffset = newOffset;
@@ -1984,6 +1995,7 @@ public:
         std::array<LifeState, 6> newTriedOffsets;
         newTriedOffsets[continuationIndex] = triedOffsets[continuationIndex];
         newTriedOffsets[continuationIndex].Move(newOffset);
+        newTriedOffsets[continuationIndex] |= CollidingOffsets(newHistory, C1, D2Continuation(newSym));
 
         if(newSym == D2diagodd || newSym == D2negdiagodd)
           newTriedOffsets[continuationIndex] |= LifeState::Checkerboard();
