@@ -1083,6 +1083,8 @@ public:
     }
     return result;
   }
+
+  LifeState Halve() const;
 };
 
 void LifeState::Step() {
@@ -1411,4 +1413,40 @@ inline bool LifeState::Contains(const LifeTarget &target) const {
 
 inline LifeState LifeState::Match(const LifeTarget &target) const {
   return MatchLiveAndDead(target.wanted, target.unwanted);
+}
+
+// On intel there is a single instruction for this
+// Taken from Hacker's Delight
+uint64_t compress_right(uint64_t x, uint64_t m) {
+   uint64_t mk, mp, mv, t;
+   int i;
+
+   x = x & m;           // Clear irrelevant bits.
+   mk = ~m << 1;        // We will count 0's to right.
+
+   for (i = 0; i < 6; i++) {
+      mp = mk ^ (mk << 1);             // Parallel prefix.
+      mp = mp ^ (mp << 2);
+      mp = mp ^ (mp << 4);
+      mp = mp ^ (mp << 8);
+      mp = mp ^ (mp << 16);
+      mp = mp ^ (mp << 32);
+      mv = mp & m;                     // Bits to move.
+      m = (m ^ mv) | (mv >> (1 << i));   // Compress m.
+      t = x & mv;
+      x = (x ^ t) | (t >> (1 << i));     // Compress x.
+      mk = mk & ~mp;
+   }
+   return x;
+}
+
+inline LifeState LifeState::Halve() const {
+  LifeState result;
+  for(int i = 0; i < N/2; i++){
+    uint64_t halvedColumn = compress_right(state[2*i], 0x5555555555555555ULL);
+    halvedColumn |= halvedColumn << N/2;
+    result.state[i] = halvedColumn;
+    result.state[i + N/2] = halvedColumn;
+  }
+  return result;
 }
