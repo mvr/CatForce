@@ -71,6 +71,8 @@ public:
   int stopAfterCatsDestroyed;
   int maxJunk;
 
+  int offsetArea[4]{};
+
   SearchParams() {
     maxGen = 250;
     numCatalysts = 2;
@@ -81,6 +83,10 @@ public:
     searchArea[1] = -30;
     searchArea[2] = 60;
     searchArea[3] = 60;
+    offsetArea[0] = -15;
+    offsetArea[1] = -15;
+    offsetArea[2] = 30;
+    offsetArea[3] = 30;
     xPat = 0;
     yPat = 0;
     startGen = 0;
@@ -683,6 +689,8 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
   std::string stopAfterCatsDestroyed = "stop-after-cats-destroyed";
   std::string maxJunk = "max-junk";
 
+  std::string offsetArea = "offset-area";
+
   std::string line;
 
   bool badSymmetry = false;
@@ -829,6 +837,13 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     }
     if (elems[0] == maxJunk){
       params.maxJunk = atoi(elems[1].c_str());
+    }
+
+    if (elems[0] == offsetArea) {
+      params.offsetArea[0] = atoi(elems[1].c_str());
+      params.offsetArea[1] = atoi(elems[2].c_str());
+      params.offsetArea[2] = atoi(elems[3].c_str());
+      params.offsetArea[3] = atoi(elems[4].c_str());
     }
   }
 
@@ -1823,6 +1838,7 @@ public:
   }
 
   std::array<LifeState, 6> StartingOffsets(LifeState &starting) {
+    LifeState bounds = LifeState::SolidRect(params.offsetArea[0], params.offsetArea[1], params.offsetArea[2], params.offsetArea[3]);
     std::array<LifeState, 6> result;
     for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}){
       result[OffsetIndexForSym(C1, sym)] = CollidingOffsets(starting, C1, sym) | ~AllowedOffsets(sym);
