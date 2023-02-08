@@ -506,12 +506,12 @@ inline std::pair<int, int> HalveOffset(const StaticSymmetry sym,
                                        std::pair<int, int> vec) {
   switch (sym) {
   case C4: { // This is the center of rotation for offset rotation by 90
-    int x = (vec.first + 32) % 64 - 32;
-    int y = (vec.second + 32) % 64 - 32;
-    int y2 = (y - x) / 2;
-    int x2 = (x + y2);
-    int x3 = (x2 + 64) % 64;
-    int y3 = (y2 + 64) % 64;
+    int x = vec.first;
+    int y = vec.second;
+    int x2 = (x - y) / 2;
+    int y2 = (x + y) / 2;
+    int x3 = ((x2 + 16 + 32) % 32 - 16 + 64) % 64;
+    int y3 = ((y2 + 16 + 32) % 32 - 16 + 64) % 64;
     return std::make_pair(x3, y3);
   }
   default: {
@@ -1672,14 +1672,13 @@ public:
     if (HasForbidden(conf, successtime + 3))
       return;
 
-    std::pair<int, int> shift = HalveOffset(C2, conf.symmetryOffset);
+    std::pair<int, int> shift = HalveOffset(conf.symmetry, conf.symmetryOffset);
     shift.first = -shift.first;
     shift.second = -shift.second;
 
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
-      LifeState workspace =
-          Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
+      LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
       workspace.Join(conf.startingCatalysts);
       workspace.Move(shift);
 
@@ -1782,10 +1781,19 @@ public:
     switch (newsym) {
     case C2:
       return active.Convolve(active);
-    case C4:
+    case C4: {
       transformed = active;
       transformed.Transform(Rotate270);
-      return active.Convolve(transformed);
+
+      // Very inefficient
+      LifeState doubledcollisions = active.Convolve(active);
+      doubledcollisions.Transform(ReflectAcrossYeqNegXP1);
+      doubledcollisions = doubledcollisions.Skew().HalveY();
+      doubledcollisions.Transform(ReflectAcrossYeqNegXP1);
+      doubledcollisions = doubledcollisions.InvSkew();
+
+      return active.Convolve(transformed) | doubledcollisions;
+    }
     case D2AcrossX:
       transformed = active;
       transformed.Transform(ReflectAcrossY);
@@ -1840,8 +1848,8 @@ public:
   std::array<LifeState, 6> StartingOffsets(LifeState &starting) {
     LifeState bounds = LifeState::SolidRect(params.offsetArea[0], params.offsetArea[1], params.offsetArea[2], params.offsetArea[3]);
     std::array<LifeState, 6> result;
-    for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}){
-      result[OffsetIndexForSym(C1, sym)] = CollidingOffsets(starting, C1, sym) | ~AllowedOffsets(sym);
+    for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
+      result[OffsetIndexForSym(C1, sym)] = CollidingOffsets(starting, C1, sym) | ~AllowedOffsets(sym) | ~bounds;
     }
     return result;
   }

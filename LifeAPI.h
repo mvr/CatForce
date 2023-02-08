@@ -1085,6 +1085,10 @@ public:
   }
 
   LifeState Halve() const;
+  LifeState HalveX() const;
+  LifeState HalveY() const;
+  LifeState Skew() const;
+  LifeState InvSkew() const;
 };
 
 void LifeState::Step() {
@@ -1447,6 +1451,43 @@ inline LifeState LifeState::Halve() const {
     halvedColumn |= halvedColumn << N/2;
     result.state[i] = halvedColumn;
     result.state[i + N/2] = halvedColumn;
+  }
+  return result;
+}
+
+inline LifeState LifeState::HalveX() const {
+  LifeState result;
+  for(int i = 0; i < N/2; i++){
+    result.state[i] = state[2*i];
+    result.state[i + N/2] = state[2*i];
+  }
+  return result;
+}
+
+inline LifeState LifeState::HalveY() const {
+  LifeState result;
+  for(int i = 0; i < N; i++){
+    uint64_t halvedColumn = compress_right(state[i], 0x5555555555555555ULL);
+    halvedColumn |= halvedColumn << N/2;
+    result.state[i] = halvedColumn;
+  }
+  return result;
+}
+
+// (x, y) |-> (x, y + x)
+inline LifeState LifeState::Skew() const {
+  LifeState result;
+  for(int i = 0; i < N; i++){
+    result.state[i] = RotateLeft(state[i], i);
+  }
+  return result;
+}
+
+// (x, y) |-> (x, y - x)
+inline LifeState LifeState::InvSkew() const {
+  LifeState result;
+  for(int i = 0; i < N; i++){
+    result.state[i] = RotateRight(state[i], i);
   }
   return result;
 }
