@@ -659,12 +659,21 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       CatalystData result;
 
       result.state = pat;
-      result.target = LifeTarget(pat);
+
+      if(!input.isBlinker) {
+        result.target = LifeTarget(pat);
+      } else {
+        LifeState gen1 = pat;
+        gen1.Step();
+        result.target = LifeTarget();
+        result.target.wanted = pat & gen1;
+        result.target.unwanted = (pat | gen1).ZOI() & ~(pat | gen1);
+      }
+
       result.reactionMask = pat.BigZOI();
       result.reactionMask.Transform(Rotate180OddBoth);
       result.reactionMask.RecalculateMinMax();
 
-      // result.target = LifeTarget(pat);
       result.maxDisappear = input.maxDisappear;
 
       for (unsigned k = 0; k < input.forbiddenRLE.size(); k++) {
@@ -1086,8 +1095,6 @@ public:
 
   unsigned filterMaxGen{};
 
-  LifeTarget blinkerTarget;
-
   uint64_t AllCatalystsHash() const {
     uint64_t result = 0;
     for (auto &cat : catalysts) {
@@ -1178,10 +1185,6 @@ public:
     LoadMasks();
 
     alsoRequired = LifeState::Parse(params.alsoRequired.c_str(), params.alsoRequiredXY.first, params.alsoRequiredXY.second);
-
-    blinkerTarget.wanted = LifeState::Parse("o!");
-    blinkerTarget.unwanted = LifeState::Parse("b3o$2ob2o$o3bo$2ob2o$b3o!");
-    blinkerTarget.unwanted.Move(-2, -2);
 
     current = clock();
     found = 0;
@@ -1648,7 +1651,7 @@ public:
                 shiftedTargets[config.count].unwanted = catalysts[s].target.unwanted;
                 shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
               } else {
-                shiftedTargets[config.count] = blinkerTarget;
+                shiftedTargets[config.count] = catalysts[s].target;
                 shiftedTargets[config.count].wanted.Move(newPlacement.first, newPlacement.second);
                 shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
               }
