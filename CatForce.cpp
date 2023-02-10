@@ -1619,12 +1619,20 @@ public:
                 }
               }
 
+              if (!catalysts[s].isBlinker) {
+                shiftedTargets[config.count].wanted = shiftedCatalyst;
+                shiftedTargets[config.count].unwanted = catalysts[s].target.unwanted;
+                shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
+              } else {
+                shiftedTargets[config.count] = catalysts[s].target;
+                shiftedTargets[config.count].wanted.Move(newPlacement.first, newPlacement.second);
+                shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
+              }
+
               if (catalysts[s].checkRecovery) {
                 LifeState lookahead = newConfig.state;
-                for (unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
-                  lookahead.Step();
-                }
-                if (!lookahead.Contains(shiftedCatalyst)) {
+                lookahead.Step(catalysts[s].maxDisappear);
+                if (!lookahead.Contains(shiftedTargets[config.count])) {
                   if (config.count == 0) {
                     std::cout << "Skipping catalyst " << s << " at "
                               << newPlacement.first << ", "
@@ -1644,16 +1652,6 @@ public:
                           << newPlacement.first << ", " << newPlacement.second
                   //                                                              << ": " << newConfig.state.RLE()
                           << std::endl;
-              }
-
-              if (!catalysts[s].isBlinker) {
-                shiftedTargets[config.count].wanted = shiftedCatalyst;
-                shiftedTargets[config.count].unwanted = catalysts[s].target.unwanted;
-                shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
-              } else {
-                shiftedTargets[config.count] = catalysts[s].target;
-                shiftedTargets[config.count].wanted.Move(newPlacement.first, newPlacement.second);
-                shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
               }
 
               std::vector<LifeState> newMasks = masks;
