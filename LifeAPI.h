@@ -179,6 +179,7 @@ public:
   int gen;
 
   LifeState() : state{0}, min(0), max(N - 1), gen(0) {}
+  LifeState(bool dummy) {}
 
   void Set(int x, int y) { state[x] |= (1ULL << (y)); }
   void Erase(int x, int y) { state[x] &= ~(1ULL << (y)); }
@@ -418,7 +419,7 @@ public:
   }
 
   LifeState operator~() const {
-    LifeState result;
+    LifeState result(false);
     for (int i = 0; i < N; i++) {
       result.state[i] = ~state[i];
     }
@@ -426,7 +427,7 @@ public:
   }
 
   LifeState operator&(const LifeState &other) const {
-    LifeState result;
+    LifeState result(false);
     for (int i = 0; i < N; i++) {
       result.state[i] = state[i] & other.state[i];
     }
@@ -441,7 +442,7 @@ public:
   }
 
   LifeState operator|(const LifeState &other) const {
-    LifeState result;
+    LifeState result(false);
     for (int i = 0; i < N; i++) {
       result.state[i] = state[i] | other.state[i];
     }
@@ -456,7 +457,7 @@ public:
   }
 
   LifeState operator^(const LifeState &other) const {
-    LifeState result;
+    LifeState result(false);
     for (int i = 0; i < N; i++) {
       result.state[i] = state[i] ^ other.state[i];
     }
@@ -613,19 +614,21 @@ public:
   }
 
   LifeState ZOI() const {
-    LifeState temp;
-    LifeState boundary;
+    LifeState temp(false);
     for (int i = 0; i < N; i++) {
       uint64_t col = state[i];
       temp.state[i] = col | RotateLeft(col) | RotateRight(col);
     }
 
-    boundary.state[0] = temp.state[N - 1] | temp.state[0] | temp.state[1];
+    LifeState boundary = temp;
 
-    for (int i = 1; i < N - 1; i++)
-      boundary.state[i] = temp.state[i - 1] | temp.state[i] | temp.state[i + 1];
+    boundary.state[0] |= temp.state[N-1];
+    for(int i = 1; i < N; i++)
+        boundary.state[i] |= temp.state[i-1];
 
-    boundary.state[N - 1] = temp.state[N - 2] | temp.state[N - 1] | temp.state[0];
+    for(int i = 0; i < N-1; i++)
+        boundary.state[i] |= temp.state[i+1];
+    boundary.state[N-1] |= temp.state[0];
 
     boundary.RecalculateMinMax();
     return boundary;
@@ -638,7 +641,7 @@ public:
   }
 
   LifeState BigZOI() const {
-    LifeState b;
+    LifeState b(false);
     b.state[0] = state[0] | RotateLeft(state[0]) | RotateRight(state[0]) |
                  state[N - 1] | state[0 + 1];
     for (int i = 1; i < N-1; i++) {
@@ -647,14 +650,14 @@ public:
     b.state[N-1] = state[N-1] | RotateLeft(state[N-1]) | RotateRight(state[N-1]) |
                  state[N-1 - 1] | state[0];
 
-    LifeState c;
+    LifeState c(false);
     c.state[0] = b.state[0] | b.state[N - 1] | b.state[0 + 1];
     for (int i = 1; i < N - 1; i++) {
       c.state[i] = b.state[i] | b.state[i - 1] | b.state[i + 1];
     }
     c.state[N - 1] = b.state[N - 1] | b.state[N - 1 - 1] | b.state[0];
 
-    LifeState zoi;
+    LifeState zoi(false);
 
     zoi.state[0] =
       c.state[0] | RotateLeft(c.state[0]) | RotateRight(c.state[0]);
