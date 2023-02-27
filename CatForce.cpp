@@ -1583,25 +1583,25 @@ public:
     LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
     workspace.Join(conf.startingCatalysts);
 
-    unsigned maxMatchingPop;
-    if(params.maxJunk != -1)
-      maxMatchingPop = workspace.GetPop() + params.maxJunk;
-    else
-      maxMatchingPop = 10000;
-
-    std::vector<bool> filterPassed(params.filterGen.size(), false);
-
     unsigned stopTime;
     if (params.stopAfterCatsDestroyed != -1)
       stopTime = failuretime + params.stopAfterCatsDestroyed;
     else
       stopTime = filterMaxGen;
 
+    LifeState filtersym = Symmetricize(targetFilter[0].wanted, conf.symmetry, conf.symmetryOffset);
+    filtersym.Step(5);
+    LifeTarget filtertarget(filtersym);
+    {
+      filtersym.Step(5);
+      LifeState next = filtersym;
+      next.Step(2);
+      if(filtersym == next)
+        return false;
+    }
+
     for (unsigned g = 0; g <= std::min(filterMaxGen, stopTime); g++) {
       for (unsigned k = 0; k < params.filterGen.size(); k++) {
-        if (filterPassed[k])
-          continue; // No need to check it again.
-
         bool inSingle = workspace.gen == params.filterGen[k];
         bool inRange = params.filterGen[k] == -1 &&
                        params.filterGenRange[k].first <= workspace.gen &&
@@ -1609,63 +1609,19 @@ public:
         bool shouldCheck = inSingle || (inRange && workspace.gen + params.stableInterval >= successtime);
 
         bool succeeded = false;
-        LifeState junk;
 
         // See whether there is a match at all
         if (shouldCheck && (params.filterType[k] == ANDFILTER ||
                             params.filterType[k] == ORFILTER)) {
-          LifeState filtersym = Symmetricize(targetFilter[k].wanted, conf.symmetry, conf.symmetryOffset);
-          filtersym.Step(10);
-          succeeded = workspace.Contains(filtersym);
-          junk = workspace & ~filtersym & ~conf.startingCatalysts;
+          if(workspace.Contains(filtertarget))
+            return true;
         }
-
-        if (shouldCheck && (params.filterType[k] == MATCHFILTER)) {
-          if(workspace.GetPop() <= maxMatchingPop) {
-            LifeState withoutCatalysts = workspace & ~conf.startingCatalysts;
-            for (auto sym : SymmetryGroupFromEnum(StaticSymmetry::D8)) {
-              LifeTarget transformed = targetFilter[k];
-              transformed.Transform(sym);
-              LifeState matches = withoutCatalysts.Match(transformed);
-              if(!matches.IsEmpty()) {
-                succeeded = true;
-                junk = withoutCatalysts & ~matches.Convolve(transformed.wanted);
-                break;
-              }
-            }
-          }
-        }
-
-        if (succeeded && (params.maxJunk == -1 || junk.GetPop() <= params.maxJunk)) {
-          filterPassed[k] = true;
-
-          // If this was an OR filter, consider all the other OR filters passed
-          // too.
-          if (params.filterType[k] == ORFILTER) {
-            for (unsigned j = 0; j < params.filterGen.size(); j++) {
-              if (params.filterType[j] == ORFILTER) {
-                filterPassed[j] = true;
-              }
-            }
-          }
-        }
-
-        // Bail early
-        if (workspace.gen == params.filterGen[k] &&
-            params.filterType[k] == ANDFILTER &&
-            !workspace.Contains(targetFilter[k])
-            )
-          return false;
       }
 
       workspace.Step();
     }
 
-    for (unsigned k = 0; k < params.filterGen.size(); k++)
-      if (!filterPassed[k])
-        return false;
-
-    return true;
+    return false;
   }
 
   void ReportSolution(Configuration &conf, unsigned successtime, unsigned failuretime) {
