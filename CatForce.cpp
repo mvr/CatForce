@@ -124,6 +124,7 @@ public:
   bool mustInclude;
   bool checkRecovery;
   bool sacrificial;
+  bool periodic;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems = splitwhitespace(line);
@@ -146,6 +147,7 @@ public:
     mustInclude = false;
     checkRecovery = false;
     sacrificial = false;
+    periodic = false;
 
     unsigned argi = 6;
 
@@ -180,6 +182,9 @@ public:
       } else if (elems[argi] == "sacrificial") {
         sacrificial = true;
         argi += 1;
+      } else if (elems[argi] == "period") {
+        periodic = true;
+        argi += 2;
       } else {
         std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
         exit(1);
@@ -881,6 +886,7 @@ public:
   bool mustInclude;
   bool checkRecovery;
   bool sacrificial;
+  bool periodic;
 
   static std::vector<CatalystData> FromInput(CatalystInput &input);
 };
@@ -892,14 +898,21 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
   std::vector<CatalystData> results;
 
+  for (int phase = 0; phase < 2; phase++) {
   for (auto &tran : trans) {
     LifeState pat = LifeState::Parse(rle, input.centerX, input.centerY, tran);
+    pat.Step(phase);
 
     CatalystData result;
-
     result.state = pat;
-    result.target = LifeTarget(pat);
-    result.reactionMask = pat.BigZOI();
+
+    LifeState gen1 = pat;
+    gen1.Step();
+    result.target = LifeTarget();
+    result.target.wanted = pat & gen1;
+    result.target.unwanted = (pat | gen1).ZOI() & ~(pat | gen1);
+
+    result.reactionMask = (pat | gen1).BigZOI();
     result.reactionMask.Transform(Rotate180OddBoth);
     result.reactionMask.RecalculateMinMax();
 
@@ -910,7 +923,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
                                       input.locusXY.second, tran);
     } else {
       result.hasLocus = false;
-      result.locus = pat;
+      result.locus = (pat | gen1);
     }
 
     result.locusReactionMask = result.locus.BigZOI();
@@ -944,8 +957,12 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.mustInclude = input.mustInclude;
     result.checkRecovery = input.checkRecovery;
     result.sacrificial = input.sacrificial;
+    result.periodic = input.periodic;
 
     results.push_back(result);
+  }
+  if(!input.periodic)
+    break;
   }
   return results;
 }
@@ -1932,16 +1949,7 @@ public:
 
       {
         LifeState lookahead = config.state;
-        lookahead.Step();
-        lookahead.Step();
-        lookahead.Step();
-        lookahead.Step();
-        lookahead.Step();
-        lookahead.Step();
-        lookahead.Step();
-        lookahead.Step();
-        lookahead.Step();
-        lookahead.Step();
+        lookahead.Step(10);
         if (!lookahead.Contains(required) ||
             !lookahead.AreDisjoint(antirequired)) {
           newOffsets.Erase(newOffset.first, newOffset.second);
@@ -2000,7 +2008,7 @@ public:
 
       std::array<unsigned, MAX_CATALYSTS> &missingTime,
       std::array<unsigned, MAX_CATALYSTS> &recoveredTime, LifeState &activePart,
-      LifeState &next) {
+      LifeState &twonext) {
 
     for (unsigned s = 0; s < catalysts.size(); s++) {
       if (config.transparentCount == params.numTransparent &&
@@ -2034,14 +2042,16 @@ public:
         symCatalyst = Symmetricize(symCatalyst, newConfig.symmetry,
                                    newConfig.symmetryOffset);
         newConfig.startingCatalysts |= symCatalyst;
+        if(config.state.gen % 2 == 1)
+          symCatalyst.Step();
         newConfig.state |= symCatalyst;
 
-        // Do a one-step lookahead to see if the catalyst interacts
+        // Do a two-step lookahead to see if the catalyst interacts
         {
           LifeState newnext = newConfig.state;
-          newnext.Step();
+          newnext.Step(2);
 
-          LifeState difference = newnext ^ next ^ symCatalyst;
+          LifeState difference = newnext ^ twonext ^ symCatalyst;
           if (difference.IsEmpty()) {
             // if (config.count == 0 && config.symmetry == C1) {
             //   std::cout << "Skipping catalyst " << s << " at "
@@ -2067,16 +2077,7 @@ public:
 
         {
           LifeState lookahead = newConfig.state;
-          lookahead.Step();
-          lookahead.Step();
-          lookahead.Step();
-          lookahead.Step();
-          lookahead.Step();
-          lookahead.Step();
-          lookahead.Step();
-          lookahead.Step();
-          lookahead.Step();
-          lookahead.Step();
+          lookahead.Step(10);
           if (!lookahead.Contains(newRequired) ||
               !lookahead.AreDisjoint(newAntirequired)) {
             // if (config.count == 0 && config.symmetry == C1) {
@@ -2091,11 +2092,15 @@ public:
           }
         }
 
+        shiftedTargets[config.count] = catalysts[s].target;
+        shiftedTargets[config.count].wanted.Move(newPlacement.first, newPlacement.second);
+        shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
+
         if (catalysts[s].checkRecovery) {
           LifeState lookahead = newConfig.state;
           lookahead.Step(catalysts[s].maxDisappear);
 
-          if (!lookahead.Contains(shiftedCatalyst)) {
+          if (!lookahead.Contains(shiftedTargets[config.count])) {
             // if (config.count == 0 && config.symmetry == C1) {
             //   std::cout << "Skipping catalyst " << s << " at "
             //             << newPlacement.first << ", " << newPlacement.second
@@ -2113,12 +2118,9 @@ public:
                     << ", " << newPlacement.second << std::endl;
         }
 
-        shiftedTargets[config.count].wanted = shiftedCatalyst;
-        shiftedTargets[config.count].unwanted = catalysts[s].target.unwanted;
-        shiftedTargets[config.count].unwanted.Move(newPlacement.first,
-                                                   newPlacement.second);
-
         LifeState newHistory = history | symCatalyst;
+        symCatalyst.Step();
+        newHistory |= symCatalyst;
 
         std::array<LifeState, 6> newOffsets = triedOffsets;
         if(newConfig.symmetry == C1) {
@@ -2236,10 +2238,12 @@ public:
           config.count != params.numCatalysts) {
         LifeState next = config.state;
         next.Step();
+        LifeState twonext = next;
+        twonext.Step();
 
         TryAddingCatalyst(config, history, required, antirequired, masks,
                           shiftedTargets, triedOffsets, missingTime,
-                          recoveredTime, activePart, next);
+                          recoveredTime, activePart, twonext);
         config.state = next;
         // The above also steps config.state
       } else {
