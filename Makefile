@@ -21,10 +21,13 @@ CatEval: CatEval.cpp LifeAPI.h
 	$(CC) $(CFLAGS) $(INSTRUMENTFLAGS) -o CatEval CatEval.cpp $(LDFLAGS)
 
 instrument: CatForce.cpp LifeAPI.h
-	$(CC) $(CFLAGS) -fprofile-instr-generate=instrumenting/pass1.profraw -o instrumenting/pass1-CatForce CatForce.cpp
+	mkdir -p instrumenting
+	$(CC) $(CFLAGS) -fprofile-generate=instrumenting/pass1 -o instrumenting/pass1-CatForce CatForce.cpp
 	instrumenting/pass1-CatForce instrumenting/farm.in
-	rm instrumenting/farm.rle
-	$(PROFDATAEXE) merge instrumenting/pass1.profraw -o instrumenting/profile.profdata
+	$(PROFDATAEXE) merge instrumenting/pass1 -o instrumenting/pass1.profdata
+	$(CC) $(CFLAGS) -fno-lto -fprofile-use=instrumenting/pass1.profdata -fcs-profile-generate=instrumenting/pass2 -o instrumenting/pass2-CatForce CatForce.cpp
+	instrumenting/pass2-CatForce instrumenting/farm.in
+	$(PROFDATAEXE) merge instrumenting/pass1.profdata instrumenting/pass2 -o instrumenting/pass2.profdata
 	touch CatForce.cpp
 
 # $(CC) $(CFLAGS) -fprofile-generate=instrumenting -o instrumenting/pass1-CatForce CatForce.cpp
