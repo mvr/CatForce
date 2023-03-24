@@ -35,8 +35,11 @@ std::vector<LifeState> Orientations(LifeState &state) {
     ReflectAcrossYeqNegX,
   };
 
+  LifeState current = state;
+
+  for(int i = 0; i < 2; i++){
   for(auto tr : allTransforms) {
-    LifeState transformed = state;
+    LifeState transformed = current;
     transformed.Transform(tr);
 
     std::array<int, 4> bounds = transformed.XYBounds();
@@ -45,6 +48,10 @@ std::vector<LifeState> Orientations(LifeState &state) {
     if(std::find(result.begin(), result.end(), transformed) == result.end()) {
       result.push_back(transformed);
     }
+  }
+  current.Step();
+  if(current == state)
+    break;
   }
 
   return result;
