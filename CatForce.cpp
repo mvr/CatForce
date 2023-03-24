@@ -1964,7 +1964,7 @@ public:
 
       std::vector<LifeState> newMasks = masks;
 
-      if (newConfig.count != params.numCatalysts) {
+      if (newConfig.count != params.numCatalysts && params.numCatalysts != 1) {
         LifeState fundamentalDomain = FundamentalDomainFast(newSym);
         fundamentalDomain.Move(HalveOffset(newSym, newOffset));
         for (unsigned t = 0; t < catalysts.size(); t++) {
@@ -2018,8 +2018,8 @@ public:
           config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
 
-      LifeState newPlacements =
-          activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
+
+      LifeState newPlacements = activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
 
       while (!newPlacements.IsEmpty()) {
         // Do the placement
@@ -2132,6 +2132,7 @@ public:
           newOffsets[OffsetIndexForSym(newConfig.symmetry, D2Continuation(newConfig.symmetry))] |= CollidingOffsets(newHistory, newConfig.symmetry, D2Continuation(newConfig.symmetry));
         }
 
+        if(params.numCatalysts > 1) {
         std::vector<LifeState> newMasks = masks;
 
         // If we just placed the last catalyst, don't bother
@@ -2159,7 +2160,12 @@ public:
         RecursiveSearch(newConfig, newHistory, newRequired, newAntirequired,
                         newMasks, shiftedTargets, newOffsets, missingTime,
                         recoveredTime);
-
+        }
+        else {
+          RecursiveSearch(newConfig, newHistory, newRequired, newAntirequired,
+                          masks, shiftedTargets, newOffsets, missingTime,
+                          recoveredTime);
+        }
         masks[s].Set(newPlacement.first, newPlacement.second);
         newPlacements.Erase(newPlacement.first, newPlacement.second);
       }
