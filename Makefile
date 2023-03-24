@@ -17,6 +17,8 @@ endif
 all: CatForce
 CatForce: CatForce.cpp LifeAPI.h
 	$(CC) $(CFLAGS) $(INSTRUMENTFLAGS) -o CatForce CatForce.cpp $(LDFLAGS)
+CatEval: CatEval.cpp LifeAPI.h
+	$(CC) $(CFLAGS) $(INSTRUMENTFLAGS) -o CatEval CatEval.cpp $(LDFLAGS)
 
 instrument: CatForce.cpp LifeAPI.h
 	$(CC) $(CFLAGS) -fprofile-instr-generate=instrumenting/pass1.profraw -o instrumenting/pass1-CatForce CatForce.cpp
