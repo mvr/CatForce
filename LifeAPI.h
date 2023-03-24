@@ -198,7 +198,7 @@ public:
     uint64_t result = 0;
 
     for (int i = 0; i < N; i++) {
-      result += RotateLeft(state[i], (int)(i / 2));
+      result = (result + RotateLeft(result)) ^ state[i];
     }
 
     return result;
