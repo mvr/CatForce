@@ -1563,7 +1563,9 @@ public:
           }
         }
 
-        RecursiveSearch(newConfig, history, newRequired,
+        LifeState newHistory = history | symCatalyst;
+
+        RecursiveSearch(newConfig, newHistory, newRequired,
                         newMasks, shiftedTargets, missingTime, recoveredTime);
 
         masks[s].Set(newPlacement.first, newPlacement.second);
@@ -1576,8 +1578,8 @@ public:
   }
 
   void
-  RecursiveSearch(Configuration config, LifeState history, const LifeState required,
-                  std::vector<LifeState> masks,
+  RecursiveSearch(Configuration &config, LifeState &history, const LifeState &required,
+                  std::vector<LifeState> &masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
                   std::array<unsigned, MAX_CATALYSTS> missingTime,
