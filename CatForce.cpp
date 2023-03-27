@@ -648,7 +648,6 @@ public:
   unsigned maxDisappear;
   std::vector<LifeTarget> forbidden;
   LifeState required;
-  LifeState antirequired;
   bool hasLocus;
   LifeState locus;
   LifeState locusReactionMask;
@@ -706,15 +705,15 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     }
 
     if (input.requiredRLE != "") {
-      result.required = LifeState::Parse(input.requiredRLE.c_str(),
-                                         input.requiredXY.first,
-                                         input.requiredXY.second, tran);
+      result.required |= LifeState::Parse(input.requiredRLE.c_str(),
+                                          input.requiredXY.first,
+                                          input.requiredXY.second, tran);
     }
 
     if (input.antirequiredRLE != "") {
-      result.antirequired = LifeState::Parse(input.antirequiredRLE.c_str(),
-                                             input.antirequiredXY.first,
-                                             input.antirequiredXY.second, tran);
+      result.required |= LifeState::Parse(input.antirequiredRLE.c_str(),
+                                          input.antirequiredXY.first,
+                                          input.antirequiredXY.second, tran);
     }
 
     result.transparent = input.transparent;
@@ -1398,13 +1397,13 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, config.state, alsoRequired, LifeState(), masks, shiftedTargets,
+    RecursiveSearch(config, config.state, alsoRequired, masks, shiftedTargets,
                     std::array<unsigned, MAX_CATALYSTS>(), std::array<unsigned, MAX_CATALYSTS>());
   }
 
   void
   TryAddingCatalyst(Configuration &config, LifeState &history,
-                 const LifeState &required, const LifeState &antirequired,
+                 const LifeState &required,
                  std::vector<LifeState> &masks,
                  std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
@@ -1492,18 +1491,13 @@ public:
         newRequired.Join(catalysts[s].required, newPlacement.first,
                          newPlacement.second);
 
-        LifeState newAntirequired = antirequired;
-        newAntirequired.Join(catalysts[s].antirequired, newPlacement.first,
-                             newPlacement.second);
-
         {
           LifeState lookahead = newConfig.state;
           lookahead.Step();
           lookahead.Step();
           lookahead.Step();
           lookahead.Step();
-          if (!lookahead.Contains(newRequired) ||
-              !lookahead.AreDisjoint(newAntirequired)) {
+          if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
             if (config.count == 0) {
               std::cout << "Skipping catalyst " << s << " at "
                         << newPlacement.first << ", " << newPlacement.second
@@ -1569,7 +1563,7 @@ public:
           }
         }
 
-        RecursiveSearch(newConfig, history, newRequired, newAntirequired,
+        RecursiveSearch(newConfig, history, newRequired,
                         newMasks, shiftedTargets, missingTime, recoveredTime);
 
         masks[s].Set(newPlacement.first, newPlacement.second);
@@ -1582,7 +1576,7 @@ public:
   }
 
   void
-  RecursiveSearch(Configuration config, LifeState history, const LifeState required, const LifeState antirequired,
+  RecursiveSearch(Configuration config, LifeState history, const LifeState required,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
@@ -1608,7 +1602,7 @@ public:
         failure = true;
       if (config.count < params.numCatalysts && g > params.maxGen)
         failure = true;
-      if (!config.state.Contains(required) || !config.state.AreDisjoint(antirequired))
+      if (!(required & (config.state ^ config.startingCatalysts)).IsEmpty())
         failure = true;
 
       if (failure) {
@@ -1622,7 +1616,7 @@ public:
 
       // Try adding a catalyst
       if (config.state.gen >= params.startGen && config.count != params.numCatalysts) {
-        TryAddingCatalyst(config, history, required, antirequired, masks,
+        TryAddingCatalyst(config, history, required, masks,
                           shiftedTargets, missingTime, recoveredTime);
         // The above also steps config.state
       } else {
