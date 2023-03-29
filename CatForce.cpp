@@ -727,6 +727,9 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     if (elems[0] == numTransp)
       params.numTransparent = atoi(elems[1].c_str());
 
+    if (elems[0] == numLimited)
+      params.numLimited = atoi(elems[1].c_str());
+
     if (elems[0] == stable)
       params.stableInterval = atoi(elems[1].c_str());
 
