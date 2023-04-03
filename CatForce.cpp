@@ -965,7 +965,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
     results.push_back(result);
   }
-  if(!input.periodic)
+  if(!input.periodic || input.fixed)
     break;
   }
   return results;
