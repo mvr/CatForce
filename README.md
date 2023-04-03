@@ -39,6 +39,7 @@ parentheses are optional.
 |                       | `(transparent)`          | Marked as transparent for the purposes of `num-transparent`             |
 |                       | `(check-recovery)`       | Always check the catalyst is recovered after exactly `max-active` gens  |
 |                       | `(sacrificial)`          | Does not need to recover                                                |
+|                       | `(fixed)`                | Must be placed exactly at the origin                                    |
 | `output`              | `filename`               | Output filename                                                         |
 | `(and/or)filter`      | `genOrRange rle dx dy`   | Filter that must be matched for the solution to be accepted (see below) |
 | `match`               | `genOrRange rle`         | Filter that checks whether the pattern occurs anywhere                  |

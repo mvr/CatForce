@@ -119,6 +119,7 @@ public:
   bool mustInclude;
   bool checkRecovery;
   bool sacrificial;
+  bool fixed;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems = splitwhitespace(line);
@@ -178,6 +179,9 @@ public:
         argi += 1;
       } else if (elems[argi] == "sacrificial") {
         sacrificial = true;
+        argi += 1;
+      } else if (elems[argi] == "fixed") {
+        fixed = true;
         argi += 1;
       } else {
         std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
@@ -659,6 +663,7 @@ public:
   bool mustInclude;
   bool checkRecovery;
   bool sacrificial;
+  bool fixed;
 
   static std::vector<CatalystData> FromInput(CatalystInput &input);
 };
@@ -723,6 +728,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.mustInclude = input.mustInclude;
     result.checkRecovery = input.checkRecovery;
     result.sacrificial = input.sacrificial;
+    result.fixed = input.fixed;
 
     results.push_back(result);
   }
@@ -1390,11 +1396,17 @@ public:
 
     bounds &= FundamentalDomain(params.symmetry);
 
+    LifeState pinhole = ~LifeState();
+    pinhole.Erase(0, 0);
+
     std::vector<LifeState> masks(catalysts.size());
     for (unsigned s = 0; s < catalysts.size(); s++) {
       LifeState zoi = catalysts[s].state.ZOI();
       zoi.Transform(Rotate180OddBoth);
       masks[s] = config.state.Convolve(zoi) | ~bounds;
+      if(catalysts[s].fixed) {
+        masks[s] = pinhole;
+      }
     }
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
