@@ -892,7 +892,6 @@ public:
   unsigned maxDisappear;
   std::vector<LifeTarget> forbidden;
   LifeState required;
-  LifeState antirequired;
   bool hasLocus;
   LifeState locus;
   LifeState locusReactionMask;
@@ -959,15 +958,15 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     }
 
     if (input.requiredRLE != "") {
-      result.required = LifeState::Parse(input.requiredRLE.c_str(),
-                                         input.requiredXY.first,
-                                         input.requiredXY.second, tran);
+      result.required |= LifeState::Parse(input.requiredRLE.c_str(),
+                                          input.requiredXY.first,
+                                          input.requiredXY.second, tran);
     }
 
     if (input.antirequiredRLE != "") {
-      result.antirequired = LifeState::Parse(input.antirequiredRLE.c_str(),
-                                             input.antirequiredXY.first,
-                                             input.antirequiredXY.second, tran);
+      result.required |= LifeState::Parse(input.antirequiredRLE.c_str(),
+                                          input.antirequiredXY.first,
+                                          input.antirequiredXY.second, tran);
     }
 
     result.transparent = input.transparent;
@@ -1882,7 +1881,7 @@ public:
 
     std::vector<LifeTarget> shiftedTargets(params.numCatalysts);
 
-    RecursiveSearch(config, history, alsoRequired, LifeState(), masks,
+    RecursiveSearch(config, history, alsoRequired, masks,
                     shiftedTargets, triedOffsets,
                     std::array<unsigned, MAX_CATALYSTS>(),
                     std::array<unsigned, MAX_CATALYSTS>());
@@ -1890,7 +1889,7 @@ public:
 
   void TryApplyingSymmetry(
       Configuration &config, LifeState &history, const LifeState &required,
-      const LifeState &antirequired, std::vector<LifeState> &masks,
+      std::vector<LifeState> &masks,
       std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
       std::array<LifeState, 6> &triedOffsets,
@@ -1904,21 +1903,21 @@ public:
     case C1:
       for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd})
         TryApplyingSpecificSymmetry(
-            config, history, required, antirequired, masks, shiftedTargets,
+            config, history, required, masks, shiftedTargets,
             triedOffsets, missingTime, recoveredTime, activePart, sym);
       break;
 
     case D2AcrossX:
     case D2AcrossY:
       TryApplyingSpecificSymmetry(
-          config, history, required, antirequired, masks, shiftedTargets,
+          config, history, required, masks, shiftedTargets,
           triedOffsets, missingTime, recoveredTime, activePart, D4);
       break;
 
     case D2diagodd:
     case D2negdiagodd:
       TryApplyingSpecificSymmetry(
-          config, history, required, antirequired, masks, shiftedTargets,
+          config, history, required, masks, shiftedTargets,
           triedOffsets, missingTime, recoveredTime, activePart, D4diag);
       break;
 
@@ -1929,7 +1928,7 @@ public:
 
   void TryApplyingSpecificSymmetry(
       Configuration &config, LifeState &history, const LifeState &required,
-      const LifeState &antirequired, std::vector<LifeState> &masks,
+      std::vector<LifeState> &masks,
       std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
       std::array<LifeState, 6> &triedOffsets,
@@ -1977,8 +1976,7 @@ public:
       {
         LifeState lookahead = config.state;
         lookahead.Step(10);
-        if (!lookahead.Contains(required) ||
-            !lookahead.AreDisjoint(antirequired)) {
+        if (!(required & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
           newOffsets.Erase(newOffset.first, newOffset.second);
           continue;
         }
@@ -2016,10 +2014,10 @@ public:
         if(newSym == D2diagodd || newSym == D2negdiagodd)
           newTriedOffsets[continuationIndex] |= LifeState::Checkerboard();
 
-        RecursiveSearch(newConfig, newHistory, required, antirequired, newMasks,
+        RecursiveSearch(newConfig, newHistory, required, newMasks,
                         shiftedTargets, newTriedOffsets, missingTime, recoveredTime);
       } else {
-        RecursiveSearch(newConfig, newHistory, required, antirequired, newMasks,
+        RecursiveSearch(newConfig, newHistory, required, newMasks,
                         shiftedTargets, triedOffsets, missingTime, recoveredTime);
       }
 
@@ -2029,7 +2027,7 @@ public:
 
   void TryAddingCatalyst(
       Configuration &config, LifeState &history, const LifeState &required,
-      const LifeState &antirequired, std::vector<LifeState> &masks,
+      std::vector<LifeState> &masks,
       std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
       std::array<LifeState, 6> &triedOffsets,
@@ -2103,15 +2101,10 @@ public:
         newRequired.Join(catalysts[s].required, newPlacement.first,
                          newPlacement.second);
 
-        LifeState newAntirequired = antirequired;
-        newAntirequired.Join(catalysts[s].antirequired, newPlacement.first,
-                             newPlacement.second);
-
         {
           LifeState lookahead = newConfig.state;
           lookahead.Step(10);
-          if (!lookahead.Contains(newRequired) ||
-              !lookahead.AreDisjoint(newAntirequired)) {
+          if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
             // if (config.count == 0 && config.symmetry == C1) {
             //   std::cout << "Skipping catalyst " << s << " at "
             //             << newPlacement.first << ", " << newPlacement.second
@@ -2188,7 +2181,7 @@ public:
           }
         }
 
-        RecursiveSearch(newConfig, newHistory, newRequired, newAntirequired,
+        RecursiveSearch(newConfig, newHistory, newRequired,
                         newMasks, shiftedTargets, newOffsets, missingTime,
                         recoveredTime);
 
@@ -2201,8 +2194,7 @@ public:
   }
 
   void
-  RecursiveSearch(Configuration config, LifeState history,
-                  const LifeState required, const LifeState antirequired,
+  RecursiveSearch(Configuration config, LifeState history, const LifeState required,
                   std::vector<LifeState> masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
@@ -2230,7 +2222,7 @@ public:
         failure = true;
       if (config.count < params.numCatalysts && g > params.maxGen)
         failure = true;
-      if (!config.state.Contains(required) || !config.state.AreDisjoint(antirequired))
+      if (!(required & (config.state ^ config.startingCatalysts)).IsEmpty())
         failure = true;
 
       if (failure) {
@@ -2260,7 +2252,7 @@ public:
       }
 
       if (hasActivePart) {
-        TryApplyingSymmetry(config, history, required, antirequired, masks,
+        TryApplyingSymmetry(config, history, required, masks,
                             shiftedTargets, triedOffsets, missingTime,
                             recoveredTime, activePart);
       }
@@ -2273,7 +2265,7 @@ public:
         LifeState twonext = next;
         twonext.Step();
 
-        TryAddingCatalyst(config, history, required, antirequired, masks,
+        TryAddingCatalyst(config, history, required, masks,
                           shiftedTargets, triedOffsets, missingTime,
                           recoveredTime, activePart, twonext);
         config.state = next;
