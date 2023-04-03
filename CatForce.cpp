@@ -509,7 +509,6 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
   std::string line;
 
-  bool badSymmetry = false;
   bool hasLastGen = false;
 
   while (std::getline(infile, line)) {
@@ -640,19 +639,6 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
   if(!hasLastGen)
     params.lastGen = params.maxGen - 1;
-
-  if (params.pat.length() == 0) {
-    std::cout << "Did not read any pattern!" << std::endl;
-    exit(1);
-  }
-  if (catalysts.empty()) {
-    std::cout << "Did not read any catalysts!" << std::endl;
-    exit(1);
-  }
-  if (badSymmetry) {
-    std::cout << "Couldn\'t parse symmetry option" << std::endl;
-    exit(1);
-  }
 }
 
 class CatalystData {
@@ -1142,11 +1128,21 @@ public:
     outfile.close();
   }
 
-  void Init(const char *inputFile) {
+  void Init(const std::vector<std::string> inputFiles) {
     begin = clock();
 
     std::vector<CatalystInput> inputcats;
-    ReadParams(inputFile, inputcats, params);
+    for(auto &inputFile : inputFiles)
+      ReadParams(inputFile, inputcats, params);
+
+    if (params.pat.length() == 0) {
+      std::cout << "Did not read any pattern!" << std::endl;
+      exit(1);
+    }
+    if (inputcats.empty()) {
+      std::cout << "Did not read any catalysts!" << std::endl;
+      exit(1);
+    }
 
     for (auto &input : inputcats) {
       if(!input.fixed) {
@@ -1829,8 +1825,10 @@ int main(int argc, char *argv[]) {
   std::cout << "Input: " << argv[1] << std::endl
             << "Initializing please wait..." << std::endl;
 
+  std::vector<std::string> arguments(argv + 1, argv + argc);
+
   CatalystSearcher searcher;
-  searcher.Init(argv[1]);
+  searcher.Init(arguments);
 
   clock_t initialized = clock();
   printf("Total elapsed time: %f seconds\n",
