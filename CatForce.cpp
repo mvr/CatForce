@@ -740,51 +740,12 @@ struct Configuration {
 
 // Fix a, what positions of b causes a collision?
 LifeState CollisionMask(const LifeState &a, const LifeState &b) {
-  unsigned popsum = a.GetPop() + b.GetPop();
+  LifeState bReactionMask = b.BigZOI();
+  bReactionMask.Transform(Rotate180OddBoth);
+  bReactionMask.RecalculateMinMax();
+  LifeState possibleReactionMask = bReactionMask.Convolve(a);
 
-  LifeState mask;
-  for (unsigned x = 0; x < N; x++) {
-    for (unsigned y = 0; y < 64; y++) {
-      LifeState state = a;
-      state.Join(b, x, y);
-
-      // No overlaps allowed
-      if (!(state.GetPop() == popsum)) {
-        mask.Set(x, y);
-        continue;
-      }
-
-      state.Step();
-
-      if (!state.Contains(a) || !state.Contains(b, x, y) || state.GetPop() != popsum) {
-        mask.Set(x, y);
-      }
-
-    }
-  }
-
-  return mask;
-}
-
-LifeState LoadCollisionMask(const CatalystData &a, const CatalystData &b) {
-  std::stringstream ss;
-  ss << "masks/maskraw-" << a.state.GetHash() << "-" << b.state.GetHash();
-  std::string fname = ss.str();
-
-  std::ifstream infile;
-  infile.open(fname.c_str(), std::ios::binary);
-  if (!infile.good()) {
-    LifeState mask = CollisionMask(a.state, b.state);
-    std::ofstream outfile;
-    outfile.open(fname.c_str(), std::ofstream::binary);
-    outfile.write((char *)mask.state, N * sizeof(uint64_t));
-    outfile.close();
-    return mask;
-  } else {
-    LifeState result;
-    infile.read((char*)result.state, N * sizeof(uint64_t));
-    return result;
-  }
+  return possibleReactionMask;
 }
 
 std::string GetRLE(const std::vector<std::vector<bool>> &life2d) {
@@ -1106,7 +1067,7 @@ public:
         if(catalysts[s].sacrificial || catalysts[t].sacrificial)
           continue;
 
-        catalystCollisionMasks[s * catalysts.size() + t] = LoadCollisionMask(catalysts[s], catalysts[t]);
+        catalystCollisionMasks[s * catalysts.size() + t] = CollisionMask(catalysts[s].state, catalysts[t].state);
         catalystCollisionMasks[s * catalysts.size() + t].RecalculateMinMax();
       }
     }
