@@ -128,6 +128,7 @@ public:
   bool checkRecovery;
   bool sacrificial;
   bool periodic;
+  bool fixed;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems = splitwhitespace(line);
@@ -192,6 +193,9 @@ public:
       } else if (elems[argi] == "period") {
         periodic = true;
         argi += 2;
+      } else if (elems[argi] == "fixed") {
+        fixed = true;
+        argi += 1;
       } else {
         std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
         exit(1);
@@ -899,6 +903,7 @@ public:
   bool checkRecovery;
   bool sacrificial;
   bool periodic;
+  bool fixed;
 
   static std::vector<CatalystData> FromInput(CatalystInput &input);
 };
@@ -971,6 +976,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.checkRecovery = input.checkRecovery;
     result.sacrificial = input.sacrificial;
     result.periodic = input.periodic;
+    result.fixed = input.fixed;
 
     results.push_back(result);
   }
@@ -1858,11 +1864,17 @@ public:
 
     bounds &= FundamentalDomainFast(params.symmetry);
 
+    LifeState pinhole = ~LifeState();
+    pinhole.Erase(0, 0);
+
     std::vector<LifeState> masks(catalysts.size());
     for (unsigned s = 0; s < catalysts.size(); s++) {
       LifeState zoi = catalysts[s].state.ZOI();
       zoi.Transform(Rotate180OddBoth);
       masks[s] = config.state.Convolve(zoi) | ~bounds;
+      if(catalysts[s].fixed) {
+        masks[s] = pinhole;
+      }
     }
 
     LifeState patzoi = pat.ZOI();
@@ -1983,7 +1995,8 @@ public:
         LifeState fundamentalDomain = FundamentalDomainFast(newSym);
         fundamentalDomain.Move(HalveOffset(newSym, newOffset));
         for (unsigned t = 0; t < catalysts.size(); t++) {
-          newMasks[t] |= ~fundamentalDomain | newHistory.Convolve(catalysts[t].reactionMask);
+          if(!catalysts[t].fixed)
+            newMasks[t] |= ~fundamentalDomain | newHistory.Convolve(catalysts[t].reactionMask);
         }
       }
 
