@@ -1547,11 +1547,12 @@ public:
         shiftedTargets[config.count].unwanted.Move(newPlacement.first,
                                                    newPlacement.second);
 
-        std::vector<LifeState> newMasks = masks;
+        std::vector<LifeState> newMasks;
 
         // If we just placed the last catalyst, don't bother
         // updating the masks
         if (newConfig.count != params.numCatalysts) {
+          newMasks = masks;
           LifeState bounds;
           if (params.maxW != -1) {
             LifeState rect =
