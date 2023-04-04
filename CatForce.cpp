@@ -2125,11 +2125,13 @@ public:
           newOffsets[OffsetIndexForSym(newConfig.symmetry, D2Continuation(newConfig.symmetry))] |= CollidingOffsets(newHistory, newConfig.symmetry, D2Continuation(newConfig.symmetry));
         }
 
-        std::vector<LifeState> newMasks = masks;
+        std::vector<LifeState> newMasks;
+
 
         // If we just placed the last catalyst, don't bother
         // updating the masks
         if (newConfig.count != params.numCatalysts) {
+          newMasks = masks;
           LifeState bounds;
           if (params.maxW != -1) {
             LifeState rect =
@@ -2209,7 +2211,7 @@ public:
 
       bool hasActivePart = !activePart.IsEmpty();
 
-      if (hasActivePart) {
+      if (hasActivePart && config.count != params.numCatalysts) {
         for (unsigned s = 0; s < catalysts.size(); s++) {
           if (catalysts[s].hasLocus) {
             LifeState hitLocations =
