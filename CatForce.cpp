@@ -971,6 +971,11 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.periodic = input.periodic;
     result.fixed = input.fixed;
     result.fixedGen = input.fixedGen;
+    if(input.fixedGen != -1) {
+      // We flip it back to avoid a convolve later
+      result.locusReactionMask.Transform(Rotate180OddBoth);
+      result.locusReactionMask.RecalculateMinMax();
+    }
 
     results.push_back(result);
   }
@@ -2014,8 +2019,15 @@ public:
           config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
 
-      LifeState newPlacements =
-          activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
+      LifeState newPlacements(false);
+      if (catalysts[s].fixedGen == -1)
+        newPlacements = activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
+      else {
+        if((activePart & catalysts[s].locusReactionMask).IsEmpty())
+          continue;
+        newPlacements = LifeState();
+        newPlacements.Set(0, 0);
+      }
 
       while (!newPlacements.IsEmpty()) {
         // Do the placement
