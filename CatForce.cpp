@@ -122,6 +122,7 @@ public:
   bool checkRecovery;
   bool sacrificial;
   bool fixed;
+  int fixedGen;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems = splitwhitespace(line);
@@ -145,6 +146,8 @@ public:
     mustInclude = false;
     checkRecovery = false;
     sacrificial = false;
+    fixed = false;
+    fixedGen = -1;
 
     unsigned argi = 6;
 
@@ -185,6 +188,10 @@ public:
       } else if (elems[argi] == "fixed") {
         fixed = true;
         argi += 1;
+      } else if (elems[argi] == "fixed-gen") {
+        fixed = true;
+        fixedGen = atoi(elems[argi + 1].c_str());
+        argi += 2;
       } else {
         std::cout << "Unknown catalyst attribute: " << elems[argi] << std::endl;
         exit(1);
@@ -666,6 +673,7 @@ public:
   bool checkRecovery;
   bool sacrificial;
   bool fixed;
+  int fixedGen;
 
   static std::vector<CatalystData> FromInput(CatalystInput &input);
 };
@@ -731,6 +739,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.checkRecovery = input.checkRecovery;
     result.sacrificial = input.sacrificial;
     result.fixed = input.fixed;
+    result.fixedGen = input.fixedGen;
 
     results.push_back(result);
   }
@@ -1446,6 +1455,8 @@ public:
     }
 
     for (unsigned s = 0; s < catalysts.size(); s++) {
+      if (catalysts[s].fixedGen != -1 && catalysts[s].fixedGen != config.state.gen)
+        continue;
       if (config.transparentCount == params.numTransparent &&
           catalysts[s].transparent)
         continue;
