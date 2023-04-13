@@ -1479,7 +1479,6 @@ public:
 
         LifeState symCatalyst;
         symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
-        newConfig.startingCatalysts |= symCatalyst;
         newConfig.state |= symCatalyst;
 
         LifeState lookahead = newConfig.state;
@@ -1505,9 +1504,9 @@ public:
         LifeState newRequired = required;
         newRequired.Join(catalysts[s].required, newPlacement.first,
                          newPlacement.second);
+        newConfig.startingCatalysts |= symCatalyst;
 
         lookahead.Step(REQUIRED_LOOKAHEAD-1);
-
         {
           if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
             if (DEBUG_OUTPUT && config.count == 0) {
