@@ -13,6 +13,7 @@
 #include <array>
 #include <algorithm>
 
+const bool DEBUG_OUTPUT = false;
 const int MAX_CATALYSTS = 5;
 const int REQUIRED_LOOKAHEAD = 5;
 
@@ -1487,7 +1488,7 @@ public:
         {
           LifeState difference = lookahead ^ next ^ symCatalyst;
           if (difference.IsEmpty()) {
-            if (config.count == 0) {
+            if (DEBUG_OUTPUT && config.count == 0) {
               std::cout << "Skipping catalyst " << s << " at "
                         << newPlacement.first << ", " << newPlacement.second
                         << " (no interaction) " << std::endl;
@@ -1509,7 +1510,7 @@ public:
 
         {
           if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
-            if (config.count == 0) {
+            if (DEBUG_OUTPUT && config.count == 0) {
               std::cout << "Skipping catalyst " << s << " at "
                         << newPlacement.first << ", " << newPlacement.second
                         << " (is destroyed) " << std::endl;
@@ -1524,7 +1525,7 @@ public:
         if (catalysts[s].checkRecovery) {
           lookahead.Step(catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD);
           if (!lookahead.Contains(shiftedCatalyst)) {
-            if (config.count == 0) {
+            if (DEBUG_OUTPUT && config.count == 0) {
               std::cout << "Skipping catalyst " << s << " at "
                         << newPlacement.first << ", " << newPlacement.second
                         << " (failed to recover completely) " << std::endl;
