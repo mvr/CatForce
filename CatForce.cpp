@@ -14,6 +14,7 @@
 #include <algorithm>
 
 const int MAX_CATALYSTS = 5;
+const int REQUIRED_LOOKAHEAD = 5;
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
@@ -1480,12 +1481,11 @@ public:
         newConfig.startingCatalysts |= symCatalyst;
         newConfig.state |= symCatalyst;
 
+        LifeState lookahead = newConfig.state;
+        lookahead.Step();
         // Do a one-step lookahead to see if the catalyst interacts
         {
-          LifeState newnext = newConfig.state;
-          newnext.Step();
-
-          LifeState difference = newnext ^ next ^ symCatalyst;
+          LifeState difference = lookahead ^ next ^ symCatalyst;
           if (difference.IsEmpty()) {
             if (config.count == 0) {
               std::cout << "Skipping catalyst " << s << " at "
@@ -1505,12 +1505,9 @@ public:
         newRequired.Join(catalysts[s].required, newPlacement.first,
                          newPlacement.second);
 
+        lookahead.Step(REQUIRED_LOOKAHEAD-1);
+
         {
-          LifeState lookahead = newConfig.state;
-          lookahead.Step();
-          lookahead.Step();
-          lookahead.Step();
-          lookahead.Step();
           if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
             if (config.count == 0) {
               std::cout << "Skipping catalyst " << s << " at "
@@ -1525,10 +1522,7 @@ public:
         }
 
         if (catalysts[s].checkRecovery) {
-          LifeState lookahead = newConfig.state;
-          for (unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
-            lookahead.Step();
-          }
+          lookahead.Step(catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD);
           if (!lookahead.Contains(shiftedCatalyst)) {
             if (config.count == 0) {
               std::cout << "Skipping catalyst " << s << " at "
