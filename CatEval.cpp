@@ -97,6 +97,8 @@ std::vector<Perturbation> Perturbations(CatalystData cat, LifeState pat) {
   LifeState corona = LifeState::Parse("3o$3o$3o!");
   corona.Move(-1, -1);
 
+  LifeState margin = ~LifeState::SolidRect(-31, -31, 62, 62);
+
   for(int i = 0; i < cat.orientations.size(); i++) {
     LifeState &o = cat.orientations[i];
     LifeState &r = cat.reactionMasks[i];
@@ -141,6 +143,11 @@ std::vector<Perturbation> Perturbations(CatalystData cat, LifeState pat) {
           positioned = zeropositioned;
         else
           positioned = onepositioned;
+
+        if(!(positioned & margin).IsEmpty()) {
+          mask.Set(newPlacement.first, newPlacement.second);
+          continue;
+        }
 
         // LifeState positionedzoi = z;
         // positionedzoi.Move(newPlacement.first, newPlacement.second);
