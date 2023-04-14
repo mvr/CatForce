@@ -193,12 +193,6 @@ std::vector<Perturbation> Perturbations(CatalystData cat, LifeState pat) {
 
         int roughrecovery = currentwcat.gen;
 
-        // Make sure it stays recovered
-        currentwcat.Step(stabletime);
-        if (!(positionedmatch & (currentwcat ^ positioned)).IsEmpty()) {
-          continue;
-        }
-
         // Now find when the catalysis actually ends
         currentwcat = current | positioned;
         currentwcat.gen = current.gen;
@@ -212,6 +206,26 @@ std::vector<Perturbation> Perturbations(CatalystData cat, LifeState pat) {
           catalystpart.Step(roughrecovery - j);
           if(j >= 2 && catalystpart == zeropositioned)
             break;
+        }
+
+        {
+          // Make sure it stays recovered
+          LifeState stablelookahead = currentwcat;
+
+          for(int i = g + j; i <= roughrecovery; i++) {
+            bool hasFullyRecovered = false;
+            if(i % 2 == 0)
+              hasFullyRecovered = (positionedmatch & (stablelookahead ^ zeropositioned)).IsEmpty();
+            else
+              hasFullyRecovered = (positionedmatch & (stablelookahead ^ onepositioned)).IsEmpty();
+            if(hasFullyRecovered)
+              break;
+            stablelookahead.Step();
+          }
+
+          stablelookahead.Step(stabletime);
+          if (!(positionedmatch & (stablelookahead ^ positioned)).IsEmpty())
+            continue;
         }
 
         int t = g + j;
