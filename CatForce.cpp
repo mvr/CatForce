@@ -2264,7 +2264,7 @@ public:
       }
 
       for (unsigned i = 0; i < config.count; i++) {
-        if (config.state.Contains(shiftedTargets[i]) || catalysts[config.curs[i]].sacrificial) {
+        if (config.state.Contains(shiftedTargets[i]) || catalysts[config.curs[i]].sacrificial || recoveredTime[i] >= params.stableInterval) {
           missingTime[i] = 0;
           recoveredTime[i] += 1;
         } else {
