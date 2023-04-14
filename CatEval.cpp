@@ -4,6 +4,10 @@
 #include <fstream>
 #include <iostream>
 
+const unsigned startTime = 0;
+// const unsigned endTime = 100;
+const unsigned endTime = 50;
+
 // Even, for p2
 const unsigned alignment = 16;
 const unsigned fastcheck = 30;
@@ -112,14 +116,14 @@ std::vector<Perturbation> Perturbations(CatalystData cat, LifeState pat) {
     // LifeState afterfast = pat;
     // afterfast.Step(fastcheck);
 
-    for(int g = 0; g < 50; g++) {
+    for(int g = 0; g < endTime; g++) {
       LifeState newPlacements(false);
       if(g%2 == 0)
         newPlacements = current.Convolve(r) & ~mask;
       else
         newPlacements = current.Convolve(r1) & ~mask;
 
-      if (g < 10) {
+      if (g < startTime) {
         mask |= newPlacements;
         current.Step();
         continue;
