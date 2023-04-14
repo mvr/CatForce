@@ -2167,6 +2167,9 @@ public:
           LifeState hitLocations = config.state.Convolve(catalysts[s].reactionMask);
           masks[s] |= hitLocations;
         }
+        for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
+          triedOffsets[OffsetIndexForSym(C1, sym)] |= CollidingOffsets(config.state, C1, sym);
+        }
         history |= config.state;
         config.state.Step();
         continue;
