@@ -13,9 +13,9 @@
 #include <array>
 #include <algorithm>
 
-#include <cassert>
-
+const bool DEBUG_OUTPUT = false;
 const int MAX_CATALYSTS = 5;
+const int REQUIRED_LOOKAHEAD = 5;
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
@@ -725,67 +725,50 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
     if (elems.size() < 2)
       continue;
 
-    if (elems[0] == Cat)
+    if (elems[0] == Cat) {
       catalysts.emplace_back(line);
-
-    if (elems[0] == maxGen)
+    } else if (elems[0] == maxGen) {
       params.maxGen = atoi(elems[1].c_str());
-
-    if (elems[0] == numCat)
+    } else if (elems[0] == numCat) {
       params.numCatalysts = atoi(elems[1].c_str());
-
-    if (elems[0] == numTransp)
+    } else if (elems[0] == numTransp) {
       params.numTransparent = atoi(elems[1].c_str());
-
-    if (elems[0] == numLimited)
+    } else if (elems[0] == numLimited) {
       params.numLimited = atoi(elems[1].c_str());
-
-    if (elems[0] == stable)
+    } else if (elems[0] == stable) {
       params.stableInterval = atoi(elems[1].c_str());
-
-    if (elems[0] == pat) {
+    } else if (elems[0] == pat) {
       params.pat = elems[1];
 
       if (elems.size() > 3) {
         params.xPat = atoi(elems[2].c_str());
         params.yPat = atoi(elems[3].c_str());
       }
-    }
-
-    if (elems[0] == area) {
+    } else if (elems[0] == area) {
       params.searchArea[0] = atoi(elems[1].c_str());
       params.searchArea[1] = atoi(elems[2].c_str());
       params.searchArea[2] = atoi(elems[3].c_str());
       params.searchArea[3] = atoi(elems[4].c_str());
-    }
-
-    if (elems[0] == startGen)
+    } else if (elems[0] == startGen) {
       params.startGen = atoi(elems[1].c_str());
-
-    if (elems[0] == lastGen) {
+    } else if (elems[0] == lastGen) {
       params.lastGen = atoi(elems[1].c_str());
       hasLastGen = true;
-    }
-
-    if (elems[0] == outputFile) {
+    } else if (elems[0] == outputFile) {
       params.outputFile = elems[1];
 
       for (unsigned i = 2; i < elems.size(); i++) {
         params.outputFile.append(" ");
         params.outputFile.append(elems[i]);
       }
-    }
-
-    if (elems[0] == fullReport) {
+    } else if (elems[0] == fullReport) {
       params.fullReportFile = elems[1];
 
       for (unsigned i = 2; i < elems.size(); i++) {
         params.fullReportFile.append(" ");
         params.fullReportFile.append(elems[i]);
       }
-    }
-
-    if (elems[0] == filter || elems[0] == orfilter || elems[0] == andfilter || elems[0] == matchfilter) {
+    } else if (elems[0] == filter || elems[0] == orfilter || elems[0] == andfilter || elems[0] == matchfilter) {
       std::vector<std::string> rangeElems;
       split(elems[1], '-', rangeElems);
 
@@ -820,18 +803,12 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         params.filterdy.push_back(atoi(elems[4].c_str()));
         params.filterType.push_back(ANDFILTER);
       }
-    }
-
-    if (elems[0] == maxWH) {
+    } else if (elems[0] == maxWH) {
       params.maxW = atoi(elems[1].c_str());
       params.maxH = atoi(elems[2].c_str());
-    }
-
-    if (elems[0] == maxCatSize) {
+    } else if (elems[0] == maxCatSize) {
       params.maxCatSize = atoi(elems[1].c_str());
-    }
-
-    if (elems[0] == symmetry) {
+    } else if (elems[0] == symmetry) {
       std::string symmetryString = "";
       // reverse-compatibility reasons.
       if (elems[1] == "horizontal") {
@@ -853,23 +830,23 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
       params.symmetry = SymmetryFromString(symmetryString);
       params.symmetryChain = SymmetryChainFromEnum(params.symmetry);
-    }
-    if (elems[0] == alsoRequired) {
+    } else if (elems[0] == alsoRequired) {
       params.alsoRequired = elems[1].c_str();
       params.alsoRequiredXY = std::make_pair(atoi(elems[2].c_str()), atoi(elems[3].c_str()));
-    }
-    if (elems[0] == stopAfterCatsDestroyed){
+    } else if (elems[0] == stopAfterCatsDestroyed){
       params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
-    }
-    if (elems[0] == maxJunk){
+    } else if (elems[0] == maxJunk){
       params.maxJunk = atoi(elems[1].c_str());
-    }
-
-    if (elems[0] == offsetArea) {
+    } else if (elems[0] == offsetArea) {
       params.offsetArea[0] = atoi(elems[1].c_str());
       params.offsetArea[1] = atoi(elems[2].c_str());
       params.offsetArea[2] = atoi(elems[3].c_str());
       params.offsetArea[3] = atoi(elems[4].c_str());
+    } else {
+      if(std::isalpha(elems[0][0])) {
+        std::cout << "Unknown input parameter: " << elems[0] << std::endl;
+        exit(1);
+      }
     }
   }
 
@@ -2056,19 +2033,18 @@ public:
           symCatalyst.Step();
         newConfig.state |= symCatalyst;
 
+        LifeState lookahead = newConfig.state;
+        lookahead.Step(2);
+
         // Do a two-step lookahead to see if the catalyst interacts
         {
-          LifeState newnext = newConfig.state;
-          newnext.Step(2);
-
-          LifeState difference = newnext ^ twonext ^ symCatalyst;
+          LifeState difference = lookahead ^ twonext ^ symCatalyst;
           if (difference.IsEmpty()) {
-            // if (config.count == 0 && config.symmetry == C1) {
-            //   std::cout << "Skipping catalyst " << s << " at "
-            //             << newPlacement.first << ", " << newPlacement.second
-            //             << " (no interaction) " << std::endl;
-            // }
-
+            if (DEBUG_OUTPUT && config.count == 0) {
+              std::cout << "Skipping catalyst " << s << " at "
+                        << newPlacement.first << ", " << newPlacement.second
+                        << " (no interaction) " << std::endl;
+            }
             // Note: we deliberately don't set the mask,
             // because it may turn out that a catalyst here
             // interacts properly in a later generation.
@@ -2080,16 +2056,16 @@ public:
         LifeState newRequired = required;
         newRequired.Join(catalysts[s].required, newPlacement.first,
                          newPlacement.second);
+        newConfig.startingCatalysts |= symCatalyst;
 
+        lookahead.Step(REQUIRED_LOOKAHEAD - 2);
         {
-          LifeState lookahead = newConfig.state;
-          lookahead.Step(10);
           if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
-            // if (config.count == 0 && config.symmetry == C1) {
-            //   std::cout << "Skipping catalyst " << s << " at "
-            //             << newPlacement.first << ", " << newPlacement.second
-            //             << " (is destroyed) " << std::endl;
-            // }
+            if (DEBUG_OUTPUT && config.count == 0) {
+              std::cout << "Skipping catalyst " << s << " at "
+                        << newPlacement.first << ", " << newPlacement.second
+                        << " (is destroyed) " << std::endl;
+            }
 
             masks[s].Set(newPlacement.first, newPlacement.second);
             newPlacements.Erase(newPlacement.first, newPlacement.second);
@@ -2102,16 +2078,13 @@ public:
         shiftedTargets[config.count].unwanted.Move(newPlacement.first, newPlacement.second);
 
         if (catalysts[s].checkRecovery) {
-          LifeState lookahead = newConfig.state;
-          lookahead.Step(catalysts[s].maxDisappear);
-
-          if (!lookahead.Contains(shiftedTargets[config.count])) {
-            // if (config.count == 0 && config.symmetry == C1) {
-            //   std::cout << "Skipping catalyst " << s << " at "
-            //             << newPlacement.first << ", " << newPlacement.second
-            //             << " (failed to recover completely) " << std::endl;
-            // }
-
+          lookahead.Step(catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD);
+          if (!lookahead.Contains(shiftedCatalyst)) {
+            if (DEBUG_OUTPUT && config.count == 0) {
+              std::cout << "Skipping catalyst " << s << " at "
+                        << newPlacement.first << ", " << newPlacement.second
+                        << " (failed to recover completely) " << std::endl;
+            }
             masks[s].Set(newPlacement.first, newPlacement.second);
             newPlacements.Erase(newPlacement.first, newPlacement.second);
             continue;
@@ -2138,7 +2111,6 @@ public:
         }
 
         std::vector<LifeState> newMasks;
-
 
         // If we just placed the last catalyst, don't bother
         // updating the masks
@@ -2175,9 +2147,8 @@ public:
     history |= config.state;
   }
 
-  void
-  RecursiveSearch(Configuration config, LifeState history, const LifeState required,
-                  std::vector<LifeState> masks,
+  void RecursiveSearch(Configuration &config, LifeState &history, const LifeState &required,
+                  std::vector<LifeState> &masks,
                   std::vector<LifeTarget> &shiftedTargets, // This can be shared
 
                   std::array<LifeState, 6> &triedOffsets,
@@ -2196,6 +2167,7 @@ public:
           LifeState hitLocations = config.state.Convolve(catalysts[s].reactionMask);
           masks[s] |= hitLocations;
         }
+        history |= config.state;
         config.state.Step();
         continue;
       }
@@ -2251,7 +2223,6 @@ public:
                           shiftedTargets, triedOffsets, missingTime,
                           recoveredTime, activePart, twonext);
         config.state = next;
-        // The above also steps config.state
       } else {
         // No need to update history, not used for anything once all
         // catalysts are placed

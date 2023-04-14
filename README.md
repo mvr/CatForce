@@ -1,11 +1,6 @@
 # CatForce
 GoL Catalyst search utility based on LifeAPI library.
 
-The main advantage of CatForce is that it doesn't make any assumptions
-about the nature of the interaction. As long as the catalysts are back
-in place in a given number of generations, they all could be destroyed
-and reappear several times.
-
 <!-- The torus centre is `(0, 0)` and left upper corner is `(-32, -->
 <!-- -32)` and lower right corner is `(31,31)`. It has the same Y axis as -->
 <!-- Golly (up is negative Y). -->
@@ -18,8 +13,8 @@ Input File Format
 --
 See `examples/p83.in` etc. Some useful lists of catalysts are given in `catlists/`.
 
-Parameters are separated by `" "` - i.e. space. Parentheses below
-denote optional parameters.
+Parameters are separated by `" "` - i.e. space. Parameters in
+parentheses are optional.
 
 | Line                  | Parameter                | Description                                                             |
 |-----------------------|--------------------------|-------------------------------------------------------------------------|
@@ -35,12 +30,12 @@ denote optional parameters.
 | `cat `                | `rle`                    | A catalyst                                                              |
 |                       | `max-active`             | Number of generations in a row the catalyst may be missing              |
 |                       | `dx dy`                  | Offset applied centre the catalyst, typically negative                  |
-|                       | `symmetries-char`        | Character denoting the symmetry of the catalyst (see below)             |
+|                       | `symmetry-char`          | Character denoting the symmetry of the catalyst (see below)             |
 |                       | `(forbidden rle x y)`    | Forbidden pattern around the catalyst (see below)                       |
 |                       | `(required rle x y)`     | Cells of a catalyst that must stay ON in every generation               |
 |                       | `(antirequired rle x y)` | Cells of a catalyst that must stay OFF in every generation              |
 |                       | `(locus rle x y)`        | Cells of a catalyst that must interact first                            |
-|                       | `(mustinclude)`          | Solutions must use at least one `mustinclude` catalyst                  |
+|                       | `(must-include)`         | Solutions must use at least one `mustinclude` catalyst                  |
 |                       | `(transparent)`          | Marked as transparent for the purposes of `num-transparent`             |
 |                       | `(check-recovery)`       | Always check the catalyst is recovered after exactly `max-active` gens  |
 |                       | `(sacrificial)`          | Does not need to recover                                                |
@@ -53,16 +48,17 @@ denote optional parameters.
 | `max-category-size`   | `n`                      | Maximum output row length before more solutions are dropped             |
 | `fit-in-width-height` | `w h`                    | Only allow solutions where all catalysts fit in a `w` by `h` rectangle  |
 | `also-required`       | `rle x y`                | Require `rle` to be present in every generation                         |
-| `symmetry`            | `symmetrycode`           | Global symmetry of the entire pattern (see below)                       |
+| `symmetry`            | `symmetry-code`          | Global symmetry of the entire pattern (see below)                       |
 
 **Catalyst Symmetry**: A character specifying what transformations are
 applied to the catalyst:
-- `|`: mirror by y.
-- `-`: mirror by x.
-- `+` or `@`: all 90 degree rotations, for D2- or D2/ invariant catalysts (eg boat).
-- `x`: for 180 degree symmetrical catalysts.
-- `/`: diagonal mirror.
-- `*`: all 8 transformations.
+- `|`: reflect across y, for D4x catalysts (e.g. ship)
+- `-`: reflect across x
+- `/`: reflect diagonally, for D4+ catalysts (e.g. table on table)
+- `\`: reflect diagonally the other way
+- `x`: reflect diagonally both ways, for C2 symmetrical catalysts (e.g. snake)
+- `+` or `@`: rotate all 90 degree increments, for D2- or D2/ catalysts (e.g. boat)
+- `*`: all transforms, for C1 catalysts
 
 **Filters**: Every potential solution will be checked against the
 provided filters: only solutions that match the filters will be
@@ -88,44 +84,6 @@ immediately tested for whether they recover in `max-active`
 generations, without the support of any further catalysts. This is
 useful for catalysts with a bait still life that has a long recovery
 time, like the hive-pushes or the loaf-spin catalysts.
-
-<!-- Combining Results -->
-<!-- --- -->
-
-<!-- `combine-results yes [<survive-0> <survive-1> ...]` -->
-
-<!-- If this feature is enabled the search will at first ignore all filters -->
-<!-- and survival inputs, and will search all the possible catalysts. Then -->
-<!-- it will try to combine all the found catalysts in all possible -->
-<!-- combinations, and only then will filter by `survive-i` and apply the -->
-<!-- filters to exclude them from the final report. -->
-
-<!-- This feature will generate report as follows: -->
-
-<!-- - `output.rle` - all the possible catalysts. -->
-<!-- - `output.rle_Combined*.rle` - will generate all combined reports. -->
-<!-- - `output.rle_Final.rle` - the final report. **This is the main output.** -->
-
-<!-- Optional survival filter per "iteration" are added. Combine works as -->
-<!-- follows: each time it start from the initial search results (combine -->
-<!-- by default uses survive count = 1), and tries to add catalyst from -->
-<!-- those results. Sometimes one could get explosion, if the interaction -->
-<!-- is very potent. So filter is added to limit the combine, by surviving -->
-<!-- count (if something doesn't survive with two catalyst for 5 -->
-<!-- iterations, it's probably junk - so CatForce will filter it on the -->
-<!-- second combine iteration and not in the end). -->
-
-<!-- This allows faster and more efficient combine operation with very -->
-<!-- potent conduits which otherwise would overflow the system, with many -->
-<!-- useless catalysts. -->
-
-<!-- **NOTE** Recommended for use only for `num-catalyst` = 1 or 2 -->
-
-<!-- **NOTE** See 4.in file for example.  -->
-
-<!-- **NOTE** CatForce will use the last `survive-i` as the default from -->
-<!-- that point on. If you don't enter any numbers it will use survival -->
-<!-- count 1, and will filter only when finish all possible combinations. -->
 
 Symmetric Searches
 ---
