@@ -229,6 +229,29 @@ std::vector<Perturbation> Perturbations(CatalystData cat, LifeState pat) {
 
         auto digest = (currentwcat & ~catalystpart).GetHash();
 
+        // Check all components were used
+
+        currentwcat = current | positioned;
+        currentwcat.gen = current.gen;
+        LifeState active;
+
+        for (int j = 1; g+j < roughrecovery; j++) {
+          currentwcat.Step();
+          if(j%2==0)
+            active |= currentwcat ^ positioned;
+        }
+
+        auto cs = positioned.ZOI().Components();
+        bool missed = false;
+        for(auto &c : cs) {
+          if((c & active).IsEmpty()) {
+            missed = true;
+            break;
+          }
+        }
+        if(missed)
+          continue;
+
         // bool completelyRecovered = (positionedzoi & (currentwcat ^ positioned)).IsEmpty();
         // if (!completelyRecovered)
         //   continue;
