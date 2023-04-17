@@ -1726,7 +1726,7 @@ public:
     }
   }
 
-  LifeState CollidingOffsets(LifeState &active, StaticSymmetry oldsym,
+  LifeState IntersectingOffsets(LifeState &active, StaticSymmetry oldsym,
                        StaticSymmetry newsym) {
     if (oldsym != C1) {
       newsym = D2Continuation(oldsym);
@@ -1804,7 +1804,7 @@ public:
     LifeState bounds = LifeState::SolidRect(params.offsetArea[0], params.offsetArea[1], params.offsetArea[2], params.offsetArea[3]);
     std::array<LifeState, 6> result;
     for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-      result[OffsetIndexForSym(C1, sym)] = CollidingOffsets(starting, C1, sym) | ~AllowedOffsets(sym) | ~bounds;
+      result[OffsetIndexForSym(C1, sym)] = IntersectingOffsets(starting, C1, sym) | ~AllowedOffsets(sym) | ~bounds;
     }
     return result;
   }
@@ -1896,7 +1896,7 @@ public:
       LifeState &activePart, StaticSymmetry newSym) {
 
     LifeState activezoi = activePart.ZOI();
-    LifeState newOffsets = CollidingOffsets(activezoi, config.symmetry, newSym) &
+    LifeState newOffsets = IntersectingOffsets(activezoi, config.symmetry, newSym) &
       ~triedOffsets[OffsetIndexForSym(config.symmetry, newSym)];
     triedOffsets[OffsetIndexForSym(config.symmetry, newSym)] |= newOffsets;
 
@@ -1965,7 +1965,8 @@ public:
         std::array<LifeState, 6> newTriedOffsets;
         newTriedOffsets[continuationIndex] = triedOffsets[continuationIndex];
         newTriedOffsets[continuationIndex].Move(newOffset);
-        newTriedOffsets[continuationIndex] |= CollidingOffsets(newHistory, C1, D2Continuation(newSym));
+        LifeState historyzoi = newHistory.ZOI();
+        newTriedOffsets[continuationIndex] |= IntersectingOffsets(historyzoi, C1, D2Continuation(newSym));
 
         if(newSym == D2diagodd || newSym == D2negdiagodd)
           newTriedOffsets[continuationIndex] |= LifeState::Checkerboard();
@@ -2075,12 +2076,14 @@ public:
 
       std::array<LifeState, 6> newOffsets = triedOffsets;
       if(newConfig.symmetry == C1) {
+        LifeState historyzoi = newHistory.ZOI();
         for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-          newOffsets[OffsetIndexForSym(C1, sym)] |= CollidingOffsets(newHistory, C1, sym);
+          newOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(historyzoi, C1, sym);
         }
       }
       if (SymIsD2(newConfig.symmetry)) {
-        newOffsets[OffsetIndexForSym(newConfig.symmetry, D2Continuation(newConfig.symmetry))] |= CollidingOffsets(newHistory, newConfig.symmetry, D2Continuation(newConfig.symmetry));
+        LifeState historyzoi = newHistory.ZOI();
+        newOffsets[OffsetIndexForSym(newConfig.symmetry, D2Continuation(newConfig.symmetry))] |= IntersectingOffsets(historyzoi, newConfig.symmetry, D2Continuation(newConfig.symmetry));
       }
 
       std::vector<LifeState> newMasks;
@@ -2230,12 +2233,14 @@ public:
 
         std::array<LifeState, 6> newOffsets = triedOffsets;
         if(newConfig.symmetry == C1) {
+          LifeState historyzoi = newHistory.ZOI();
           for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-            newOffsets[OffsetIndexForSym(C1, sym)] |= CollidingOffsets(newHistory, C1, sym);
+            newOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(historyzoi, C1, sym);
           }
         }
         if (SymIsD2(newConfig.symmetry)) {
-          newOffsets[OffsetIndexForSym(newConfig.symmetry, D2Continuation(newConfig.symmetry))] |= CollidingOffsets(newHistory, newConfig.symmetry, D2Continuation(newConfig.symmetry));
+          LifeState historyzoi = newHistory.ZOI();
+          newOffsets[OffsetIndexForSym(newConfig.symmetry, D2Continuation(newConfig.symmetry))] |= IntersectingOffsets(historyzoi, newConfig.symmetry, D2Continuation(newConfig.symmetry));
         }
 
         std::vector<LifeState> newMasks;
@@ -2295,7 +2300,7 @@ public:
           masks[s] |= hitLocations;
         }
         for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-          triedOffsets[OffsetIndexForSym(C1, sym)] |= CollidingOffsets(config.state, C1, sym);
+          triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(config.state, C1, sym);
         }
         history |= config.state;
         config.state.Step();
