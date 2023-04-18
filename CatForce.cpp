@@ -1926,7 +1926,7 @@ public:
 
       {
         LifeState lookahead = config.state;
-        lookahead.Step(10);
+        lookahead.Step(REQUIRED_LOOKAHEAD);
         if (!(required & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
           newOffsets.Erase(newOffset.first, newOffset.second);
           continue;
