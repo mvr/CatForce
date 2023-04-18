@@ -2025,6 +2025,9 @@ public:
       if (catalysts[s].mustInclude)
         newConfig.mustIncludeCount++;
 
+      if(!(catalysts[s].required & history).IsEmpty())
+        continue;
+
       LifeState symCatalyst = catalysts[s].state;
       symCatalyst = Symmetricize(symCatalyst, newConfig.symmetry,
                                  newConfig.symmetryOffset);
