@@ -717,8 +717,6 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 
   std::string line;
 
-  bool hasLastGen = false;
-
   while (std::getline(infile, line)) {
     std::vector<std::string> elems = splitwhitespace(line);
 
@@ -753,7 +751,6 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
       params.startGen = atoi(elems[1].c_str());
     } else if (elems[0] == lastGen) {
       params.lastGen = atoi(elems[1].c_str());
-      hasLastGen = true;
     } else if (elems[0] == outputFile) {
       params.outputFile = elems[1];
 
@@ -849,9 +846,6 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
       }
     }
   }
-
-  if(!hasLastGen)
-    params.lastGen = params.maxGen - 1;
 }
 
 class CatalystData {
