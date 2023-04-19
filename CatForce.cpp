@@ -1589,6 +1589,37 @@ public:
     return false;
   }
 
+  bool CheckOscillating(Configuration &conf, unsigned successtime, unsigned failuretime) {
+    LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
+    workspace.Join(conf.startingCatalysts);
+
+    LifeState tortoise = workspace;
+    LifeState hare = workspace;
+
+    unsigned stopTime;
+    if (params.stopAfterCatsDestroyed != -1)
+      stopTime = failuretime + params.stopAfterCatsDestroyed;
+    else
+      stopTime = filterMaxGen;
+
+    for(int i = 1; i < std::min((unsigned)30, std::min((unsigned)params.filterGenRange[0].second, stopTime)); i++) {
+      tortoise.Step(1);
+      hare.Step(2);
+
+      if((tortoise & ~hare).IsEmpty()) {
+        // Now find the actual period
+        LifeState hare2 = hare;
+        for(int j = 1; j < i; j++) {
+          hare2.Step();
+          if((hare2 & ~hare).IsEmpty()) {
+            return j > 10 && j != 15;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   void ReportSolution(Configuration &conf, unsigned successtime, unsigned failuretime) {
     if (HasForbidden(conf, successtime + 3))
       return;
@@ -1616,7 +1647,8 @@ public:
 
     // If has filter validate them;
     if (hasFilter) {
-      if (!ValidateFilters(conf, successtime, failuretime))
+      if (!ValidateFilters(conf, successtime, failuretime)
+          && !CheckOscillating(conf, successtime, failuretime))
         return;
     }
 
