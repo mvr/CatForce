@@ -1036,24 +1036,6 @@ public:
 
     catalystCollisionMasks = std::vector<LifeState>(catalysts.size() * catalysts.size());
 
-    std::stringstream ss;
-    ss << "maskpack-" << AllCatalystsHash();
-    std::string fname = ss.str();
-
-    // See if the pack exists
-    std::ifstream infile;
-    infile.open(fname.c_str(), std::ios::binary);
-    if (infile.good()) {
-      for (unsigned s = 0; s < catalysts.size(); s++) {
-        for (unsigned t = 0; t < catalysts.size(); t++) {
-          infile.read((char*)catalystCollisionMasks[s * catalysts.size() + t].state, N * sizeof(uint64_t));
-          catalystCollisionMasks[s * catalysts.size() + t].RecalculateMinMax();
-        }
-      }
-      return;
-    }
-
-    // If not, load or generate the masks
     for (unsigned s = 0; s < catalysts.size(); s++) {
       for (unsigned t = 0; t < catalysts.size(); t++) {
         if (params.numCatalysts == 2 && hasMustInclude &&
@@ -1071,16 +1053,6 @@ public:
         catalystCollisionMasks[s * catalysts.size() + t].RecalculateMinMax();
       }
     }
-
-    // Save the pack for next time
-    std::ofstream outfile;
-    outfile.open(fname.c_str(), std::ofstream::binary);
-    for (unsigned s = 0; s < catalysts.size(); s++) {
-      for (unsigned t = 0; t < catalysts.size(); t++) {
-        outfile.write((char *)catalystCollisionMasks[s * catalysts.size() + t].state, N * sizeof(uint64_t));
-      }
-    }
-    outfile.close();
   }
 
   void Init(const std::vector<std::string> inputFiles) {
