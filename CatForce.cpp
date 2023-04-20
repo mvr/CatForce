@@ -1603,14 +1603,14 @@ public:
     else
       stopTime = filterMaxGen;
 
-    for(int i = 1; i < std::min((unsigned)30, std::min((unsigned)params.filterGenRange[0].second, stopTime)); i++) {
+    for(int i = 1; i < std::min((unsigned)50, std::min((unsigned)params.filterGenRange[0].second, stopTime)); i++) {
       tortoise.Step(1);
       hare.Step(2);
 
       if((tortoise & ~hare).IsEmpty()) {
         // Now find the actual period
         LifeState harenext = hare;
-        harenext.Step();
+        harenext.Step(2);
         if(harenext == hare)
           return false;
 
@@ -1618,7 +1618,7 @@ public:
         for(int j = 1; j < i; j++) {
           hare2.Step();
           if((hare2 & ~hare).IsEmpty()) {
-            return j > 10 && j % 15 != 0;
+            return j > 10 && j != 15 && j != 14;
           }
         }
       }
