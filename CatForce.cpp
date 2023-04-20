@@ -1592,6 +1592,7 @@ public:
   bool CheckOscillating(Configuration &conf, unsigned successtime, unsigned failuretime) {
     LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
     workspace.Join(conf.startingCatalysts);
+    workspace.Step(10);
 
     LifeState tortoise = workspace;
     LifeState hare = workspace;
@@ -1608,11 +1609,16 @@ public:
 
       if((tortoise & ~hare).IsEmpty()) {
         // Now find the actual period
+        LifeState harenext = hare;
+        harenext.Step();
+        if(harenext == hare)
+          return false;
+
         LifeState hare2 = hare;
         for(int j = 1; j < i; j++) {
           hare2.Step();
           if((hare2 & ~hare).IsEmpty()) {
-            return j > 10 && j != 15;
+            return j > 10 && j % 15 != 0;
           }
         }
       }
