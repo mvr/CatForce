@@ -1621,7 +1621,7 @@ public:
               return false;
 
             // Avoid some common periods (pentadecathlon and TL hassler)
-            return j > 6 && j != 8 && j != 15 && j != 14 && j != 36;
+            return j > 6 && j != 8 && j != 15 && j != 14 && j != 30 && j != 36;
           }
         }
       }
