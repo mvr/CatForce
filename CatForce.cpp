@@ -642,6 +642,7 @@ public:
   LifeState reactionMask;
   unsigned maxDisappear;
   std::vector<LifeTarget> forbidden;
+  bool hasRequired;
   LifeState required;
   bool hasLocus;
   LifeState locus;
@@ -702,12 +703,14 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     }
 
     if (input.requiredRLE != "") {
+      result.hasRequired = true;
       result.required |= LifeState::Parse(input.requiredRLE.c_str(),
                                           input.requiredXY.first,
                                           input.requiredXY.second, tran);
     }
 
     if (input.antirequiredRLE != "") {
+      result.hasRequired = true;
       result.required |= LifeState::Parse(input.antirequiredRLE.c_str(),
                                           input.antirequiredXY.first,
                                           input.antirequiredXY.second, tran);
@@ -1423,19 +1426,32 @@ public:
 
       LifeState newRequired = required | catalysts[s].required;
 
-      lookahead.Step(REQUIRED_LOOKAHEAD - 1);
-
-      if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
-        continue;
+      for(unsigned i = 0; i < REQUIRED_LOOKAHEAD - 1; i++) {
+        lookahead.Step();
+        if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
+          continue;
+        }
       }
 
       shiftedTargets[config.count] = catalysts[s].target;
 
       if (catalysts[s].checkRecovery) {
-        lookahead.Step(catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD);
+        bool catalystFailed = false;
+        for (int i = 0; i < (int)catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD + 1; i++) {
+          lookahead.Step();
+          if (!(catalysts[s].required & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
+            catalystFailed = true;
+            break;
+          }
+        }
 
-        if (!lookahead.Contains(shiftedTargets[config.count]))
+        if (!catalystFailed && !lookahead.Contains(shiftedTargets[config.count])) {
+          catalystFailed = true;
+        }
+
+        if (catalystFailed) {
           continue;
+        }
       }
 
       if (config.count == 0) {
@@ -1550,29 +1566,47 @@ public:
           }
         }
 
+        LifeState catRequired;
         LifeState newRequired = required;
-        newRequired.Join(catalysts[s].required, newPlacement.first,
-                         newPlacement.second);
+        if(catalysts[s].hasRequired) {
+          catRequired.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
+          newRequired |= catRequired;
+        }
         newConfig.startingCatalysts |= symCatalyst;
 
-        lookahead.Step(REQUIRED_LOOKAHEAD-1);
         {
-          if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
-            if (DEBUG_OUTPUT && config.count == 0) {
-              std::cout << "Skipping catalyst " << s << " at "
-                        << newPlacement.first << ", " << newPlacement.second
-                        << " (is destroyed) " << std::endl;
-            }
+          bool catalystFailed = false;
+          for (unsigned i = 0; i < REQUIRED_LOOKAHEAD - 1; i++) {
+            lookahead.Step();
 
-            masks[s].Set(newPlacement.first, newPlacement.second);
-            newPlacements.Erase(newPlacement.first, newPlacement.second);
-            continue;
+            if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
+              if (DEBUG_OUTPUT && config.count == 0) {
+                std::cout << "Skipping catalyst " << s << " at "
+                          << newPlacement.first << ", " << newPlacement.second
+                          << " (is destroyed) " << std::endl;
+              }
+
+              catalystFailed = true;
+              break;
+            }
           }
         }
 
         if (catalysts[s].checkRecovery) {
-          lookahead.Step(catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD);
-          if (!lookahead.Contains(shiftedCatalyst)) {
+          bool catalystFailed = false;
+          for (int i = 0; i < (int)catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD + 1; i++) {
+            lookahead.Step();
+            // if (catalysts[s].hasRequired && !(catRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
+            //   catalystFailed = true;
+            //   break;
+            // }
+          }
+
+          if (!catalystFailed && !lookahead.Contains(shiftedCatalyst)) {
+            catalystFailed = true;
+          }
+
+          if (catalystFailed) {
             if (DEBUG_OUTPUT && config.count == 0) {
               std::cout << "Skipping catalyst " << s << " at "
                         << newPlacement.first << ", " << newPlacement.second
