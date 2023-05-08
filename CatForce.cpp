@@ -2204,22 +2204,25 @@ public:
           newRequired |= catRequired;
         }
 
-        lookahead.Step(REQUIRED_LOOKAHEAD - 2);
         {
           bool catalystFailed = false;
-          for (unsigned i = 0; i < REQUIRED_LOOKAHEAD - 1; i++) {
+          for (unsigned i = 0; i < REQUIRED_LOOKAHEAD - 2; i++) {
             lookahead.Step();
 
             if (!(newRequired & (lookahead ^ newConfig.startingCatalysts)).IsEmpty()) {
-              if (DEBUG_OUTPUT && config.count == 0) {
-                std::cout << "Skipping catalyst " << s << " at "
-                          << newPlacement.first << ", " << newPlacement.second
-                          << " (is destroyed) " << std::endl;
-              }
-
               catalystFailed = true;
               break;
             }
+          }
+          if (catalystFailed) {
+              if (DEBUG_OUTPUT && config.count == 0) {
+                  std::cout << "Skipping catalyst " << s << " at "
+                            << newPlacement.first << ", " << newPlacement.second
+                            << " (is destroyed) " << std::endl;
+              }
+              masks[s].Set(newPlacement.first, newPlacement.second);
+              newPlacements.Erase(newPlacement.first, newPlacement.second);
+              continue;
           }
         }
 
@@ -2237,7 +2240,7 @@ public:
             // }
           }
 
-          if (!catalystFailed && !lookahead.Contains(shiftedCatalyst)) {
+          if (!catalystFailed && !lookahead.Contains(shiftedTargets[config.count])) {
             catalystFailed = true;
           }
 
