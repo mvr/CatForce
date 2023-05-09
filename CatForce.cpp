@@ -1704,24 +1704,28 @@ public:
   }
 
   void RecursiveSearch(SearchState &search) {
-    bool wasFree = search.violationCell.first == -1;
-    auto [newViolationCell, newViolationGen] = FindViolation(search);
-    bool isFree = newViolationCell.first == -1;
+    bool wasFree = false;
+    bool isFree = false;
+    if(search.config.count != params.numCatalysts) {
+      wasFree = search.violationCell.first == -1;
+      auto [newViolationCell, newViolationGen] = FindViolation(search);
+      isFree = newViolationCell.first == -1;
 
-    if (isFree && !wasFree) {
-      // Restore free point
-      // Note: masks etc are not restored
-      LifeState newCatalysts;
-      for (unsigned i = search.freeCount; i < search.config.count; i++) {
-        LifeState shiftedCatalyst = catalysts[search.config.curs[i]].state;
-        shiftedCatalyst.Move(search.config.curx[i], search.config.cury[i]);
-        newCatalysts.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
+      if (isFree && !wasFree) {
+        // Restore free point
+        // Note: masks etc are not restored
+        LifeState newCatalysts;
+        for (unsigned i = search.freeCount; i < search.config.count; i++) {
+          LifeState shiftedCatalyst = catalysts[search.config.curs[i]].state;
+          shiftedCatalyst.Move(search.config.curx[i], search.config.cury[i]);
+          newCatalysts.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
+        }
+        search.state = search.freeState | newCatalysts;
+        search.history = search.freeHistory | newCatalysts;
       }
-      search.state = search.freeState | newCatalysts;
-      search.history = search.freeHistory | newCatalysts;
+      search.violationCell = newViolationCell;
+      search.violationGen = newViolationGen;
     }
-    search.violationCell = newViolationCell;
-    search.violationGen = newViolationGen;
 
     bool success = false;
     bool failure = false;
@@ -1744,7 +1748,7 @@ public:
         failure = true;
       if (search.config.count < params.numCatalysts && g > params.maxGen)
         failure = true;
-      if (!isFree && search.state.gen >= search.violationGen)
+      if (search.config.count != params.numCatalysts && !isFree && search.state.gen >= search.violationGen)
         failure = true;
       if (!(search.required & (search.state ^ search.config.startingCatalysts)).IsEmpty())
         failure = true;
@@ -1758,40 +1762,44 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      LifeState criticalArea(false);
-      if (isFree) {
-        criticalArea = ~LifeState();
-        search.freeState = search.state;
-        search.freeHistory = search.history;
-        search.freeCount = search.config.count;
-      } else {
-        int distance = search.violationGen - search.state.gen;
-        criticalArea = LifeState::NZOIAround(search.violationCell, distance);
-        criticalArea.JoinWSymChain(criticalArea, params.symmetryChain);
-      }
-      LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
-      bool hasActivePart = !activePart.IsEmpty();
+      if(search.config.count != params.numCatalysts) {
+        LifeState criticalArea(false);
+        if (isFree) {
+          criticalArea = ~LifeState();
+          search.freeState = search.state;
+          search.freeHistory = search.history;
+          search.freeCount = search.config.count;
+        } else {
+          int distance = search.violationGen - search.state.gen;
+          criticalArea = LifeState::NZOIAround(search.violationCell, distance);
+          criticalArea.JoinWSymChain(criticalArea, params.symmetryChain);
+        }
+        LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
+        bool hasActivePart = !activePart.IsEmpty();
 
-      if (!hasActivePart) {
-        search.history |= search.state;
-        search.state.Step();
-      }
+        if (!hasActivePart) {
+          search.history |= search.state;
+          search.state.Step();
+        }
 
-      // Try adding a catalyst
-      if (hasActivePart && search.state.gen >= params.startGen && search.config.count != params.numCatalysts) {
-        LifeState next = search.state;
-        next.Step();
+        // Try adding a catalyst
+        if (hasActivePart && search.state.gen >= params.startGen) {
+          LifeState next = search.state;
+          next.Step();
 
-        TryAddingCatalyst(search, activePart, next);
+          TryAddingCatalyst(search, activePart, next);
 
-        TryAddingFixedCatalyst(search, activePart, next);
+          TryAddingFixedCatalyst(search, activePart, next);
 
-        search.history |= search.state;
-        search.state = next;
+          search.history |= search.state;
+          search.state = next;
+        } else {
+          search.history |= search.state;
+          search.state.Step();
+        }
       } else {
         // No need to update history, not used for anything once all
         // catalysts are placed
-        // history |= search.state;
         search.state.Step();
       }
 
