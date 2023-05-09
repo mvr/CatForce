@@ -1008,6 +1008,7 @@ struct SearchState {
   LifeState required;
   Configuration config;
 
+  unsigned freeCount; // How many catalysts we had at the last free choice
   std::pair<int, int> violationCell;
   unsigned violationGen;
 
@@ -1358,6 +1359,7 @@ public:
     search.history = search.state;
     search.freeState = search.state;
     search.freeHistory = search.state;
+    search.freeCount = 0;
     search.violationCell = {-1, -1};
     search.violationGen = 0;
     search.required = alsoRequired;
@@ -1693,17 +1695,17 @@ public:
     auto [newViolationCell, newViolationGen] = FindViolation(search);
     bool isFree = newViolationCell.first == -1;
 
-    if (isFree) {
-      if (wasFree) {
-        // Save point to go back to
-        search.freeState = search.state;
-        search.freeHistory = search.history;
-      } else {
-        // Restore free point
-        // Note: masks etc are not restored
-        search.state = search.freeState;
-        search.history = search.freeHistory;
+    if (isFree && !wasFree) {
+      // Restore free point
+      // Note: masks etc are not restored
+      LifeState newCatalysts;
+      for (unsigned i = search.freeCount; i < search.config.count; i++) {
+        LifeState shiftedCatalyst = catalysts[search.config.curs[i]].state;
+        shiftedCatalyst.Move(search.config.curx[i], search.config.cury[i]);
+        newCatalysts.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
       }
+      search.state = search.freeState | newCatalysts;
+      search.history = search.freeHistory | newCatalysts;
     }
     search.violationCell = newViolationCell;
     search.violationGen = newViolationGen;
