@@ -1748,6 +1748,9 @@ public:
       LifeState criticalArea(false);
       if (isFree) {
         criticalArea = ~LifeState();
+        search.freeState = search.state;
+        search.freeHistory = search.history;
+        search.freeCount = search.config.count;
       } else {
         int distance = search.violationGen - search.state.gen;
         criticalArea = LifeState::NZOIAround(search.violationCell, distance);
