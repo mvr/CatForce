@@ -1003,8 +1003,14 @@ public:
 struct SearchState {
   LifeState state;
   LifeState history;
-  Configuration config;
+  LifeState freeState;
+  LifeState freeHistory;
   LifeState required;
+  Configuration config;
+
+  std::pair<int, int> violationCell;
+  unsigned violationGen;
+
   std::vector<LifeState> masks;
   std::vector<LifeTarget> shiftedTargets;
 
@@ -1350,6 +1356,10 @@ public:
     SearchState search;
     search.state.JoinWSymChain(pat, params.symmetryChain);
     search.history = search.state;
+    search.freeState = search.state;
+    search.freeHistory = search.state;
+    search.violationCell = {-1, -1};
+    search.violationGen = 0;
     search.required = alsoRequired;
     search.shiftedTargets = std::vector<LifeTarget>(params.numCatalysts);
     search.missingTime = std::array<unsigned, MAX_CATALYSTS>();
@@ -1678,8 +1688,26 @@ public:
     }
   }
 
-  void
-  RecursiveSearch(SearchState &search) {
+  void RecursiveSearch(SearchState &search) {
+    bool wasFree = search.violationCell.first == -1;
+    auto [newViolationCell, newViolationGen] = FindViolation(search);
+    bool isFree = newViolationCell.first == -1;
+
+    if (isFree) {
+      if (wasFree) {
+        // Save point to go back to
+        search.freeState = search.state;
+        search.freeHistory = search.history;
+      } else {
+        // Restore free point
+        // Note: masks etc are not restored
+        search.state = search.freeState;
+        search.history = search.freeHistory;
+      }
+    }
+    search.violationCell = newViolationCell;
+    search.violationGen = newViolationGen;
+
     bool success = false;
     bool failure = false;
     unsigned successtime;
@@ -1701,6 +1729,8 @@ public:
         failure = true;
       if (search.config.count < params.numCatalysts && g > params.maxGen)
         failure = true;
+      if (!isFree && search.state.gen >= search.violationGen)
+        failure = true;
       if (!(search.required & (search.state ^ search.config.startingCatalysts)).IsEmpty())
         failure = true;
 
@@ -1713,15 +1743,13 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      auto [violationCell, violationGen] = FindViolation(search);
       LifeState criticalArea(false);
-      if(violationCell.first != -1) {
-        unsigned distance = violationGen - search.state.gen;
-        criticalArea = LifeState::NZOIAround(violationCell, distance);
-      } else {
+      if (isFree) {
         criticalArea = ~LifeState();
+      } else {
+        int distance = search.violationGen - search.state.gen;
+        criticalArea = LifeState::NZOIAround(search.violationCell, distance);
       }
-
       LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
       bool hasActivePart = !activePart.IsEmpty();
 
