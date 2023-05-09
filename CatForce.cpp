@@ -1389,16 +1389,29 @@ public:
   }
 
   std::pair<std::pair<int, int>, unsigned> FindViolation(SearchState &search) {
+    std::array<unsigned, MAX_CATALYSTS> missingTime = search.missingTime;
     LifeState lookahead = search.state;
-    for(unsigned i = 1; i <= LIGHTSPEED_LOOKAHEAD; i++) {
+    for(unsigned g = 1; g <= LIGHTSPEED_LOOKAHEAD; g++) {
       lookahead.Step();
 
       LifeState requiredViolations = search.required & (lookahead ^ search.config.startingCatalysts);
       std::pair<int, int> cell = requiredViolations.FirstOn();
       if (cell != std::make_pair(-1, -1))
-        return {cell, search.state.gen + i};
+        return {cell, search.state.gen + g};
 
-      // TODO: individual catalyst recovery
+      for (unsigned i = 0; i < search.config.count; i++) {
+        if (lookahead.Contains(search.shiftedTargets[i]) || catalysts[search.config.curs[i]].sacrificial) {
+          missingTime[i] = 0;
+        } else {
+          missingTime[i] += 1;
+        }
+
+        if (missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
+          std::pair<int, int> cell = (search.shiftedTargets[i].wanted & ~lookahead).FirstOn();
+          if (cell != std::make_pair(-1, -1))
+            return {cell, search.state.gen + g};
+        }
+      }
     }
     return {{-1, -1}, 0};
   }
