@@ -1751,6 +1751,7 @@ public:
       } else {
         int distance = search.violationGen - search.state.gen;
         criticalArea = LifeState::NZOIAround(search.violationCell, distance);
+        criticalArea.JoinWSymChain(criticalArea, params.symmetryChain);
       }
       LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
       bool hasActivePart = !activePart.IsEmpty();
