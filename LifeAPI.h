@@ -1001,6 +1001,12 @@ public:
     return result;
   }
 
+  static LifeState NZOIAround(std::pair<int, int> cell, unsigned distance) {
+    unsigned size = 2 * distance + 1;
+    return LifeState::SolidRect(cell.first - distance, cell.second - distance,
+                                size, size);
+  }
+
   std::array<int, 4> XYBounds() const {
     int minCol = -32;
     int maxCol = 31;

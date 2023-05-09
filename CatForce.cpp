@@ -16,6 +16,7 @@
 const bool DEBUG_OUTPUT = false;
 const int MAX_CATALYSTS = 5;
 const int REQUIRED_LOOKAHEAD = 5;
+const int LIGHTSPEED_LOOKAHEAD = 20;
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
@@ -1375,6 +1376,21 @@ public:
     RecursiveSearch(search);
   }
 
+  std::pair<std::pair<int, int>, unsigned> FindViolation(SearchState &search) {
+    LifeState lookahead = search.state;
+    for(unsigned i = 1; i <= LIGHTSPEED_LOOKAHEAD; i++) {
+      lookahead.Step();
+
+      LifeState requiredViolations = search.required & (lookahead ^ search.config.startingCatalysts);
+      std::pair<int, int> cell = requiredViolations.FirstOn();
+      if (cell != std::make_pair(-1, -1))
+        return {cell, search.state.gen + i};
+
+      // TODO: individual catalyst recovery
+    }
+    return {{-1, -1}, 0};
+  }
+
   void TryAddingFixedCatalyst(SearchState &search, const LifeState &activePart, const LifeState &next) {
     for (unsigned s = nonfixedCatalystCount; s < nonfixedCatalystCount + fixedCatalystCount; s++) {
       if (catalysts[s].fixedGen != search.state.gen)
@@ -1697,7 +1713,16 @@ public:
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts;
+      auto [violationCell, violationGen] = FindViolation(search);
+      LifeState criticalArea(false);
+      if(violationCell.first != -1) {
+        unsigned distance = violationGen - search.state.gen;
+        criticalArea = LifeState::NZOIAround(violationCell, distance);
+      } else {
+        criticalArea = ~LifeState();
+      }
+
+      LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
       bool hasActivePart = !activePart.IsEmpty();
 
       if (!hasActivePart) {
