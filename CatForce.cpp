@@ -2246,7 +2246,7 @@ public:
             // }
           }
 
-          if (!catalystFailed && !lookahead.Contains(search.shiftedTargets[search.config.count])) {
+          if (!catalystFailed && !lookahead.Contains(newSearch.shiftedTargets[search.config.count])) {
             catalystFailed = true;
           }
 
