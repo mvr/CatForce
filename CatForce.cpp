@@ -1347,14 +1347,12 @@ struct SearchState {
   LifeState freeHistory;
   LifeState required;
   std::array<LifeState, 6> triedOffsets;
+  std::array<LifeTarget, MAX_CATALYSTS> shiftedTargets;
   Configuration config;
 
   unsigned freeCount; // How many catalysts we had at the last free choice
   std::pair<int, int> violationCell;
   unsigned violationGen;
-
-  std::vector<LifeState> masks;
-  std::vector<LifeTarget> shiftedTargets;
 
   std::array<unsigned, MAX_CATALYSTS> missingTime;
   std::array<unsigned, MAX_CATALYSTS> recoveredTime;
@@ -1848,7 +1846,7 @@ public:
     search.violationCell = {-1, -1};
     search.violationGen = 0;
     search.required = alsoRequired;
-    search.shiftedTargets = std::vector<LifeTarget>(params.numCatalysts);
+    search.shiftedTargets = std::array<LifeTarget, MAX_CATALYSTS>();
     search.missingTime = std::array<unsigned, MAX_CATALYSTS>();
     search.recoveredTime = std::array<unsigned, MAX_CATALYSTS>();
 
@@ -1867,32 +1865,32 @@ public:
 
     bounds &= FundamentalDomainFast(params.symmetry);
 
-    search.masks = std::vector<LifeState>(nonfixedCatalystCount);
+    std::vector<LifeState> masks = std::vector<LifeState>(nonfixedCatalystCount);
     for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
       LifeState zoi = catalysts[s].state.ZOI();
       zoi.Transform(Rotate180OddBoth);
-      search.masks[s] = search.state.Convolve(zoi) | ~bounds;
+      masks[s] = search.state.Convolve(zoi) | ~bounds;
     }
 
-    RecursiveSearch(search);
+    RecursiveSearch(search, masks);
   }
 
-  void TryApplyingSymmetry(SearchState &search, LifeState &activePart) {
+  void TryApplyingSymmetry(SearchState &search, std::vector<LifeState> &masks, LifeState &activePart) {
 
     switch (search.config.symmetry) {
     case C1:
       for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd})
-        TryApplyingSpecificSymmetry(search, activePart, sym);
+        TryApplyingSpecificSymmetry(search, masks, activePart, sym);
       break;
 
     case D2AcrossX:
     case D2AcrossY:
-      TryApplyingSpecificSymmetry(search, activePart, D4);
+      TryApplyingSpecificSymmetry(search, masks, activePart, D4);
       break;
 
     case D2diagodd:
     case D2negdiagodd:
-      TryApplyingSpecificSymmetry(search, activePart, D4diag);
+      TryApplyingSpecificSymmetry(search, masks, activePart, D4diag);
       break;
 
     default:
@@ -1900,7 +1898,7 @@ public:
     }
   }
 
-  void TryApplyingSpecificSymmetry(SearchState &search,
+  void TryApplyingSpecificSymmetry(SearchState &search, std::vector<LifeState> &masks,
       LifeState &activePart, StaticSymmetry newSym) {
 
     LifeState activezoi = activePart.ZOI();
@@ -1951,11 +1949,14 @@ public:
 
       newSearch.history = Symmetricize(search.history, newSym, newOffset);
 
+      std::vector<LifeState> newMasks;
+
       if (newSearch.config.count != params.numCatalysts) {
+        newMasks = masks;
         LifeState fundamentalDomain = FundamentalDomainFast(newSym);
         fundamentalDomain.Move(HalveOffset(newSym, newOffset));
         for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-          newSearch.masks[t] |= ~fundamentalDomain | newSearch.history.Convolve(catalysts[t].reactionMask);
+          newMasks[t] |= ~fundamentalDomain | newSearch.history.Convolve(catalysts[t].reactionMask);
         }
       }
 
@@ -1975,9 +1976,9 @@ public:
         if(newSym == D2diagodd || newSym == D2negdiagodd)
           newSearch.triedOffsets[continuationIndex] |= LifeState::Checkerboard();
 
-        RecursiveSearch(newSearch);
+        RecursiveSearch(newSearch, newMasks);
       } else {
-        RecursiveSearch(newSearch);
+        RecursiveSearch(newSearch, newMasks);
       }
 
       newOffsets.Erase(newOffset.first, newOffset.second);
@@ -1985,22 +1986,34 @@ public:
   }
 
   std::pair<std::pair<int, int>, unsigned> FindViolation(SearchState &search) {
+    std::array<unsigned, MAX_CATALYSTS> missingTime = search.missingTime;
     LifeState lookahead = search.state;
-    for(unsigned i = 1; i <= LIGHTSPEED_LOOKAHEAD; i++) {
+    for(unsigned g = 1; g <= LIGHTSPEED_LOOKAHEAD; g++) {
       lookahead.Step();
 
       LifeState requiredViolations = search.required & (lookahead ^ search.config.startingCatalysts);
       std::pair<int, int> cell = requiredViolations.FirstOn();
       if (cell != std::make_pair(-1, -1))
-        return {cell, search.state.gen + i};
+        return {cell, search.state.gen + g};
 
-      // TODO: individual catalyst recovery
+      for (unsigned i = 0; i < search.config.count; i++) {
+        if (lookahead.Contains(search.shiftedTargets[i]) || catalysts[search.config.curs[i]].sacrificial) {
+          missingTime[i] = 0;
+        } else {
+          missingTime[i] += 1;
+        }
+
+        if (missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
+          std::pair<int, int> cell = (search.shiftedTargets[i].wanted & ~lookahead).FirstOn();
+          if (cell != std::make_pair(-1, -1))
+            return {cell, search.state.gen + g};
+        }
+      }
     }
     return {{-1, -1}, 0};
   }
 
-
-  void TryAddingFixedCatalyst(SearchState &search, const LifeState &activePart, const LifeState &twonext) {
+  void TryAddingFixedCatalyst(SearchState &search, std::vector<LifeState> &masks, const LifeState &activePart, const LifeState &twonext) {
     for (unsigned s = nonfixedCatalystCount; s < nonfixedCatalystCount + fixedCatalystCount; s++) {
       if (catalysts[s].fixedGen != search.state.gen)
         continue;
@@ -2096,7 +2109,11 @@ public:
         newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))] |= IntersectingOffsets(historyzoi, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
       }
 
+      std::vector<LifeState> newMasks;
+
       if (newSearch.config.count != params.numCatalysts) {
+        newMasks = masks;
+
         LifeState bounds;
         if (params.maxW != -1) {
           LifeState rect =
@@ -2106,24 +2123,24 @@ public:
           bounds.JoinWSymChain(rect, params.symmetryChain);
 
           for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-            newSearch.masks[t] |= ~bounds;
+            newMasks[t] |= ~bounds;
           }
         }
 
         for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-          newSearch.masks[t].Join(catalystCollisionMasks[s * catalysts.size() + t]);
+          newMasks[t].Join(catalystCollisionMasks[s * catalysts.size() + t]);
         }
       }
 
-      RecursiveSearch(newSearch);
+      RecursiveSearch(newSearch, newMasks);
     }
   }
 
-  void TryAddingCatalyst(SearchState &search, const LifeState &activePart, const LifeState &twonext) {
+  void TryAddingCatalyst(SearchState &search, std::vector<LifeState> &masks, const LifeState &activePart, const LifeState &twonext) {
     for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
       if (catalysts[s].hasLocus) {
         LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
-        search.masks[s] |= hitLocations;
+        masks[s] |= hitLocations;
       }
     }
 
@@ -2136,7 +2153,7 @@ public:
           search.config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
 
-      LifeState newPlacements = activePart.Convolve(catalysts[s].locusReactionMask) & ~search.masks[s];
+      LifeState newPlacements = activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
 
       while (!newPlacements.IsEmpty()) {
         // Do the placement
@@ -2209,7 +2226,7 @@ public:
                             << newPlacement.first << ", " << newPlacement.second
                             << " (is destroyed) " << std::endl;
               }
-              search.masks[s].Set(newPlacement.first, newPlacement.second);
+              masks[s].Set(newPlacement.first, newPlacement.second);
               newPlacements.Erase(newPlacement.first, newPlacement.second);
               continue;
           }
@@ -2239,7 +2256,7 @@ public:
                         << newPlacement.first << ", " << newPlacement.second
                         << " (failed to recover completely) " << std::endl;
             }
-            search.masks[s].Set(newPlacement.first, newPlacement.second);
+            masks[s].Set(newPlacement.first, newPlacement.second);
             newPlacements.Erase(newPlacement.first, newPlacement.second);
             continue;
           }
@@ -2265,9 +2282,13 @@ public:
           newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))] |= IntersectingOffsets(historyzoi, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
         }
 
+        std::vector<LifeState> newMasks;
+
         // If we just placed the last catalyst, don't bother
         // updating the masks
         if (newSearch.config.count != params.numCatalysts) {
+          newMasks = masks;
+
           LifeState bounds;
           if (params.maxW != -1) {
             LifeState rect =
@@ -2277,43 +2298,47 @@ public:
             bounds.JoinWSymChain(rect, params.symmetryChain);
 
             for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-              newSearch.masks[t] |= ~bounds;
+              newMasks[t] |= ~bounds;
             }
           }
 
           for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-              newSearch.masks[t].Join(catalystCollisionMasks[s * catalysts.size() + t],
+              newMasks[t].Join(catalystCollisionMasks[s * catalysts.size() + t],
                              newPlacement.first, newPlacement.second);
           }
         }
 
-        RecursiveSearch(newSearch);
+        RecursiveSearch(newSearch, newMasks);
 
-        search.masks[s].Set(newPlacement.first, newPlacement.second);
+        masks[s].Set(newPlacement.first, newPlacement.second);
         newPlacements.Erase(newPlacement.first, newPlacement.second);
       }
     }
   }
 
-  void RecursiveSearch(SearchState &search) {
-    bool wasFree = search.violationCell.first == -1;
-    auto [newViolationCell, newViolationGen] = FindViolation(search);
-    bool isFree = newViolationCell.first == -1;
+  void RecursiveSearch(SearchState &search, std::vector<LifeState> &masks) {
+    bool wasFree = false;
+    bool isFree = false;
+    if(search.config.count != params.numCatalysts || !SymIsTerminal(search.config.symmetry)) {
+      wasFree = search.violationCell.first == -1;
+      auto [newViolationCell, newViolationGen] = FindViolation(search);
+      isFree = newViolationCell.first == -1;
 
-    if (isFree && !wasFree) {
-      // Restore free point
-      // Note: masks etc are not restored
-      LifeState newCatalysts;
-      for (unsigned i = search.freeCount; i < search.config.count; i++) {
-        LifeState shiftedCatalyst = catalysts[search.config.curs[i]].state;
-        shiftedCatalyst.Move(search.config.curx[i], search.config.cury[i]);
-        newCatalysts |= Symmetricize(shiftedCatalyst, search.config.symmetry, search.config.symmetryOffset);
+      if (isFree && !wasFree) {
+        // Restore free point
+        // Note: masks etc are not restored
+        LifeState newCatalysts;
+        for (unsigned i = search.freeCount; i < search.config.count; i++) {
+          LifeState shiftedCatalyst = catalysts[search.config.curs[i]].state;
+          shiftedCatalyst.Move(search.config.curx[i], search.config.cury[i]);
+          newCatalysts |= Symmetricize(shiftedCatalyst, search.config.symmetry, search.config.symmetryOffset);
+        }
+        search.state = search.freeState | newCatalysts;
+        search.history = search.freeHistory | newCatalysts;
       }
-      search.state = search.freeState | newCatalysts;
-      search.history = search.freeHistory | newCatalysts;
+      search.violationCell = newViolationCell;
+      search.violationGen = newViolationGen;
     }
-    search.violationCell = newViolationCell;
-    search.violationGen = newViolationGen;
 
     bool success = false;
     bool failure = false;
@@ -2325,7 +2350,7 @@ public:
       if (search.state.gen < params.startGen) {
         for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
           LifeState hitLocations = search.state.Convolve(catalysts[s].reactionMask);
-          search.masks[s] |= hitLocations;
+          masks[s] |= hitLocations;
         }
         for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
           search.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(search.state, C1, sym);
@@ -2339,7 +2364,7 @@ public:
         failure = true;
       if (search.config.count < params.numCatalysts && g > params.maxGen)
         failure = true;
-      if (!isFree && search.state.gen >= search.violationGen)
+      if (search.config.count != params.numCatalysts && !isFree && search.state.gen >= search.violationGen)
         failure = true;
       if (!(search.required & (search.state ^ search.config.startingCatalysts)).IsEmpty())
         failure = true;
@@ -2355,58 +2380,54 @@ public:
       }
 
       if(!SymIsTerminal(search.config.symmetry) || search.config.count != params.numCatalysts) {
-
-      LifeState criticalArea(false);
-      if (isFree) {
-        criticalArea = ~LifeState();
-        search.freeState = search.state;
-        search.freeHistory = search.history;
-        search.freeCount = search.config.count;
-      } else {
-        int distance = search.violationGen - search.state.gen;
-        criticalArea = LifeState::NZOIAround(search.violationCell, distance);
-        criticalArea = Symmetricize(criticalArea, search.config.symmetry, search.config.symmetryOffset);
-      }
-      LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
-      // LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts;
-
-      bool hasActivePart = !activePart.IsEmpty();
-
-      if (hasActivePart && search.config.count != params.numCatalysts) {
-        for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
-          if (catalysts[s].hasLocus) {
-            LifeState hitLocations =
-                activePart.Convolve(catalysts[s].locusAvoidMask);
-            search.masks[s] |= hitLocations;
-          }
+        LifeState criticalArea(false);
+        if (isFree) {
+          criticalArea = ~LifeState();
+          search.freeState = search.state;
+          search.freeHistory = search.history;
+          search.freeCount = search.config.count;
+        } else {
+          int distance = search.violationGen - search.state.gen;
+          criticalArea = LifeState::NZOIAround(search.violationCell, distance);
+          criticalArea = Symmetricize(criticalArea, search.config.symmetry, search.config.symmetryOffset);
         }
-      }
+        LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
 
-      if (hasActivePart) {
-        TryApplyingSymmetry(search, activePart);
-      }
+        bool hasActivePart = !activePart.IsEmpty();
 
-      // Try adding a catalyst
-      if (hasActivePart && search.state.gen >= params.startGen &&
-          search.config.count != params.numCatalysts) {
-        LifeState next = search.state;
-        next.Step();
-        LifeState twonext = next;
-        twonext.Step();
+        if (hasActivePart) {
+          if (search.config.count != params.numCatalysts) {
+            for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
+              if (catalysts[s].hasLocus) {
+                LifeState hitLocations =
+                  activePart.Convolve(catalysts[s].locusAvoidMask);
+                masks[s] |= hitLocations;
+              }
+            }
+          }
 
-        TryAddingCatalyst(search, activePart, twonext);
+          TryApplyingSymmetry(search, masks, activePart);
 
-        TryAddingFixedCatalyst(search, activePart, twonext);
+          if (search.state.gen >= params.startGen && search.config.count != params.numCatalysts) {
+            LifeState next = search.state;
+            next.Step();
+            LifeState twonext = next;
+            twonext.Step();
 
-        search.history |= search.state;
-        search.state = next;
-      } else {
-        // No need to update history, not used for anything once all
-        // catalysts are placed
-        if (!SymIsTerminal(search.config.symmetry) || search.config.count != params.numCatalysts)
+            TryAddingCatalyst(search, masks, activePart, twonext);
+
+            TryAddingFixedCatalyst(search, masks, activePart, twonext);
+
+            search.history |= search.state;
+            search.state = next;
+          } else {
+            search.history |= search.state;
+            search.state.Step();
+          }
+        } else {
           search.history |= search.state;
-        search.state.Step();
-      }
+          search.state.Step();
+        }
       } else {
         search.state.Step();
       }
