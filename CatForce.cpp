@@ -2364,7 +2364,7 @@ public:
         failure = true;
       if (search.config.count < params.numCatalysts && g > params.maxGen)
         failure = true;
-      if (search.config.count != params.numCatalysts && !isFree && search.state.gen >= search.violationGen)
+      if ((search.config.count != params.numCatalysts || !SymIsTerminal(search.config.symmetry)) && !isFree && search.state.gen >= search.violationGen)
         failure = true;
       if (!(search.required & (search.state ^ search.config.startingCatalysts)).IsEmpty())
         failure = true;
