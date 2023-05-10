@@ -1612,7 +1612,7 @@ public:
   bool CheckOscillating(Configuration &conf, unsigned successtime, unsigned failuretime) {
     LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
     workspace.Join(conf.startingCatalysts);
-    workspace.Step(5);
+    workspace.Step(10);
 
     LifeState tortoise = workspace;
     LifeState hare = workspace;
