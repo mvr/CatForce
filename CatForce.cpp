@@ -1342,10 +1342,16 @@ inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
 
 struct SearchState {
   LifeState state;
+  LifeState required;
   LifeState history;
+  LifeState history1;
+  LifeState history2;
+  LifeState historyMore;
   LifeState freeState;
   LifeState freeHistory;
-  LifeState required;
+  LifeState freeHistory1;
+  LifeState freeHistory2;
+  LifeState freeHistoryMore;
   std::array<LifeState, 6> triedOffsets;
   Configuration config;
 
@@ -1835,12 +1841,26 @@ public:
     return result;
   }
 
+  void UpdateCounts(LifeState &__restrict__ state, LifeState &__restrict__ out1, LifeState &__restrict__ out2, LifeState &__restrict__ outMore) {
+    LifeState bit3(false), bit2(false), bit1(false), bit0(false);
+    state.CountNeighbourhood(bit3, bit2, bit1, bit0);
+    out1 |= ~state & ~bit3 & ~bit2 & ~bit1 & bit0;
+    out2 |= ~state & ~bit3 & ~bit2 & bit1 & ~bit0;
+    outMore |= ~state & (bit3 | bit2 | (bit1 & bit0));
+  }
+
   void Search() {
     SearchState search;
     search.state.JoinWSymChain(pat, params.symmetryChain);
     search.history = search.state;
+    search.history1 = search.state;
+    search.history2 = search.state;
+    search.historyMore = search.state;
     search.freeState = search.state;
     search.freeHistory = search.state;
+    search.freeHistory1 = search.state;
+    search.freeHistory2 = search.state;
+    search.freeHistoryMore = search.state;
     search.freeCount = 0;
     search.violationCell = {-1, -1};
     search.violationGen = 0;
@@ -1949,6 +1969,9 @@ public:
           Symmetricize(newSearch.config.startingCatalysts, newSym, newOffset);
 
       newSearch.history = Symmetricize(search.history, newSym, newOffset);
+      newSearch.history1 = Symmetricize(search.history1, newSym, newOffset);
+      newSearch.history2 = Symmetricize(search.history2, newSym, newOffset);
+      newSearch.historyMore = Symmetricize(search.historyMore, newSym, newOffset);
 
       std::vector<LifeState> newMasks;
 
@@ -2096,8 +2119,10 @@ public:
       }
 
       newSearch.history = search.history | symCatalyst;
+      UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
       symCatalyst.Step();
       newSearch.history |= symCatalyst;
+      UpdateCounts(symCatalyst, newSearch.history1, newSearch.history2, newSearch.historyMore);
 
       if(newSearch.config.symmetry == C1) {
         LifeState historyzoi = newSearch.history.ZOI();
@@ -2269,8 +2294,10 @@ public:
         }
 
         newSearch.history = search.history | symCatalyst;
+        UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
         symCatalyst.Step();
         newSearch.history |= symCatalyst;
+        UpdateCounts(symCatalyst, newSearch.history1, newSearch.history2, newSearch.historyMore);
 
         if(newSearch.config.symmetry == C1) {
           LifeState historyzoi = newSearch.history.ZOI();
@@ -2336,6 +2363,11 @@ public:
         }
         search.state = search.freeState | newCatalysts;
         search.history = search.freeHistory | newCatalysts;
+
+        search.history1 = search.freeHistory1;
+        search.history2 = search.freeHistory2;
+        search.historyMore = search.freeHistoryMore;
+        UpdateCounts(search.config.startingCatalysts, search.history1, search.history2, search.historyMore);
       }
       search.violationCell = newViolationCell;
       search.violationGen = newViolationGen;
@@ -2357,6 +2389,8 @@ public:
           search.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(search.state, C1, sym);
         }
         search.history |= search.state;
+        UpdateCounts(search.state, search.history1, search.history2, search.historyMore);
+
         search.state.Step();
         continue;
       }
@@ -2386,14 +2420,22 @@ public:
           criticalArea = ~LifeState();
           search.freeState = search.state;
           search.freeHistory = search.history;
+          search.freeHistory1 = search.history1;
+          search.freeHistory2 = search.history2;
+          search.freeHistoryMore = search.historyMore;
           search.freeCount = search.config.count;
         } else {
           int distance = search.violationGen - search.state.gen;
           criticalArea = LifeState::NZOIAround(search.violationCell, distance);
           criticalArea = Symmetricize(criticalArea, search.config.symmetry, search.config.symmetryOffset);
         }
-        LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
 
+        LifeState state1, state2, stateMore;
+        UpdateCounts(search.state, state1, state2, stateMore);
+
+        LifeState newlyAffected = (state1 & ~search.history1) | (state2 & ~search.history2) | (stateMore & ~search.historyMore);
+
+        LifeState activePart = newlyAffected.ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
         bool hasActivePart = !activePart.IsEmpty();
 
         if (hasActivePart) {
@@ -2429,6 +2471,9 @@ public:
           search.history |= search.state;
           search.state.Step();
         }
+        search.history1 |= state1;
+        search.history2 |= state2;
+        search.historyMore |= stateMore;
       } else {
         search.state.Step();
       }

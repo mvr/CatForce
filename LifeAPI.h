@@ -707,61 +707,35 @@ public:
       }
 
     while (x != 0) {
-      unsigned int postshift;
+      uint64_t shifted = x;
+      unsigned tzeroes = __builtin_ctzll(shifted);
+      shifted = __builtin_rotateright64(shifted, tzeroes);
+      unsigned lones = __builtin_clzll(~shifted);
+      shifted = __builtin_rotateleft64(shifted, lones);
+      unsigned postshift = 64 - lones + tzeroes;
 
-      uint64_t shifted;
+      unsigned nyb = shifted & 0x1F;
 
-      if((x & 1) == 0) { // Possibly wrapped
-        int lsb = __builtin_ctzll(x);
-        shifted = __builtin_rotateright64(x, lsb);
-        postshift = lsb;
-      } else{
-        int lead = __builtin_clzll(~x);
-        shifted = __builtin_rotateleft64(x, lead);
-        postshift = 64-lead;
+      switch(nyb) {
+      case 1: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 3: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 5: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 7: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 9: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 11: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 13: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 15: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 17: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 19: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 21: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 23: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 25: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 27: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 29: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+      case 31: ConvolveInner(result, doubledother, nyb, k, postshift); break;
       }
 
-      unsigned runlength = __builtin_ctzll(~shifted);
-      runlength = std::min(runlength, (unsigned)32);
-      uint64_t run = (1ULL << runlength) - 1;
-
-      switch(run) {
-      case (1 << 1) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 2) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 3) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 4) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 5) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 6) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 7) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 8) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 9) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 10) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 11) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 12) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 13) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 14) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 15) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 16) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 17) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 18) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 19) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 20) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 21) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 22) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 23) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 24) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 25) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 26) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 27) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 28) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 29) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 30) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1ULL << 31) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1ULL << 32) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      default:           ConvolveInner(result, doubledother, run, k, postshift); break;
-      }
-
-      x &= ~__builtin_rotateleft64(run, postshift);
+      x &= ~__builtin_rotateleft64((uint64_t)nyb, postshift);
     }
     }
 
@@ -830,6 +804,19 @@ private:
     b0 ^= val;
   }
 
+  void inline HalfAdd(uint64_t &out0, uint64_t &out1, const uint64_t ina, const uint64_t inb) {
+    out0 = ina ^ inb;
+    out1 = ina & inb;
+  }
+
+  void inline FullAdd(uint64_t &out0, uint64_t &out1, const uint64_t ina, const uint64_t inb, const uint64_t inc) {
+    uint64_t halftotal = ina ^ inb;
+    out0 = halftotal ^ inc;
+    uint64_t halfcarry1 = ina & inb;
+    uint64_t halfcarry2 = inc & halftotal;
+    out1 = halfcarry1 | halfcarry2;
+  }
+
   uint64_t inline Evolve(const uint64_t &temp, const uint64_t &bU0,
                          const uint64_t &bU1, const uint64_t &bB0,
                          const uint64_t &bB1) {
@@ -868,7 +855,58 @@ public:
   void Step(int numIters) {
     for (int i = 0; i < numIters; i++) {
       Step();
-      // RemoveGliders();
+    }
+  }
+
+  void inline CountRows(LifeState &__restrict__ bit0, LifeState &__restrict__ bit1) {
+    for (int i = 0; i < N; i++) {
+      uint64_t a = state[i];
+      uint64_t l = RotateLeft(a);
+      uint64_t r = RotateRight(a);
+
+      bit0.state[i] = l ^ r ^ a;
+      bit1.state[i] = ((l ^ r) & a) | (l & r);
+    }
+  }
+
+  void inline CountNeighbourhood(LifeState &__restrict__ bit3, LifeState &__restrict__ bit2, LifeState &__restrict__ bit1, LifeState &__restrict__ bit0) {
+    LifeState col0(false), col1(false);
+    CountRows(col0, col1);
+
+    for (int i = 0; i < N; i++) {
+      int idxU;
+      int idxB;
+      if (i == 0)
+        idxU = N - 1;
+      else
+        idxU = i - 1;
+
+      if (i == N - 1)
+        idxB = 0;
+      else
+        idxB = i + 1;
+
+      uint64_t u_on1 = col1.state[idxU];
+      uint64_t u_on0 = col0.state[idxU];
+      uint64_t c_on1 = col1.state[i];
+      uint64_t c_on0 = col0.state[i];
+      uint64_t l_on1 = col1.state[idxB];
+      uint64_t l_on0 = col0.state[idxB];
+
+      uint64_t on3, on2, on1, on0;
+      uint64_t uc0, uc1, uc2, uc_carry0;
+      HalfAdd(uc0, uc_carry0, u_on0, c_on0);
+      FullAdd(uc1, uc2, u_on1, c_on1, uc_carry0);
+
+      uint64_t on_carry1, on_carry0;
+      HalfAdd(on0, on_carry0, uc0, l_on0);
+      FullAdd(on1, on_carry1, uc1, l_on1, on_carry0);
+      HalfAdd(on2, on3, uc2, on_carry1);
+
+      bit3.state[i] = on3;
+      bit2.state[i] = on2;
+      bit1.state[i] = on1;
+      bit0.state[i] = on0;
     }
   }
 
