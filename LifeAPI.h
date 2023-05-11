@@ -702,28 +702,69 @@ public:
       shifted = __builtin_rotateleft64(shifted, lones);
       unsigned postshift = 64 - lones + tzeroes;
 
-      unsigned nyb = shifted & 0x1F;
+      unsigned runlength = __builtin_ctzll(~shifted);
+      runlength = std::min(runlength, (unsigned)32);
+      if(runlength <= 5) {
+        unsigned nyb = shifted & 0x1F;
+        switch(nyb) {
+        case 1: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 3: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 5: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 7: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 9: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 11: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 13: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 15: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 17: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 19: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 21: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 23: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 25: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 27: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 29: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        case 31: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        }
 
-      switch(nyb) {
-      case 1: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 3: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 5: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 7: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 9: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 11: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 13: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 15: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 17: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 19: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 21: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 23: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 25: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 27: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 29: ConvolveInner(result, doubledother, nyb, k, postshift); break;
-      case 31: ConvolveInner(result, doubledother, nyb, k, postshift); break;
+        x &= ~__builtin_rotateleft64((uint64_t)nyb, postshift);
+      } else {
+        uint64_t run = (1ULL << runlength) - 1;
+        switch(run) {
+        case (1 << 1) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 2) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 3) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 4) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 5) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 6) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 7) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 8) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 9) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 10) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 11) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 12) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 13) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 14) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 15) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 16) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 17) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 18) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 19) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 20) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 21) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 22) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 23) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 24) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 25) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 26) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 27) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 28) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 29) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1 << 30) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1ULL << 31) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        case (1ULL << 32) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
+        default:           ConvolveInner(result, doubledother, run, k, postshift); break;
+        }
+        x &= ~__builtin_rotateleft64((1ULL << runlength) - 1, postshift);
       }
-
-      x &= ~__builtin_rotateleft64((uint64_t)nyb, postshift);
     }
     }
 
