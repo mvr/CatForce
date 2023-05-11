@@ -1002,10 +1002,14 @@ public:
 
 struct SearchState {
   LifeState state;
-  LifeState history;
-  LifeState freeState;
-  LifeState freeHistory;
   LifeState required;
+  LifeState history1;
+  LifeState history2;
+  LifeState historyMore;
+  LifeState freeState;
+  LifeState freeHistory1;
+  LifeState freeHistory2;
+  LifeState freeHistoryMore;
   Configuration config;
 
   unsigned freeCount; // How many catalysts we had at the last free choice
@@ -1350,12 +1354,24 @@ public:
     found++;
   }
 
+  void UpdateCounts(LifeState &__restrict__ state, LifeState &__restrict__ out1, LifeState &__restrict__ out2, LifeState &__restrict__ outMore) {
+    LifeState bit3(false), bit2(false), bit1(false), bit0(false);
+    state.CountNeighbourhood(bit3, bit2, bit1, bit0);
+    out1 |= ~state & ~bit3 & ~bit2 & ~bit1 & bit0;
+    out2 |= ~state & ~bit3 & ~bit2 & bit1 & ~bit0;
+    outMore |= ~state & (bit3 | bit2 | (bit1 & bit0));
+  }
+
   void Search() {
     SearchState search;
     search.state.JoinWSymChain(pat, params.symmetryChain);
-    search.history = search.state;
+    search.history1 = search.state;
+    search.history2 = search.state;
+    search.historyMore = search.state;
     search.freeState = search.state;
-    search.freeHistory = search.state;
+    search.freeHistory1 = search.state;
+    search.freeHistory2 = search.state;
+    search.freeHistoryMore = search.state;
     search.freeCount = 0;
     search.violationCell = {-1, -1};
     search.violationGen = 0;
@@ -1502,8 +1518,7 @@ public:
         std::cout << "Placing fixed catalyst " << s << std::endl;
       }
 
-      newSearch.history = search.history | symCatalyst;
-      newSearch.history |= symCatalyst;
+      UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
 
       std::vector<LifeState> newMasks;
 
@@ -1691,7 +1706,7 @@ public:
           }
         }
 
-        newSearch.history = search.history | symCatalyst;
+        UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
 
         RecursiveSearch(newSearch, newMasks, shiftedTargets);
 
@@ -1719,7 +1734,11 @@ public:
           newCatalysts.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
         }
         search.state = search.freeState | newCatalysts;
-        search.history = search.freeHistory | newCatalysts;
+
+        search.history1 = search.freeHistory1;
+        search.history2 = search.freeHistory2;
+        search.historyMore = search.freeHistoryMore;
+        UpdateCounts(search.config.startingCatalysts, search.history1, search.history2, search.historyMore);
       }
       search.violationCell = newViolationCell;
       search.violationGen = newViolationGen;
@@ -1737,7 +1756,8 @@ public:
           LifeState hitLocations = search.state.Convolve(catalysts[s].reactionMask);
           masks[s] |= hitLocations;
         }
-        search.history |= search.state;
+        UpdateCounts(search.state, search.history1, search.history2, search.historyMore);
+
         search.state.Step();
         continue;
       }
@@ -1765,14 +1785,21 @@ public:
         if (isFree) {
           criticalArea = ~LifeState();
           search.freeState = search.state;
-          search.freeHistory = search.history;
+          search.freeHistory1 = search.history1;
+          search.freeHistory2 = search.history2;
+          search.freeHistoryMore = search.historyMore;
           search.freeCount = search.config.count;
         } else {
           int distance = search.violationGen - search.state.gen;
           criticalArea = LifeState::NZOIAround(search.violationCell, distance);
           criticalArea.JoinWSymChain(criticalArea, params.symmetryChain);
         }
-        LifeState activePart = (~search.history).ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
+        LifeState state1, state2, stateMore;
+        UpdateCounts(search.state, state1, state2, stateMore);
+
+        LifeState newlyAffected = (state1 & ~search.history1) | (state2 & ~search.history2) | (stateMore & ~search.historyMore);
+
+        LifeState activePart = newlyAffected.ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
         bool hasActivePart = !activePart.IsEmpty();
 
         // Try adding a catalyst
@@ -1784,10 +1811,14 @@ public:
 
           TryAddingFixedCatalyst(search, masks, shiftedTargets, activePart, next);
 
-          search.history |= search.state;
+          search.history1 |= state1;
+          search.history2 |= state2;
+          search.historyMore |= stateMore;
           search.state = next;
         } else {
-          search.history |= search.state;
+          search.history1 |= state1;
+          search.history2 |= state2;
+          search.historyMore |= stateMore;
           search.state.Step();
         }
       } else {
