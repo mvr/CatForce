@@ -695,61 +695,53 @@ public:
       }
 
     while (x != 0) {
-      unsigned int postshift;
-
-      uint64_t shifted;
-
-      if((x & 1) == 0) { // Possibly wrapped
-        int lsb = __builtin_ctzll(x);
-        shifted = __builtin_rotateright64(x, lsb);
-        postshift = lsb;
-      } else{
-        int lead = __builtin_clzll(~x);
-        shifted = __builtin_rotateleft64(x, lead);
-        postshift = 64-lead;
-      }
+      uint64_t shifted = x;
+      unsigned tzeroes = __builtin_ctzll(shifted);
+      shifted = __builtin_rotateright64(shifted, tzeroes);
+      unsigned lones = __builtin_clzll(~shifted);
+      shifted = __builtin_rotateleft64(shifted, lones);
+      unsigned postshift = 64 - lones + tzeroes;
 
       unsigned runlength = __builtin_ctzll(~shifted);
       runlength = std::min(runlength, (unsigned)32);
-      uint64_t run = (1ULL << runlength) - 1;
 
-      switch(run) {
-      case (1 << 1) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 2) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 3) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 4) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 5) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 6) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 7) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 8) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 9) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 10) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 11) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 12) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 13) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 14) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 15) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 16) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 17) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 18) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 19) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 20) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 21) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 22) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 23) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 24) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 25) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 26) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 27) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 28) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 29) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1 << 30) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1ULL << 31) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      case (1ULL << 32) - 1: ConvolveInner(result, doubledother, run, k, postshift); break;
-      default:           ConvolveInner(result, doubledother, run, k, postshift); break;
+      switch(runlength) {
+      case 1: ConvolveInner(result, doubledother, (1ULL << 1) - 1, k, postshift); break;
+      case 2: ConvolveInner(result, doubledother, (1ULL << 2) - 1, k, postshift); break;
+      case 3: ConvolveInner(result, doubledother, (1ULL << 3) - 1, k, postshift); break;
+      case 4: ConvolveInner(result, doubledother, (1ULL << 4) - 1, k, postshift); break;
+      case 5: ConvolveInner(result, doubledother, (1ULL << 5) - 1, k, postshift); break;
+      case 6: ConvolveInner(result, doubledother, (1ULL << 6) - 1, k, postshift); break;
+      case 7: ConvolveInner(result, doubledother, (1ULL << 7) - 1, k, postshift); break;
+      case 8: ConvolveInner(result, doubledother, (1ULL << 8) - 1, k, postshift); break;
+      case 9: ConvolveInner(result, doubledother, (1ULL << 9) - 1, k, postshift); break;
+      case 10: ConvolveInner(result, doubledother, (1ULL << 10) - 1, k, postshift); break;
+      case 11: ConvolveInner(result, doubledother, (1ULL << 11) - 1, k, postshift); break;
+      case 12: ConvolveInner(result, doubledother, (1ULL << 12) - 1, k, postshift); break;
+      case 13: ConvolveInner(result, doubledother, (1ULL << 13) - 1, k, postshift); break;
+      case 14: ConvolveInner(result, doubledother, (1ULL << 14) - 1, k, postshift); break;
+      case 15: ConvolveInner(result, doubledother, (1ULL << 15) - 1, k, postshift); break;
+      case 16: ConvolveInner(result, doubledother, (1ULL << 16) - 1, k, postshift); break;
+      case 17: ConvolveInner(result, doubledother, (1ULL << 17) - 1, k, postshift); break;
+      case 18: ConvolveInner(result, doubledother, (1ULL << 18) - 1, k, postshift); break;
+      case 19: ConvolveInner(result, doubledother, (1ULL << 19) - 1, k, postshift); break;
+      case 20: ConvolveInner(result, doubledother, (1ULL << 20) - 1, k, postshift); break;
+      case 21: ConvolveInner(result, doubledother, (1ULL << 21) - 1, k, postshift); break;
+      case 22: ConvolveInner(result, doubledother, (1ULL << 22) - 1, k, postshift); break;
+      case 23: ConvolveInner(result, doubledother, (1ULL << 23) - 1, k, postshift); break;
+      case 24: ConvolveInner(result, doubledother, (1ULL << 24) - 1, k, postshift); break;
+      case 25: ConvolveInner(result, doubledother, (1ULL << 25) - 1, k, postshift); break;
+      case 26: ConvolveInner(result, doubledother, (1ULL << 26) - 1, k, postshift); break;
+      case 27: ConvolveInner(result, doubledother, (1ULL << 27) - 1, k, postshift); break;
+      case 28: ConvolveInner(result, doubledother, (1ULL << 28) - 1, k, postshift); break;
+      case 29: ConvolveInner(result, doubledother, (1ULL << 29) - 1, k, postshift); break;
+      case 30: ConvolveInner(result, doubledother, (1ULL << 30) - 1, k, postshift); break;
+      case 31: ConvolveInner(result, doubledother, (1ULL << 31) - 1, k, postshift); break;
+      case 32: ConvolveInner(result, doubledother, (1ULL << 32) - 1, k, postshift); break;
+      default:           ConvolveInner(result, doubledother, (1ULL << runlength) - 1, k, postshift); break;
       }
 
-      x &= ~__builtin_rotateleft64(run, postshift);
+      x &= ~__builtin_rotateleft64((1ULL << runlength) - 1, postshift);
     }
     }
 
