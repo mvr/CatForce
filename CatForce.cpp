@@ -1994,8 +1994,7 @@ public:
         // We need to update the masks for the continuation.
         newSearch.triedOffsets[continuationIndex] = search.triedOffsets[continuationIndex];
         newSearch.triedOffsets[continuationIndex].Move(newOffset);
-        LifeState historyzoi = newSearch.history.ZOI();
-        newSearch.triedOffsets[continuationIndex] |= IntersectingOffsets(historyzoi, C1, D2Continuation(newSym));
+        newSearch.triedOffsets[continuationIndex] |= IntersectingOffsets(newSearch.history, C1, D2Continuation(newSym));
 
         if(newSym == D2diagodd || newSym == D2negdiagodd)
           newSearch.triedOffsets[continuationIndex] |= LifeState::Checkerboard();
@@ -2125,14 +2124,12 @@ public:
       UpdateCounts(symCatalyst, newSearch.history1, newSearch.history2, newSearch.historyMore);
 
       if(newSearch.config.symmetry == C1) {
-        LifeState historyzoi = newSearch.history.ZOI();
         for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-          newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(historyzoi, C1, sym);
+          newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(newSearch.history, C1, sym);
         }
       }
       if (SymIsD2(newSearch.config.symmetry)) {
-        LifeState historyzoi = newSearch.history.ZOI();
-        newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))] |= IntersectingOffsets(historyzoi, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
+        newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))] |= IntersectingOffsets(newSearch.history, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
       }
 
       std::vector<LifeState> newMasks;
@@ -2300,14 +2297,12 @@ public:
         UpdateCounts(symCatalyst, newSearch.history1, newSearch.history2, newSearch.historyMore);
 
         if(newSearch.config.symmetry == C1) {
-          LifeState historyzoi = newSearch.history.ZOI();
           for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-            newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(historyzoi, C1, sym);
+            newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(newSearch.history, C1, sym);
           }
         }
         if (SymIsD2(newSearch.config.symmetry)) {
-          LifeState historyzoi = newSearch.history.ZOI();
-          newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))] |= IntersectingOffsets(historyzoi, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
+          newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))] |= IntersectingOffsets(newSearch.history, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
         }
 
         std::vector<LifeState> newMasks;
