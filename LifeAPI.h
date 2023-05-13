@@ -1052,7 +1052,7 @@ public:
       }
     }
     if (foundq == 64) {
-      return std::make_pair(0, 0);
+      return std::make_pair(-1, -1);
     }
 
     int foundx;
