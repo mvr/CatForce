@@ -1957,7 +1957,7 @@ public:
       newSearch.state = Symmetricize(newSearch.state, newSym, newOffset);
 
       {
-        LifeState lookahead = search.state;
+        LifeState lookahead = newSearch.state;
         lookahead.Step(REQUIRED_LOOKAHEAD);
         if (!(search.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
           newOffsets.Erase(newOffset.first, newOffset.second);
