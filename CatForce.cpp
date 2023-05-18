@@ -2479,7 +2479,7 @@ public:
       }
 
       for (unsigned i = 0; i < search.config.count; i++) {
-        if (search.state.Contains(shiftedTargets[i]) || catalysts[search.config.curs[i]].sacrificial || (!catalysts[search.config.curs[i]].sacrificial && search.recoveredTime[i] >= params.stableInterval)) {
+        if (search.state.Contains(shiftedTargets[i]) || catalysts[search.config.curs[i]].sacrificial || (!catalysts[search.config.curs[i]].transparent && search.recoveredTime[i] >= params.stableInterval)) {
           search.missingTime[i] = 0;
           search.recoveredTime[i] += 1;
         } else {
