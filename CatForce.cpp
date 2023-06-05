@@ -1643,6 +1643,10 @@ public:
           }
         }
 
+        shiftedTargets[search.config.count].wanted = shiftedCatalyst;
+        shiftedTargets[search.config.count].unwanted = catalysts[s].target.unwanted;
+        shiftedTargets[search.config.count].unwanted.Move(newPlacement.first, newPlacement.second);
+
         if (catalysts[s].checkRecovery) {
           bool catalystFailed = false;
           for (int i = 0; i < (int)catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD + 1; i++) {
@@ -1653,7 +1657,7 @@ public:
             // }
           }
 
-          if (!catalystFailed && !lookahead.Contains(shiftedCatalyst)) {
+          if (!catalystFailed && !lookahead.Contains(shiftedTargets[search.config.count])) {
             catalystFailed = true;
           }
 
@@ -1675,11 +1679,6 @@ public:
               << "Placing catalyst " << s << " at " << newPlacement.first
               << ", " << newPlacement.second << std::endl;
         }
-
-        shiftedTargets[search.config.count].wanted = shiftedCatalyst;
-        shiftedTargets[search.config.count].unwanted = catalysts[s].target.unwanted;
-        shiftedTargets[search.config.count].unwanted.Move(newPlacement.first,
-                                                                    newPlacement.second);
 
         std::vector<LifeState> newMasks;
 
