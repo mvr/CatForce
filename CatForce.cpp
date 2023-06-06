@@ -1547,12 +1547,6 @@ public:
   }
 
   void TryAddingCatalyst(SearchState &search, std::vector<LifeState> &masks, std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets, const LifeState &activePart, const LifeState &next) {
-    for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
-      if (catalysts[s].hasLocus) {
-        LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
-        masks[s] |= hitLocations;
-      }
-    }
 
     for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
       if (catalysts[s].fixedGen != -1 && catalysts[s].fixedGen != search.state.gen)
@@ -1568,6 +1562,12 @@ public:
 
       LifeState newPlacements =
           activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
+
+      if(!newPlacements.IsEmpty() && catalysts[s].hasLocus) {
+        LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
+        masks[s] |= hitLocations;
+        newPlacements &= ~hitLocations;
+      }
 
       while (!newPlacements.IsEmpty()) {
         // Do the placement
