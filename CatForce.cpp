@@ -1576,18 +1576,19 @@ public:
         std::cout << "Placing fixed catalyst " << s << std::endl;
       }
 
-      UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
-
       std::vector<LifeState> newMasks;
 
       if (newSearch.config.count != params.numCatalysts) {
+        UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
+
         newMasks = masks;
-        LifeState bounds;
+
         if (params.maxW != -1) {
           LifeState rect =
             LifeState::SolidRect(- params.maxW,
                                  - params.maxH,
                                  2 * params.maxW - 1, 2 * params.maxH - 1);
+          LifeState bounds;
           bounds.JoinWSymChain(rect, params.symmetryChain);
 
           for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
@@ -1691,12 +1692,10 @@ public:
           }
         }
 
-        LifeState catRequired;
-        newSearch.required = search.required;
         if(catalysts[s].hasRequired) {
-          catRequired.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
-          newSearch.required |= catRequired;
+          newSearch.required.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
         }
+
         newSearch.config.startingCatalysts |= symCatalyst;
 
         {
@@ -1764,13 +1763,16 @@ public:
         // If we just placed the last catalyst, don't bother
         // updating the masks
         if (newSearch.config.count != params.numCatalysts) {
+          UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
+
           newMasks = masks;
-          LifeState bounds;
+
           if (params.maxW != -1) {
             LifeState rect =
                 LifeState::SolidRect(newPlacement.first - params.maxW,
                                      newPlacement.second - params.maxH,
                                      2 * params.maxW - 1, 2 * params.maxH - 1);
+            LifeState bounds;
             bounds.JoinWSymChain(rect, params.symmetryChain);
 
             for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
@@ -1783,8 +1785,6 @@ public:
                                     newPlacement.first, newPlacement.second);
           }
         }
-
-        UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
 
         RecursiveSearch(newSearch, newMasks, shiftedTargets);
 
