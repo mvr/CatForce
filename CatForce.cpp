@@ -648,6 +648,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 class CatalystData {
 public:
   LifeState state;
+  LifeState stateZOI;
 
   LifeTarget target;
   LifeState reactionMask;
@@ -700,6 +701,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     CatalystData result;
 
     result.state = pat;
+    result.stateZOI = pat.ZOI();
     result.target = LifeTarget(pat);
     result.reactionMask = pat.BigZOI();
     result.reactionMask.Transform(Rotate180OddBoth);
@@ -1483,7 +1485,10 @@ public:
     return {{-1, -1}, 0};
   }
 
-  void TryAddingFixedCatalyst(SearchState &search, std::vector<LifeState> &masks, std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets, const LifeState &activePart, const LifeState &next) {
+  void TryAddingFixedCatalyst(SearchState &search, std::vector<LifeState> &masks,
+                              std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets,
+                              const LifeState &activePart,
+                              const LifeState &next) {
     for (unsigned s = nonfixedCatalystCount; s < nonfixedCatalystCount + fixedCatalystCount; s++) {
       if (catalysts[s].fixedGen != search.state.gen)
         continue;
@@ -1506,7 +1511,7 @@ public:
       if (search.config.count == params.numCatalysts - 1 &&
           search.config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
-      if((activePart & catalysts[s].locusReactionMask).IsEmpty())
+      if((activePart & catalysts[s].stateZOI).IsEmpty())
         continue;
 
       // Do the placement
