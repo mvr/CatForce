@@ -18,6 +18,15 @@ const int MAX_CATALYSTS = 5;
 const int REQUIRED_LOOKAHEAD = 5;
 const int LIGHTSPEED_LOOKAHEAD = 20;
 
+void UpdateCounts(LifeState &__restrict__ state, LifeState &__restrict__ out1, LifeState &__restrict__ out2, LifeState &__restrict__ outMore) {
+  LifeState bit3(false), bit2(false), bit1(false), bit0(false);
+  state.CountNeighbourhood(bit3, bit2, bit1, bit0);
+  out1 |= ~state & ~bit3 & ~bit2 & ~bit1 & bit0;
+  out2 |= ~state & ~bit3 & ~bit2 & bit1 & ~bit0;
+  outMore |= ~state & (bit3 | bit2 | (bit1 & bit0));
+}
+
+
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
   std::string item;
@@ -639,16 +648,34 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
 class CatalystData {
 public:
   LifeState state;
+
   LifeTarget target;
   LifeState reactionMask;
+
   unsigned maxDisappear;
   std::vector<LifeTarget> forbidden;
   bool hasRequired;
+
   LifeState required;
+
   bool hasLocus;
   LifeState locus;
-  LifeState locusReactionMask;
   LifeState locusAvoidMask;
+  LifeState locusReactionMask;
+  LifeState locusReactionMask1;  // Positions that react with a cell with 1 neighbour at the origin etc.
+  LifeState locusReactionMask2;
+  LifeState locusReactionMaskMore;
+
+  unsigned locusReactionPop;
+  unsigned locusReactionPop1;
+  unsigned locusReactionPop2;
+  unsigned locusReactionPopMore;
+
+  bool hasLocusReactionPop;
+  bool hasLocusReactionPop1;
+  bool hasLocusReactionPop2;
+  bool hasLocusReactionPopMore;
+
   bool transparent;
   bool limited;
   bool mustInclude;
@@ -688,14 +715,47 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.locus = pat;
     }
 
-    result.locusReactionMask = result.locus.BigZOI();
-    result.locusReactionMask.Transform(Rotate180OddBoth);
-    result.locusReactionMask.RecalculateMinMax();
+    {
+      result.locusAvoidMask = (pat & ~result.locus).ZOI();
+      result.locusAvoidMask.Transform(Rotate180OddBoth);
+      result.locusAvoidMask.RecalculateMinMax();
 
-    result.locusAvoidMask = result.reactionMask & ~result.locusReactionMask;
-    result.locusAvoidMask.RecalculateMinMax();
+      result.locusReactionMask = result.locus.ZOI();
+      result.locusReactionMask.Transform(Rotate180OddBoth);
+      result.locusReactionMask.RecalculateMinMax();
+      result.locusReactionMask &= ~result.locusAvoidMask;
 
-    result.maxDisappear = input.maxDisappear;
+      // result.locusAvoidMask = result.locusAvoidMask.Shell();
+
+      LifeState state1, state2, stateMore;
+      UpdateCounts(result.state, state1, state2, stateMore);
+
+      LifeState nonLocus = result.state & ~result.locus;
+      LifeState nonLocus1, nonLocus2, nonLocusMore;
+      UpdateCounts(nonLocus, nonLocus1, nonLocus2, nonLocusMore);
+
+      result.locusReactionMask1 = state1 & ~nonLocus1;
+      result.locusReactionMask1.Transform(Rotate180OddBoth);
+      result.locusReactionMask1.RecalculateMinMax();
+
+      result.locusReactionMask2 = state2 & ~nonLocus2;
+      result.locusReactionMask2.Transform(Rotate180OddBoth);
+      result.locusReactionMask2.RecalculateMinMax();
+
+      result.locusReactionMaskMore = stateMore & ~nonLocusMore;
+      result.locusReactionMaskMore.Transform(Rotate180OddBoth);
+      result.locusReactionMaskMore.RecalculateMinMax();
+
+      result.locusReactionPop = result.locusReactionMask.GetPop();
+      result.locusReactionPop1 = result.locusReactionMask1.GetPop();
+      result.locusReactionPop2 = result.locusReactionMask2.GetPop();
+      result.locusReactionPopMore = result.locusReactionMaskMore.GetPop();
+
+      result.hasLocusReactionPop = result.locusReactionPop > 0;
+      result.hasLocusReactionPop1 = result.locusReactionPop1 > 0;
+      result.hasLocusReactionPop2 = result.locusReactionPop2 > 0;
+      result.hasLocusReactionPopMore = result.locusReactionPopMore > 0;
+    }
 
     for (unsigned k = 0; k < input.forbiddenRLE.size(); k++) {
       result.forbidden.push_back(LifeTarget::Parse(input.forbiddenRLE[k].c_str(),
@@ -717,6 +777,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
                                           input.antirequiredXY.second, tran);
     }
 
+    result.maxDisappear = input.maxDisappear;
     result.transparent = input.transparent;
     result.limited = input.limited;
     result.mustInclude = input.mustInclude;
@@ -1354,14 +1415,6 @@ public:
     found++;
   }
 
-  void UpdateCounts(LifeState &__restrict__ state, LifeState &__restrict__ out1, LifeState &__restrict__ out2, LifeState &__restrict__ outMore) {
-    LifeState bit3(false), bit2(false), bit1(false), bit0(false);
-    state.CountNeighbourhood(bit3, bit2, bit1, bit0);
-    out1 |= ~state & ~bit3 & ~bit2 & ~bit1 & bit0;
-    out2 |= ~state & ~bit3 & ~bit2 & bit1 & ~bit0;
-    outMore |= ~state & (bit3 | bit2 | (bit1 & bit0));
-  }
-
   void Search() {
     SearchState search;
     search.state.JoinWSymChain(pat, params.symmetryChain);
@@ -1546,11 +1599,19 @@ public:
     }
   }
 
-  void TryAddingCatalyst(SearchState &search, std::vector<LifeState> &masks, std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets, const LifeState &activePart, const LifeState &next) {
+  void TryAddingCatalyst(SearchState &search,
+                         std::vector<LifeState> &masks,
+                         std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets,
+                         const LifeState &activePart,
+                         const LifeState &activePart1,
+                         const LifeState &activePart2,
+                         const LifeState &activePartMore,
+                         const LifeState &next) {
+
+    unsigned activePartPop1 = activePart1.GetPop();
+    unsigned activePartPop2 = activePart2.GetPop();
 
     for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
-      if (catalysts[s].fixedGen != -1 && catalysts[s].fixedGen != search.state.gen)
-        continue;
       if (search.config.transparentCount == params.numTransparent &&
           catalysts[s].transparent)
         continue;
@@ -1560,8 +1621,21 @@ public:
           search.config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
 
-      LifeState newPlacements =
-          activePart.Convolve(catalysts[s].locusReactionMask) & ~masks[s];
+      LifeState newPlacements = activePartMore.Convolve(catalysts[s].locusReactionMask);
+      if (catalysts[s].hasLocusReactionPop1) {
+        if (activePartPop2 < catalysts[s].locusReactionPop1)
+          newPlacements |= activePart2.Convolve(catalysts[s].locusReactionMask1);
+        else
+          newPlacements |= catalysts[s].locusReactionMask1.Convolve(activePart2);
+      }
+      if (catalysts[s].hasLocusReactionPop2) {
+        if (activePartPop1 < catalysts[s].locusReactionPop2)
+          newPlacements |= activePart1.Convolve(catalysts[s].locusReactionMask2);
+        else
+          newPlacements |= catalysts[s].locusReactionMask2.Convolve(activePart1);
+      }
+
+      newPlacements &= ~masks[s];
 
       if(!newPlacements.IsEmpty() && catalysts[s].hasLocus) {
         LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
@@ -1796,19 +1870,21 @@ public:
         LifeState state1, state2, stateMore;
         UpdateCounts(search.state, state1, state2, stateMore);
 
-        LifeState newlyAffected = (state1 & ~search.history1) | (state2 & ~search.history2) | (stateMore & ~search.historyMore);
+        LifeState newState1 = state1 & ~search.history1 & criticalArea;
+        LifeState newState2 = state2 & ~search.history2 & criticalArea;
+        LifeState newStateMore = stateMore & ~search.historyMore & criticalArea;
 
-        LifeState activePart = newlyAffected.ZOI() & search.state & ~search.config.startingCatalysts & criticalArea;
-        bool hasActivePart = !activePart.IsEmpty();
+        LifeState allNew = newState1 | newState2 | newStateMore;
+        bool hasActivePart = !allNew.IsEmpty();
 
         // Try adding a catalyst
         if (hasActivePart && search.state.gen >= params.startGen) {
           LifeState next = search.state;
           next.Step();
 
-          TryAddingCatalyst(search, masks, shiftedTargets, activePart, next);
+          TryAddingCatalyst(search, masks, shiftedTargets, allNew, newState1, newState2, newStateMore, next);
 
-          TryAddingFixedCatalyst(search, masks, shiftedTargets, activePart, next);
+          TryAddingFixedCatalyst(search, masks, shiftedTargets, allNew, next);
 
           search.history1 |= state1;
           search.history2 |= state2;
