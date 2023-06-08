@@ -1,17 +1,12 @@
 // CatForce - Catalyst search utility based on LifeAPI using brute force.
 // Written by Michael Simkin 2015
 #include "LifeAPI.h"
-#include <algorithm>
 #include <ctime>
 #include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <iterator>
 #include <sstream>
 #include <string>
 #include <vector>
 #include <array>
-#include <algorithm>
 
 const bool DEBUG_OUTPUT = false;
 const int MAX_CATALYSTS = 5;
@@ -902,16 +897,6 @@ public:
     maxGenSurvive = genSurvive;
     firstGenSurvive = firstGenSurviveIn;
   }
-
-  void Print() {
-    std::cout << "start:" << firstGenSurvive;
-    std::cout << ", finish:" << maxGenSurvive << ", params: ";
-
-    // for (int param : params)
-    //   std::cout << param << ",";
-
-    std::cout << std::endl;
-  }
 };
 
 class Category {
@@ -964,15 +949,6 @@ public:
   static bool CompareSearchResult(SearchResult &a, SearchResult &b) {
     return (a.maxGenSurvive - a.firstGenSurvive) >
            (b.maxGenSurvive - b.firstGenSurvive);
-  }
-
-  void Sort() {
-    std::sort(results.begin(), results.end(), Category::CompareSearchResult);
-  }
-
-  void Print() {
-    for (auto & result : results)
-      result.Print();
   }
 
   std::string RLE(int maxCatSize) {
@@ -1042,16 +1018,6 @@ public:
     categories.push_back(new Category(categoryKey, r, catDelta, maxgen));
   }
 
-  void Sort() {
-    for (auto & category: categories)
-      category->Sort();
-  }
-
-  void Print() {
-    for (auto & category: categories)
-      category->Print();
-  }
-
   std::string CategoriesRLE(int maxCatSize) {
     std::stringstream ss;
     for (auto & category: categories) {
@@ -1107,14 +1073,6 @@ public:
   bool reportAll{};
 
   unsigned filterMaxGen{};
-
-  uint64_t AllCatalystsHash() const {
-    uint64_t result = 0;
-    for (auto &cat : catalysts) {
-      result ^= cat.state.GetHash();
-    }
-    return result;
-  }
 
   void LoadMasks() {
     if (params.numCatalysts == 1)
@@ -1273,17 +1231,6 @@ public:
         }
       }
       workspace.Step();
-    }
-
-    return false;
-  }
-
-  bool FilterForCurrentGenFail(LifeState &workspace) {
-    for (unsigned j = 0; j < targetFilter.size(); j++) {
-      if (workspace.gen == params.filterGen[j] &&
-          workspace.Contains(targetFilter[j]) == false) {
-        return true;
-      }
     }
 
     return false;
