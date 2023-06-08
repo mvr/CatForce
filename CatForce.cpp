@@ -37,12 +37,6 @@ std::vector<std::string> splitwhitespace(std::string const &input) {
     return ret;
 }
 
-enum FilterType {
-  ANDFILTER,
-  ORFILTER,
-  MATCHFILTER,
-};
-
 class SearchParams {
 public:
   unsigned maxGen;
@@ -62,12 +56,6 @@ public:
   int maxH;
   StaticSymmetry symmetry;
   std::vector<SymmetryTransform> symmetryChain;
-  std::vector<std::string> targetFilter;
-  std::vector<int> filterdx;
-  std::vector<int> filterdy;
-  std::vector<int> filterGen;
-  std::vector<std::pair<int, int>> filterGenRange;
-  std::vector<FilterType> filterType;
 
   int maxCatSize;
 
@@ -207,6 +195,70 @@ public:
   void Print() const {
     std::cout << rle << " " << maxDisappear << " " << centerX << " " << centerY
               << " " << symmType << std::endl;
+  }
+};
+
+enum FilterType {
+  ANDFILTER,
+  ORFILTER,
+  MATCHFILTER,
+};
+
+class FilterInput {
+public:
+  std::string rle;
+  int x;
+  int y;
+  int gen;
+  std::pair<int, int> range;
+  FilterType type;
+  char sym;
+
+  explicit FilterInput(std::string &line) {
+    std::vector<std::string> elems = splitwhitespace(line);
+
+    std::vector<std::string> rangeElems;
+    split(elems[1], '-', rangeElems);
+
+    if (rangeElems.size() == 1) {
+      gen = atoi(elems[1].c_str());
+      range = {-1, -1};
+    } else {
+      unsigned minGen = atoi(rangeElems[0].c_str());
+      unsigned maxGen = atoi(rangeElems[1].c_str());
+
+      gen = -1;
+      range = {minGen, maxGen};
+    }
+
+    rle = elems[2];
+
+    std::string filter = "filter";
+    std::string andfilter = "andfilter";
+    std::string orfilter = "orfilter";
+    std::string matchfilter = "match";
+
+    if (elems[0] == andfilter) {
+      x = atoi(elems[3].c_str());
+      y = atoi(elems[4].c_str());
+      type = ANDFILTER;
+    } else if (elems[0] == orfilter) {
+      x = atoi(elems[3].c_str());
+      y = atoi(elems[4].c_str());
+      type = ORFILTER;
+    } else if (elems[0] == matchfilter) {
+      x = 0;
+      y = 0;
+      type = MATCHFILTER;
+      if (elems.size() > 3)
+        sym = elems[3].at(0);
+      else
+        sym = '*';
+    } else {
+      x = atoi(elems[3].c_str());
+      y = atoi(elems[4].c_str());
+      type = ANDFILTER;
+    }
   }
 };
 
@@ -478,7 +530,8 @@ std::vector<SymmetryTransform> CharToTransforms(char ch) {
   }
 }
 
-void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
+void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
+                std::vector<FilterInput> &filters,
                 SearchParams &params) {
   std::ifstream infile;
   infile.open(fname.c_str(), std::ifstream::in);
@@ -563,40 +616,7 @@ void ReadParams(const std::string& fname, std::vector<CatalystInput> &catalysts,
         params.fullReportFile.append(elems[i]);
       }
     } else if (elems[0] == filter || elems[0] == orfilter || elems[0] == andfilter || elems[0] == matchfilter) {
-      std::vector<std::string> rangeElems;
-      split(elems[1], '-', rangeElems);
-
-      if (rangeElems.size() == 1) {
-        params.filterGen.push_back(atoi(elems[1].c_str()));
-        params.filterGenRange.emplace_back(-1, -1);
-      } else {
-        unsigned minGen = atoi(rangeElems[0].c_str());
-        unsigned maxGen = atoi(rangeElems[1].c_str());
-
-        params.filterGen.push_back(-1);
-        params.filterGenRange.emplace_back(minGen, maxGen);
-      }
-
-      params.targetFilter.push_back(elems[2]);
-
-      if (elems[0] == andfilter) {
-        params.filterdx.push_back(atoi(elems[3].c_str()));
-        params.filterdy.push_back(atoi(elems[4].c_str()));
-        params.filterType.push_back(ANDFILTER);
-      } else if (elems[0] == orfilter) {
-        params.filterdx.push_back(atoi(elems[3].c_str()));
-        params.filterdy.push_back(atoi(elems[4].c_str()));
-        params.filterType.push_back(ORFILTER);
-      } else if (elems[0] == matchfilter) {
-        params.filterdx.push_back(0);
-        params.filterdy.push_back(0);
-        params.filterType.push_back(MATCHFILTER);
-      } else {
-        // Shouldn't happen
-        params.filterdx.push_back(atoi(elems[3].c_str()));
-        params.filterdy.push_back(atoi(elems[4].c_str()));
-        params.filterType.push_back(ANDFILTER);
-      }
+      filters.emplace_back(line);
     } else if (elems[0] == maxWH) {
       params.maxW = atoi(elems[1].c_str());
       params.maxH = atoi(elems[2].c_str());
@@ -787,6 +807,40 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
   }
   return results;
 }
+
+class FilterData {
+public:
+  LifeTarget target;
+
+  std::vector<LifeTarget> transformedTargets;
+
+  int gen;
+  std::pair<int, int> range;
+  FilterType type;
+
+  static FilterData FromInput(FilterInput &input);
+};
+
+FilterData FilterData::FromInput(FilterInput &input) {
+  const char *rle = input.rle.c_str();
+
+  FilterData result;
+
+  result.target = LifeTarget::Parse(input.rle.c_str(), input.x, input.y);
+  result.gen = input.gen;
+  result.range = input.range;
+  result.type = input.type;
+
+  std::vector<SymmetryTransform> transforms = CharToTransforms(input.sym);
+  for (auto trans : transforms) {
+    LifeTarget transformed = result.target;
+    transformed.Transform(trans);
+    result.transformedTargets.push_back(transformed);
+  }
+
+  return result;
+}
+
 
 struct Configuration {
   LifeState startingCatalysts;
@@ -1056,7 +1110,7 @@ public:
   LifeState pat;
   LifeState alsoRequired;
   std::vector<CatalystData> catalysts;
-  std::vector<LifeTarget> targetFilter;
+  std::vector<FilterData> filters;
   std::vector<LifeState> catalystCollisionMasks;
 
   unsigned nonfixedCatalystCount;
@@ -1103,8 +1157,9 @@ public:
     begin = clock();
 
     std::vector<CatalystInput> inputcats;
+    std::vector<FilterInput> inputfilters;
     for(auto &inputFile : inputFiles)
-      ReadParams(inputFile, inputcats, params);
+      ReadParams(inputFile, inputcats, inputfilters, params);
 
     if (params.pat.length() == 0) {
       std::cout << "Did not read any pattern!" << std::endl;
@@ -1131,6 +1186,10 @@ public:
     }
     fixedCatalystCount = catalysts.size() - nonfixedCatalystCount;
 
+    for (auto &input : inputfilters) {
+      filters.push_back(FilterData::FromInput(input));
+    }
+
     hasMustInclude = false;
     for (auto &cat : catalysts) {
       hasMustInclude = hasMustInclude || cat.mustInclude;
@@ -1146,32 +1205,27 @@ public:
     categoryContainer = new CategoryContainer(params.maxGen);
     fullCategoryContainer = new CategoryContainer(params.maxGen);
 
-    for (unsigned i = 0; i < params.targetFilter.size(); i++)
-      targetFilter.push_back(LifeTarget::Parse(params.targetFilter[i].c_str(),
-                                               params.filterdx[i], params.filterdy[i]));
-
     LoadMasks();
 
     alsoRequired = LifeState::Parse(params.alsoRequired.c_str(), params.alsoRequiredXY.first, params.alsoRequiredXY.second);
 
+    hasFilter = !filters.empty();
+    filterMaxGen = FilterMaxGen(filters);
+
     found = 0;
     fullfound = 0;
-
-    hasFilter = !params.targetFilter.empty();
     reportAll = params.fullReportFile.length() != 0;
-
-    filterMaxGen = FilterMaxGen();
   }
 
-  unsigned FilterMaxGen() {
+  unsigned FilterMaxGen(std::vector<FilterData> &filters) {
     unsigned maxGen = params.maxGen;
 
-    for (unsigned j = 0; j < targetFilter.size(); j++) {
-      if (params.filterGen[j] >= 0 && params.filterGen[j] > maxGen)
-        maxGen = params.filterGen[j];
+    for (auto &filter : filters) {
+      if (filter.gen >= 0 && filter.gen > maxGen)
+        maxGen = filter.gen;
 
-      if (params.filterGenRange[j].second >= 0 && params.filterGenRange[j].second > maxGen)
-        maxGen = params.filterGenRange[j].second;
+      if (filter.range.second >= 0 && filter.range.second > maxGen)
+        maxGen = filter.range.second;
     }
 
     return maxGen;
@@ -1246,7 +1300,7 @@ public:
     else
       maxMatchingPop = 10000;
 
-    std::vector<bool> filterPassed(params.filterGen.size(), false);
+    std::vector<bool> filterPassed(filters.size(), false);
 
     unsigned stopTime;
     if (params.stopAfterCatsDestroyed != -1)
@@ -1255,38 +1309,37 @@ public:
       stopTime = filterMaxGen;
 
     for (unsigned g = 0; g <= stopTime; g++) {
-      for (unsigned k = 0; k < params.filterGen.size(); k++) {
+      unsigned k = 0;
+      for (auto &filter : filters) {
         if (filterPassed[k])
           continue; // No need to check it again.
 
-        bool inSingle = workspace.gen == params.filterGen[k];
-        bool inRange = params.filterGen[k] == -1 &&
-                       params.filterGenRange[k].first <= workspace.gen &&
-                       params.filterGenRange[k].second >= workspace.gen;
+        bool inSingle = workspace.gen == filter.gen;
+        bool inRange = filter.gen == -1 &&
+                       filter.range.first <= workspace.gen &&
+                       filter.range.second >= workspace.gen;
         bool shouldCheck = inSingle || (inRange && workspace.gen + params.stableInterval >= successtime);
 
         bool succeeded = false;
         LifeState junk;
 
         // See whether there is a match at all
-        if (shouldCheck && (params.filterType[k] == ANDFILTER ||
-                            params.filterType[k] == ORFILTER)) {
-          succeeded = workspace.Contains(targetFilter[k]);
+        if (shouldCheck && (filter.type == ANDFILTER ||
+                            filter.type == ORFILTER)) {
+          succeeded = workspace.Contains(filter.target);
           if(params.maxJunk != -1)
-            junk = workspace & ~targetFilter[k].wanted & ~conf.startingCatalysts;
+            junk = workspace & ~filter.target.wanted & ~conf.startingCatalysts;
         }
 
-        if (shouldCheck && (params.filterType[k] == MATCHFILTER)) {
+        if (shouldCheck && (filter.type == MATCHFILTER)) {
           if(workspace.GetPop() <= maxMatchingPop) {
             LifeState withoutCatalysts = workspace & ~conf.startingCatalysts;
-            for (auto sym : SymmetryGroupFromEnum(StaticSymmetry::D8)) {
-              LifeTarget transformed = targetFilter[k];
-              transformed.Transform(sym);
-              LifeState matches = withoutCatalysts.Match(transformed);
+            for (auto &target : filter.transformedTargets) {
+              LifeState matches = withoutCatalysts.Match(target);
               if(!matches.IsEmpty()) {
                 succeeded = true;
                 if(params.maxJunk != -1)
-                  junk = withoutCatalysts & ~matches.Convolve(transformed.wanted);
+                  junk = withoutCatalysts & ~matches.Convolve(target.wanted);
                 break;
               }
             }
@@ -1298,27 +1351,30 @@ public:
 
           // If this was an OR filter, consider all the other OR filters passed
           // too.
-          if (params.filterType[k] == ORFILTER || params.filterType[k] == MATCHFILTER) {
-            for (unsigned j = 0; j < params.filterGen.size(); j++) {
-              if (params.filterType[j] == ORFILTER || params.filterType[k] == MATCHFILTER) {
+          if (filter.type == ORFILTER || filter.type == MATCHFILTER) {
+            unsigned j = 0;
+            for(auto &otherfilter : filters) {
+              if (otherfilter.type == ORFILTER || otherfilter.type == MATCHFILTER) {
                 filterPassed[j] = true;
               }
+              j++;
             }
           }
         }
 
         // Bail early
-        if (workspace.gen == params.filterGen[k] &&
-            params.filterType[k] == ANDFILTER &&
-            !workspace.Contains(targetFilter[k])
+        if (workspace.gen == filter.gen &&
+            filter.type == ANDFILTER &&
+            !workspace.Contains(filter.target)
             )
           return false;
       }
 
+      k++;
       workspace.Step();
     }
 
-    for (unsigned k = 0; k < params.filterGen.size(); k++)
+    for (unsigned k = 0; k < filters.size(); k++)
       if (!filterPassed[k])
         return false;
 
