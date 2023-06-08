@@ -1303,11 +1303,11 @@ public:
 
     unsigned stopTime;
     if (params.stopAfterCatsDestroyed != -1)
-      stopTime = failuretime + params.stopAfterCatsDestroyed;
+      stopTime = std::min(filterMaxGen, failuretime + params.stopAfterCatsDestroyed);
     else
       stopTime = filterMaxGen;
 
-    for (unsigned g = 0; g <= std::min(filterMaxGen, stopTime); g++) {
+    for (unsigned g = 0; g <= stopTime; g++) {
       for (unsigned k = 0; k < params.filterGen.size(); k++) {
         if (filterPassed[k])
           continue; // No need to check it again.
@@ -1325,7 +1325,8 @@ public:
         if (shouldCheck && (params.filterType[k] == ANDFILTER ||
                             params.filterType[k] == ORFILTER)) {
           succeeded = workspace.Contains(targetFilter[k]);
-          junk = workspace & ~targetFilter[k].wanted & ~conf.startingCatalysts;
+          if(params.maxJunk != -1)
+            junk = workspace & ~targetFilter[k].wanted & ~conf.startingCatalysts;
         }
 
         if (shouldCheck && (params.filterType[k] == MATCHFILTER)) {
@@ -1337,7 +1338,8 @@ public:
               LifeState matches = withoutCatalysts.Match(transformed);
               if(!matches.IsEmpty()) {
                 succeeded = true;
-                junk = withoutCatalysts & ~matches.Convolve(transformed.wanted);
+                if(params.maxJunk != -1)
+                  junk = withoutCatalysts & ~matches.Convolve(transformed.wanted);
                 break;
               }
             }
