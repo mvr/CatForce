@@ -787,16 +787,24 @@ public:
     LifeState invThis = ~*this;
     LifeState flipLive = live;
     flipLive.Transform(Rotate180OddBoth);
-    return ~invThis.Convolve(flipLive);
+    return ~flipLive.Convolve(invThis);
   }
 
   LifeState MatchLiveAndDead(const LifeState &live, const LifeState &dead) const {
     LifeState invThis = ~*this;
     LifeState flipLive = live;
     flipLive.Transform(Rotate180OddBoth);
+
+    // I assume that `live` probably has a small population
+    LifeState liveMatch = ~flipLive.Convolve(invThis);
+
+    if(liveMatch.IsEmpty())
+      return LifeState();
+
     LifeState flipDead = dead;
     flipDead.Transform(Rotate180OddBoth);
-    return ~invThis.Convolve(flipLive) & ~Convolve(flipDead);
+
+    return liveMatch & ~Convolve(flipDead);
   }
 
   LifeState Match(const LifeState &live) const {
