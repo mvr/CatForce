@@ -1351,9 +1351,9 @@ public:
 
           // If this was an OR filter, consider all the other OR filters passed
           // too.
-          if (params.filterType[k] == ORFILTER) {
+          if (params.filterType[k] == ORFILTER || params.filterType[k] == MATCHFILTER) {
             for (unsigned j = 0; j < params.filterGen.size(); j++) {
-              if (params.filterType[j] == ORFILTER) {
+              if (params.filterType[j] == ORFILTER || params.filterType[k] == MATCHFILTER) {
                 filterPassed[j] = true;
               }
             }
