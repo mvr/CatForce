@@ -1384,9 +1384,9 @@ public:
             !workspace.Contains(filter.target)
             )
           return false;
+        k++;
       }
 
-      k++;
       workspace.Step();
     }
 
