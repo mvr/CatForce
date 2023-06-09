@@ -1460,6 +1460,8 @@ public:
     search.config.limitedCount = 0;
     search.config.mustIncludeCount = 0;
 
+    search.config.startingCatalysts = alsoRequired;
+
     LifeState bounds =
         LifeState::SolidRect(params.searchArea[0], params.searchArea[1],
                              params.searchArea[2], params.searchArea[3]);
