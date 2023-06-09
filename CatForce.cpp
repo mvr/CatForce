@@ -676,11 +676,15 @@ public:
 
   bool hasLocus;
   LifeState locus;
-  LifeState locusAvoidMask;
   LifeState locusReactionMask;
   LifeState locusReactionMask1;  // Positions that react with a cell with 1 neighbour at the origin etc.
   LifeState locusReactionMask2;
   LifeState locusReactionMaskMore;
+
+  LifeState locusAvoidMask;
+  LifeState locusAvoidMask1;
+  LifeState locusAvoidMask2;
+  LifeState locusAvoidMaskMore;
 
   unsigned locusReactionPop;
   unsigned locusReactionPop1;
@@ -733,11 +737,15 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     }
 
     {
-      result.locusAvoidMask = (pat & ~result.locus).ZOI();
+      LifeState shell = result.state.ZOI().Shell();
+      LifeState locusZOI = result.locus.ZOI();
+      LifeState nonLocusZOI = (result.state & ~result.locus).ZOI();
+
+      result.locusAvoidMask = nonLocusZOI & shell;
       result.locusAvoidMask.Transform(Rotate180OddBoth);
       result.locusAvoidMask.RecalculateMinMax();
 
-      result.locusReactionMask = result.locus.ZOI();
+      result.locusReactionMask = locusZOI & shell;
       result.locusReactionMask.Transform(Rotate180OddBoth);
       result.locusReactionMask.RecalculateMinMax();
       result.locusReactionMask &= ~result.locusAvoidMask;
@@ -747,21 +755,29 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       LifeState state1, state2, stateMore;
       UpdateCounts(result.state, state1, state2, stateMore);
 
-      LifeState nonLocus = result.state & ~result.locus;
-      LifeState nonLocus1, nonLocus2, nonLocusMore;
-      UpdateCounts(nonLocus, nonLocus1, nonLocus2, nonLocusMore);
-
-      result.locusReactionMask1 = state1 & ~nonLocus1;
+      result.locusReactionMask1 = state1 & shell & ~nonLocusZOI;
       result.locusReactionMask1.Transform(Rotate180OddBoth);
       result.locusReactionMask1.RecalculateMinMax();
 
-      result.locusReactionMask2 = state2 & ~nonLocus2;
+      result.locusReactionMask2 = state2 & shell & ~nonLocusZOI;
       result.locusReactionMask2.Transform(Rotate180OddBoth);
       result.locusReactionMask2.RecalculateMinMax();
 
-      result.locusReactionMaskMore = stateMore & ~nonLocusMore;
+      result.locusReactionMaskMore = stateMore & shell & ~nonLocusZOI;
       result.locusReactionMaskMore.Transform(Rotate180OddBoth);
       result.locusReactionMaskMore.RecalculateMinMax();
+
+      result.locusAvoidMask1 = state1 & shell & nonLocusZOI;
+      result.locusAvoidMask1.Transform(Rotate180OddBoth);
+      result.locusAvoidMask1.RecalculateMinMax();
+
+      result.locusAvoidMask2 = state2 & shell & nonLocusZOI;
+      result.locusAvoidMask2.Transform(Rotate180OddBoth);
+      result.locusAvoidMask2.RecalculateMinMax();
+
+      result.locusAvoidMaskMore = stateMore & shell & nonLocusZOI;
+      result.locusAvoidMaskMore.Transform(Rotate180OddBoth);
+      result.locusAvoidMaskMore.RecalculateMinMax();
 
       result.locusReactionPop = result.locusReactionMask.GetPop();
       result.locusReactionPop1 = result.locusReactionMask1.GetPop();
@@ -1648,8 +1664,11 @@ public:
 
       newPlacements &= ~masks[s];
 
-      if(!newPlacements.IsEmpty() && catalysts[s].hasLocus) {
-        LifeState hitLocations = activePart.Convolve(catalysts[s].locusAvoidMask);
+      if (!newPlacements.IsEmpty() && catalysts[s].hasLocus) {
+        LifeState hitLocations = catalysts[s].locusAvoidMask.Convolve(activePartMore | search.historyMore);
+        hitLocations |= catalysts[s].locusAvoidMask1.Convolve(activePart2 | search.history2);
+        hitLocations |= catalysts[s].locusAvoidMask2.Convolve(activePart1 | search.history1);
+
         masks[s] |= hitLocations;
         newPlacements &= ~hitLocations;
       }

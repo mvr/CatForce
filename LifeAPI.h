@@ -635,9 +635,11 @@ public:
   }
 
   LifeState GetBoundary() const {
-    LifeState boundary = ZOI();
-    boundary.Copy(*this, ANDNOT);
-    return boundary;
+    return ZOI() & ~*this;
+  }
+
+  LifeState Shell() const {
+    return *this & (~*this).ZOI();
   }
 
   LifeState BigZOI() const {
