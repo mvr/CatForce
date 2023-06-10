@@ -1442,6 +1442,7 @@ public:
 
   void Search() {
     SearchState search;
+    search.state = LifeState();
     search.state.JoinWSymChain(pat, params.symmetryChain);
     search.history1 = search.state;
     search.history2 = search.state;
