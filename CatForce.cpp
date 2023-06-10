@@ -726,6 +726,8 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.reactionMask.Transform(Rotate180OddBoth);
     result.reactionMask.RecalculateMinMax();
 
+    result.required = LifeState();
+
     if (input.locusRLE != "") {
       result.hasLocus = true;
       result.locus = LifeState::Parse(input.locusRLE.c_str(),
