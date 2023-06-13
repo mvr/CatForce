@@ -673,19 +673,17 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
 class CatalystData {
 public:
   LifeState state;
-  LifeState stateZOI;
 
-  LifeTarget target;
-  LifeState reactionMask;
+  bool hasLocusReactionPop;
+  bool hasLocusReactionPop1;
+  bool hasLocusReactionPop2;
+  bool hasLocusReactionPopMore;
 
-  unsigned maxDisappear;
-  std::vector<LifeTarget> forbidden;
-  bool hasRequired;
+  unsigned locusReactionPop;
+  unsigned locusReactionPop1;
+  unsigned locusReactionPop2;
+  unsigned locusReactionPopMore;
 
-  LifeState required;
-
-  bool hasLocus;
-  LifeState locus;
   LifeState locusReactionMask;
   LifeState locusReactionMask1;  // Positions that react with a cell with 1 neighbour at the origin etc.
   LifeState locusReactionMask2;
@@ -696,16 +694,20 @@ public:
   LifeState locusAvoidMask2;
   LifeState locusAvoidMaskMore;
 
-  unsigned locusReactionPop;
-  unsigned locusReactionPop1;
-  unsigned locusReactionPop2;
-  unsigned locusReactionPopMore;
+  LifeState required;
 
-  bool hasLocusReactionPop;
-  bool hasLocusReactionPop1;
-  bool hasLocusReactionPop2;
-  bool hasLocusReactionPopMore;
+  LifeTarget target;
 
+  LifeState state1;
+  LifeState state2;
+  LifeState stateMore;
+
+  bool hasRequired;
+  bool hasLocus;
+
+  std::vector<LifeTarget> forbidden;
+
+  unsigned maxDisappear;
   bool transparent;
   bool limited;
   bool mustInclude;
@@ -730,28 +732,25 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     CatalystData result;
 
     result.state = pat;
-    result.stateZOI = pat.ZOI();
     result.target = LifeTarget(pat);
-    result.reactionMask = pat.BigZOI();
-    result.reactionMask.Transform(Rotate180OddBoth);
-    result.reactionMask.RecalculateMinMax();
 
     result.required = LifeState();
 
+    LifeState locus;
     if (input.locusRLE != "") {
       result.hasLocus = true;
-      result.locus = LifeState::Parse(input.locusRLE.c_str(),
+      locus = LifeState::Parse(input.locusRLE.c_str(),
                                       input.locusXY.first,
                                       input.locusXY.second, tran);
     } else {
       result.hasLocus = false;
-      result.locus = pat;
+      locus = pat;
     }
 
     {
       LifeState shell = result.state.ZOI().Shell();
-      LifeState locusZOI = result.locus.ZOI();
-      LifeState nonLocusZOI = (result.state & ~result.locus).ZOI();
+      LifeState locusZOI = locus.ZOI();
+      LifeState nonLocusZOI = (result.state & ~locus).ZOI();
 
       result.locusAvoidMask = nonLocusZOI & shell;
       result.locusAvoidMask.Transform(Rotate180OddBoth);
@@ -766,6 +765,10 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
       LifeState state1, state2, stateMore;
       UpdateCounts(result.state, state1, state2, stateMore);
+
+      result.state1 = state1;
+      result.state2 = state2;
+      result.stateMore = stateMore;
 
       result.locusReactionMask1 = state1 & shell & ~nonLocusZOI;
       result.locusReactionMask1.Transform(Rotate180OddBoth);
@@ -882,12 +885,21 @@ struct Configuration {
 };
 
 // Fix a, what positions of b causes a collision?
-LifeState CollisionMask(const LifeState &a, const LifeState &b) {
-  LifeState bReactionMask = b.BigZOI();
-  bReactionMask.Transform(Rotate180OddBoth);
-  bReactionMask.RecalculateMinMax();
-  LifeState possibleReactionMask = bReactionMask.Convolve(a);
+LifeState CollisionMask(const CatalystData &a, const CatalystData &b) {
+  LifeState bFlipped = b.state;
+  bFlipped.Transform(Rotate180OddBoth);
+  LifeState bState1Flipped = b.state1;
+  bState1Flipped.Transform(Rotate180OddBoth);
+  LifeState bState2Flipped = b.state2;
+  bState2Flipped.Transform(Rotate180OddBoth);
+  LifeState bStateMoreFlipped = b.stateMore;
+  bStateMoreFlipped.Transform(Rotate180OddBoth);
 
+  // Assumes both are still (so will break with periodic)
+  LifeState possibleReactionMask =
+      (a.state.ZOI() & bFlipped)
+    | (a.state1 & bState2Flipped)
+    | (a.state2 & bState1Flipped);
   return possibleReactionMask;
 }
 
@@ -1175,7 +1187,7 @@ public:
         if(catalysts[s].sacrificial || catalysts[t].sacrificial)
           continue;
 
-        catalystCollisionMasks[s * catalysts.size() + t] = CollisionMask(catalysts[s].state, catalysts[t].state);
+        catalystCollisionMasks[s * catalysts.size() + t] = CollisionMask(catalysts[s], catalysts[t]);
         catalystCollisionMasks[s * catalysts.size() + t].RecalculateMinMax();
       }
     }
@@ -1561,7 +1573,7 @@ public:
       if (search.config.count == params.numCatalysts - 1 &&
           search.config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
-      if((activePart & catalysts[s].stateZOI).IsEmpty())
+      if((activePart & catalysts[s].locusReactionMask).IsEmpty())
         continue;
 
       // Do the placement
@@ -1880,12 +1892,12 @@ public:
     unsigned successtime;
     unsigned failuretime;
 
-    for (unsigned g = search.state.gen; g < filterMaxGen; g++) {
+    for (unsigned g = search.state.gen; g <= filterMaxGen; g++) {
       // Block the locations that are hit too early
       if (search.state.gen < params.startGen) {
         for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
-          LifeState hitLocations = search.state.Convolve(catalysts[s].reactionMask);
-          masks[s] |= hitLocations;
+          masks[s] |= search.state.Convolve(catalysts[s].locusReactionMask);
+          masks[s] |= search.state.Convolve(catalysts[s].locusAvoidMask);
         }
         UpdateCounts(search.state, search.history1, search.history2, search.historyMore);
 
