@@ -579,6 +579,10 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
       params.maxGen = atoi(elems[1].c_str());
     } else if (elems[0] == numCat) {
       params.numCatalysts = atoi(elems[1].c_str());
+      if(params.numCatalysts > MAX_CATALYSTS) {
+        std::cout << "num-catalyst larger than MAX_CATALYSTS" << std::endl;
+        exit(1);
+      }
     } else if (elems[0] == numTransp) {
       params.numTransparent = atoi(elems[1].c_str());
     } else if (elems[0] == numLimited) {
