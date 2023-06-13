@@ -15,16 +15,37 @@ max-junk 3
 num-catalyst 3
 pat 2bo$obo$b2o6$8b2o$8b3o$7bo2bo$7b3o$7b3o! -7 -8
 
+match-survive 20
+# H
 match 0-200 o$3o$obo$2bo!
+# R
 match 0-200 2bo$2ob2o$o2bo$b2o!
-match 0-200 b3o$o3bo$2ob2o!
-match 0-200 b3o$bobo$o2bo$obo$3o!
+# Pi
+match 0-200 b3o$o3bo$2ob2o! @
+# LOM
+match 0-200 b3o$bobo$o2bo$obo$3o! x
+# Century
 match 0-200 b3o$bobo$o2bo$2o!
+# B
 match 0-200 3o$2bo$obo$2o!
+# Dove
 match 0-200 2b2o$bobo$o2bo$obo$bo!
+# I
 match 0-200 3b2o$bo2bo$o3bo$bobo$2bo!
+# J
 match 0-200 3o$3b2o$3b2o!
+# Wing
 match 0-200 2b3o$bo2bo$o2b2o$b2o!
+# Z
+match 0-200 2b3o$2o2b2o$b3o! x
+# E
+match 0-200 3o$2b2o$b2o!
+# U-turner
+match 0-200 bo$ob2o$o3bo$bo2bo$2b3o!
+# *WSS
+match 0-200 o2bo$4bo$o3bo$b4o! @ 
+match 0-200 o3bo$5bo$o4bo$b5o! @ 
+match 0-200 o4bo$6bo$o5bo$b6o! @
 
 # Eater
 cat 2o$o$b3o$3bo! 10 -2 -2 * required bo$o$b3o$3bo! -2 -2 antirequired 2bo$b3o$o$3o! -2 -2 locus 2o3$3bo! -2 -2 forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6 forbidden 2bo$obo$b2o2$3b2o$3bo$4b3o$6bo! -5 -6

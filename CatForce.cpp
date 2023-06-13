@@ -62,8 +62,10 @@ public:
   std::string alsoRequired;
   std::pair<int, int> alsoRequiredXY;
 
+  // Filtering parameters
   int stopAfterCatsDestroyed;
   int maxJunk;
+  int matchSurvive;
 
   SearchParams() {
     maxGen = 250;
@@ -91,6 +93,7 @@ public:
     alsoRequiredXY = {0, 0};
     stopAfterCatsDestroyed = -1;
     maxJunk = -1;
+    matchSurvive = -1;
   }
 };
 
@@ -564,6 +567,7 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
   std::string alsoRequired = "also-required";
   std::string stopAfterCatsDestroyed = "stop-after-cats-destroyed";
   std::string maxJunk = "max-junk";
+  std::string matchSurvive = "match-survive";
 
   std::string line;
 
@@ -655,6 +659,8 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
       params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
     } else if (elems[0] == maxJunk){
       params.maxJunk = atoi(elems[1].c_str());
+    } else if (elems[0] == matchSurvive){
+      params.matchSurvive = atoi(elems[1].c_str());
     } else {
       if(std::isalpha(elems[0][0])) {
         std::cout << "Unknown input parameter: " << elems[0] << std::endl;
@@ -1358,10 +1364,24 @@ public:
             LifeState withoutCatalysts = workspace & ~conf.startingCatalysts;
             for (auto &target : filter.transformedTargets) {
               LifeState matches = withoutCatalysts.Match(target);
-              if(!matches.IsEmpty()) {
+              if (!matches.IsEmpty()) {
+                LifeState matchedPart = matches.Convolve(target.wanted);
+
+                // Check that the matched part is not interfered with
+                if(params.matchSurvive != -1) {
+                  LifeState matchedAdvanced = matchedPart;
+                  matchedAdvanced.Step(params.matchSurvive);
+
+                  LifeState workspaceAdvanced = workspace;
+                  workspaceAdvanced.Step(params.matchSurvive);
+
+                  if (!(matchedAdvanced & ~workspaceAdvanced).IsEmpty())
+                    continue;
+                }
+
                 succeeded = true;
                 if(params.maxJunk != -1)
-                  junk = withoutCatalysts & ~matches.Convolve(target.wanted);
+                  junk = withoutCatalysts & ~matchedPart;
                 break;
               }
             }
