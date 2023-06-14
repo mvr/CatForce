@@ -1895,14 +1895,16 @@ public:
     for (unsigned g = search.state.gen; g <= filterMaxGen; g++) {
       // Block the locations that are hit too early
       if (search.state.gen < params.startGen) {
-        for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
-          masks[s] |= search.state.Convolve(catalysts[s].locusReactionMask);
-          masks[s] |= search.state.Convolve(catalysts[s].locusAvoidMask);
-        }
         UpdateCounts(search.state, search.history1, search.history2, search.historyMore);
-
         search.state.Step();
         continue;
+      }
+      if (search.state.gen == params.startGen && search.config.count == 0) {
+        for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
+          masks[s] |= search.history1.Convolve(catalysts[s].locusReactionMask2);
+          masks[s] |= search.history2.Convolve(catalysts[s].locusReactionMask1);
+          masks[s] |= search.historyMore.Convolve(catalysts[s].locusReactionMask);
+        }
       }
 
       if (search.config.count == 0 && g > params.lastGen)
