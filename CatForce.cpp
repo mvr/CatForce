@@ -1919,7 +1919,7 @@ public:
           search.freeCount = search.config.count;
         } else {
           int distance = search.violationGen - search.state.gen;
-          criticalArea = LifeState::NZOIAround(search.violationCell, distance);
+          criticalArea = LifeState::NZOIAround(search.violationCell, distance-1);
           criticalArea.JoinWSymChain(criticalArea, params.symmetryChain);
         }
         LifeState state1, state2, stateMore;
