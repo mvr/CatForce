@@ -897,9 +897,9 @@ LifeState CollisionMask(const CatalystData &a, const CatalystData &b) {
 
   // Assumes both are still (so will break with periodic)
   LifeState possibleReactionMask =
-      (a.state.ZOI() & bFlipped)
-    | (a.state1 & bState2Flipped)
-    | (a.state2 & bState1Flipped);
+      (a.state.ZOI().Convolve(bFlipped | bStateMoreFlipped))
+    | (a.state1.Convolve(bState2Flipped))
+    | (a.state2.Convolve(bState1Flipped));
   return possibleReactionMask;
 }
 
