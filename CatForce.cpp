@@ -1736,36 +1736,19 @@ public:
         LifeState symCatalyst;
         symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
         newSearch.state |= symCatalyst;
+        newSearch.config.startingCatalysts |= symCatalyst;
 
         LifeState lookahead = newSearch.state;
-        lookahead.Step();
-        // Do a one-step lookahead to see if the catalyst interacts
-        {
-          LifeState difference = lookahead ^ next ^ symCatalyst;
-          if (difference.IsEmpty()) {
-            if (DEBUG_OUTPUT && search.config.count == 0) {
-              std::cout << "Skipping catalyst " << s << " at "
-                        << newPlacement.first << ", " << newPlacement.second
-                        << " (no interaction) " << std::endl;
-            }
-
-            // Note: we deliberately don't set the mask,
-            // because it may turn out that a catalyst here
-            // interacts properly in a later generation.
-            newPlacements.Erase(newPlacement.first, newPlacement.second);
-            continue;
-          }
-        }
 
         if(catalysts[s].hasRequired) {
           newSearch.required.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
         }
 
-        newSearch.config.startingCatalysts |= symCatalyst;
-
         {
           bool catalystFailed = false;
-          for (unsigned i = 0; i < REQUIRED_LOOKAHEAD - 1; i++) {
+          const unsigned skip = 1;
+          lookahead.Step(skip);
+          for (unsigned i = skip; i < REQUIRED_LOOKAHEAD; i++) {
             lookahead.Step();
 
             if (!(newSearch.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
