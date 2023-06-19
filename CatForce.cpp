@@ -1184,9 +1184,6 @@ public:
             catalysts[t].transparent)
           continue;
 
-        if(catalysts[s].sacrificial || catalysts[t].sacrificial)
-          continue;
-
         catalystCollisionMasks[s * catalysts.size() + t] = CollisionMask(catalysts[s], catalysts[t]);
         catalystCollisionMasks[s * catalysts.size() + t].RecalculateMinMax();
       }
