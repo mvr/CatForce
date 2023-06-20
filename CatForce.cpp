@@ -736,6 +736,20 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
     result.required = LifeState();
 
+    if (input.requiredRLE != "") {
+      result.hasRequired = true;
+      result.required |= LifeState::Parse(input.requiredRLE.c_str(),
+                                          input.requiredXY.first,
+                                          input.requiredXY.second, tran);
+    }
+
+    if (input.antirequiredRLE != "") {
+      result.hasRequired = true;
+      result.required |= LifeState::Parse(input.antirequiredRLE.c_str(),
+                                          input.antirequiredXY.first,
+                                          input.antirequiredXY.second, tran);
+    }
+
     LifeState locus;
     if (input.locusRLE != "") {
       result.hasLocus = true;
@@ -770,11 +784,13 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.state2 = state2;
       result.stateMore = stateMore;
 
-      result.locusReactionMask1 = state1 & shell & ~nonLocusZOI;
+      LifeState badBirths = nonLocusZOI | (~result.state & result.required);
+
+      result.locusReactionMask1 = state1 & shell & ~badBirths;
       result.locusReactionMask1.Transform(Rotate180OddBoth);
       result.locusReactionMask1.RecalculateMinMax();
 
-      result.locusReactionMask2 = state2 & shell & ~nonLocusZOI;
+      result.locusReactionMask2 = state2 & shell & ~badBirths;
       result.locusReactionMask2.Transform(Rotate180OddBoth);
       result.locusReactionMask2.RecalculateMinMax();
 
@@ -782,11 +798,11 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.locusReactionMaskMore.Transform(Rotate180OddBoth);
       result.locusReactionMaskMore.RecalculateMinMax();
 
-      result.locusAvoidMask1 = state1 & shell & nonLocusZOI;
+      result.locusAvoidMask1 = state1 & shell & badBirths;
       result.locusAvoidMask1.Transform(Rotate180OddBoth);
       result.locusAvoidMask1.RecalculateMinMax();
 
-      result.locusAvoidMask2 = state2 & shell & nonLocusZOI;
+      result.locusAvoidMask2 = state2 & shell & badBirths;
       result.locusAvoidMask2.Transform(Rotate180OddBoth);
       result.locusAvoidMask2.RecalculateMinMax();
 
@@ -809,20 +825,6 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.forbidden.push_back(LifeTarget::Parse(input.forbiddenRLE[k].c_str(),
                                                    input.forbiddenXY[k].first,
                                                    input.forbiddenXY[k].second, tran));
-    }
-
-    if (input.requiredRLE != "") {
-      result.hasRequired = true;
-      result.required |= LifeState::Parse(input.requiredRLE.c_str(),
-                                          input.requiredXY.first,
-                                          input.requiredXY.second, tran);
-    }
-
-    if (input.antirequiredRLE != "") {
-      result.hasRequired = true;
-      result.required |= LifeState::Parse(input.antirequiredRLE.c_str(),
-                                          input.antirequiredXY.first,
-                                          input.antirequiredXY.second, tran);
     }
 
     result.maxDisappear = input.maxDisappear;
