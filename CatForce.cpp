@@ -116,6 +116,7 @@ public:
   bool limited;
   bool mustInclude;
   bool checkRecovery;
+  bool checkReaction;
   bool sacrificial;
   bool fixed;
   int fixedGen;
@@ -141,6 +142,7 @@ public:
     limited = false;
     mustInclude = false;
     checkRecovery = false;
+    checkReaction = false;
     sacrificial = false;
     fixed = false;
     fixedGen = -1;
@@ -177,6 +179,9 @@ public:
         argi += 1;
       } else if (elems[argi] == "check-recovery") {
         checkRecovery = true;
+        argi += 1;
+      } else if (elems[argi] == "check-reaction") {
+        checkReaction = true;
         argi += 1;
       } else if (elems[argi] == "sacrificial") {
         sacrificial = true;
@@ -712,6 +717,7 @@ public:
   bool limited;
   bool mustInclude;
   bool checkRecovery;
+  bool checkReaction;
   bool sacrificial;
   bool fixed;
   int fixedGen;
@@ -832,6 +838,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.limited = input.limited;
     result.mustInclude = input.mustInclude;
     result.checkRecovery = input.checkRecovery;
+    result.checkReaction = input.checkReaction;
     result.sacrificial = input.sacrificial;
     result.fixed = input.fixed;
     result.fixedGen = input.fixedGen;
@@ -1774,12 +1781,34 @@ public:
 
         if (catalysts[s].checkRecovery) {
           bool catalystFailed = false;
-          for (int i = 0; i < (int)catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD + 1; i++) {
-            lookahead.Step();
-            // if (catalysts[s].hasRequired && !(catRequired & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
-            //   catalystFailed = true;
-            //   break;
-            // }
+          if(!catalysts[s].checkReaction) {
+            int gap = (search.state.gen + catalysts[s].maxDisappear) - (lookahead.gen);
+            for (int i = 0; i < gap; i++) {
+              lookahead.Step();
+              // if (catalysts[s].hasRequired && !(catRequired & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
+              //   catalystFailed = true;
+              //   break;
+              // }
+            }
+          } else {
+            // Have to restart for the cells that are used in first lookahead
+            lookahead = newSearch.state;
+            LifeState unused = shiftedCatalyst & ~newSearch.required;
+            for (int i = 0; i < catalysts[s].maxDisappear; i++) {
+              lookahead.Step();
+              unused &= lookahead;
+            }
+            if (!unused.IsEmpty()) {
+              if (DEBUG_OUTPUT && search.config.count == 0) {
+                std::cout << "Skipping catalyst " << s << " at "
+                          << newPlacement.first << ", " << newPlacement.second
+                          << " (failed to react correctly) " << std::endl;
+              }
+
+              masks[s].Set(newPlacement.first, newPlacement.second);
+              newPlacements.Erase(newPlacement.first, newPlacement.second);
+              continue;
+            }
           }
 
           if (!catalystFailed && !lookahead.Contains(shiftedTargets[search.config.count])) {
