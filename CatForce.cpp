@@ -117,6 +117,7 @@ public:
   bool mustInclude;
   bool checkRecovery;
   bool checkReaction;
+  bool canSmother;
   bool sacrificial;
   bool fixed;
   int fixedGen;
@@ -143,6 +144,7 @@ public:
     mustInclude = false;
     checkRecovery = false;
     checkReaction = false;
+    canSmother = false;
     sacrificial = false;
     fixed = false;
     fixedGen = -1;
@@ -182,6 +184,9 @@ public:
         argi += 1;
       } else if (elems[argi] == "check-reaction") {
         checkReaction = true;
+        argi += 1;
+      } else if (elems[argi] == "can-smother") {
+        canSmother = true;
         argi += 1;
       } else if (elems[argi] == "sacrificial") {
         sacrificial = true;
@@ -718,6 +723,7 @@ public:
   bool mustInclude;
   bool checkRecovery;
   bool checkReaction;
+  bool canSmother;
   bool sacrificial;
   bool fixed;
   int fixedGen;
@@ -839,6 +845,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.mustInclude = input.mustInclude;
     result.checkRecovery = input.checkRecovery;
     result.checkReaction = input.checkReaction;
+    result.canSmother = input.canSmother;
     result.sacrificial = input.sacrificial;
     result.fixed = input.fixed;
     result.fixedGen = input.fixedGen;
@@ -1695,7 +1702,7 @@ public:
           search.config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
 
-      LifeState newPlacements = activePartMore.Convolve(catalysts[s].locusReactionMask);
+      LifeState newPlacements;
       if (catalysts[s].hasLocusReactionPop1) {
         if (activePartPop2 < catalysts[s].locusReactionPop1)
           newPlacements |= activePart2.Convolve(catalysts[s].locusReactionMask1);
@@ -1708,6 +1715,8 @@ public:
         else
           newPlacements |= catalysts[s].locusReactionMask2.Convolve(activePart1);
       }
+      if (catalysts[s].canSmother)
+        newPlacements |= activePartMore.Convolve(catalysts[s].locusReactionMask);
 
       newPlacements &= ~masks[s];
 
