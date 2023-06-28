@@ -51,7 +51,7 @@ public:
   unsigned lastGen;
   std::string outputFile;
   std::string fullReportFile;
-  int searchArea[4]{};
+  int searchArea[4];
   int maxW;
   int maxH;
   StaticSymmetry symmetry;
@@ -869,8 +869,6 @@ public:
 };
 
 FilterData FilterData::FromInput(FilterInput &input) {
-  const char *rle = input.rle.c_str();
-
   FilterData result;
 
   result.target = LifeTarget::Parse(input.rle.c_str(), input.x, input.y);
@@ -1161,7 +1159,7 @@ struct SearchState {
 
 class CatalystSearcher {
 public:
-  clock_t begin{};
+  clock_t begin;
   SearchParams params;
   LifeState pat;
   LifeState alsoRequired;
@@ -1172,17 +1170,17 @@ public:
   unsigned nonfixedCatalystCount;
   unsigned fixedCatalystCount;
 
-  unsigned found{};
-  unsigned fullfound{};
+  unsigned found;
+  unsigned fullfound;
 
-  CategoryContainer *categoryContainer{};
-  CategoryContainer *fullCategoryContainer{};
+  CategoryContainer *categoryContainer;
+  CategoryContainer *fullCategoryContainer;
 
-  bool hasFilter{};
-  bool hasMustInclude{};
-  bool reportAll{};
+  bool hasFilter;
+  bool hasMustInclude;
+  bool reportAll;
 
-  unsigned filterMaxGen{};
+  unsigned filterMaxGen;
 
   void LoadMasks() {
     if (params.numCatalysts == 1)
