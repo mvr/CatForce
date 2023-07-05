@@ -2007,6 +2007,9 @@ public:
       }
 
       for (unsigned i = 0; i < search.config.count; i++) {
+        if (search.recoveredTime[i] == params.stableInterval)
+          continue;
+
         if (search.state.Contains(shiftedTargets[i]) || catalysts[search.config.curs[i]].sacrificial) {
           search.missingTime[i] = 0;
           search.recoveredTime[i] += 1;
