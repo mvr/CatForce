@@ -112,6 +112,8 @@ public:
   std::pair<int, int> antirequiredXY;
   std::string locusRLE;
   std::pair<int, int> locusXY;
+  std::string contactRLE;
+  std::pair<int, int> contactXY;
   bool transparent;
   bool limited;
   bool mustInclude;
@@ -169,6 +171,10 @@ public:
       } else if (elems[argi] == "locus") {
         locusRLE = elems[argi + 1];
         locusXY = std::make_pair(atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
+        argi += 4;
+      } else if (elems[argi] == "contact") {
+        contactRLE = elems[argi + 1];
+        contactXY = std::make_pair(atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str()));
         argi += 4;
       } else if (elems[argi] == "transparent") {
         transparent = true;
@@ -684,15 +690,15 @@ class CatalystData {
 public:
   LifeState state;
 
-  bool hasLocusReactionPop;
+  // bool hasLocusReactionPop;
   bool hasLocusReactionPop1;
   bool hasLocusReactionPop2;
-  bool hasLocusReactionPopMore;
+  // bool hasLocusReactionPopMore;
 
-  unsigned locusReactionPop;
+  // unsigned locusReactionPop;
   unsigned locusReactionPop1;
   unsigned locusReactionPop2;
-  unsigned locusReactionPopMore;
+  // unsigned locusReactionPopMore;
 
   LifeState locusReactionMask;
   LifeState locusReactionMask1;  // Positions that react with a cell with 1 neighbour at the origin etc.
@@ -745,6 +751,8 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
     result.state = pat;
     result.target = LifeTarget(pat);
+    result.hasLocus = false;
+    bool hasContact = false;
 
     result.required = LifeState();
 
@@ -769,15 +777,23 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
                                       input.locusXY.first,
                                       input.locusXY.second, tran);
     } else {
-      result.hasLocus = false;
       locus = pat;
     }
 
-    {
-      LifeState shell = result.state.ZOI().Shell();
-      LifeState locusZOI = locus.ZOI();
-      LifeState nonLocusZOI = (result.state & ~locus).ZOI();
+    LifeState shell = result.state.ZOI().Shell();
+    LifeState locusZOI = locus.ZOI();
+    LifeState nonLocusZOI = (result.state & ~locus).ZOI();
 
+    LifeState contact;
+    if (input.contactRLE != "") {
+      contact = LifeState::Parse(input.contactRLE.c_str(),
+                                 input.contactXY.first,
+                                 input.contactXY.second, tran);
+    } else {
+      contact = locusZOI & ~nonLocusZOI & shell & ~result.required;
+    }
+
+    {
       result.locusAvoidMask = nonLocusZOI & shell;
       result.locusAvoidMask.Transform(Rotate180OddBoth);
       result.locusAvoidMask.RecalculateMinMax();
@@ -796,41 +812,39 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.state2 = state2;
       result.stateMore = stateMore;
 
-      LifeState badBirths = nonLocusZOI | (~result.state & result.required);
-
-      result.locusReactionMask1 = state1 & shell & ~badBirths;
+      result.locusReactionMask1 = state1 & contact;
       result.locusReactionMask1.Transform(Rotate180OddBoth);
       result.locusReactionMask1.RecalculateMinMax();
 
-      result.locusReactionMask2 = state2 & shell & ~badBirths;
+      result.locusReactionMask2 = state2 & contact;
       result.locusReactionMask2.Transform(Rotate180OddBoth);
       result.locusReactionMask2.RecalculateMinMax();
 
-      result.locusReactionMaskMore = stateMore & shell & ~nonLocusZOI;
-      result.locusReactionMaskMore.Transform(Rotate180OddBoth);
-      result.locusReactionMaskMore.RecalculateMinMax();
+      // result.locusReactionMaskMore = stateMore & shell & ~nonLocusZOI;
+      // result.locusReactionMaskMore.Transform(Rotate180OddBoth);
+      // result.locusReactionMaskMore.RecalculateMinMax();
 
-      result.locusAvoidMask1 = state1 & shell & badBirths;
+      result.locusAvoidMask1 = state1 & shell & ~contact;
       result.locusAvoidMask1.Transform(Rotate180OddBoth);
       result.locusAvoidMask1.RecalculateMinMax();
 
-      result.locusAvoidMask2 = state2 & shell & badBirths;
+      result.locusAvoidMask2 = state2 & shell & ~contact;
       result.locusAvoidMask2.Transform(Rotate180OddBoth);
       result.locusAvoidMask2.RecalculateMinMax();
 
-      result.locusAvoidMaskMore = stateMore & shell & nonLocusZOI;
-      result.locusAvoidMaskMore.Transform(Rotate180OddBoth);
-      result.locusAvoidMaskMore.RecalculateMinMax();
+      // result.locusAvoidMaskMore = stateMore & shell & nonLocusZOI;
+      // result.locusAvoidMaskMore.Transform(Rotate180OddBoth);
+      // result.locusAvoidMaskMore.RecalculateMinMax();
 
-      result.locusReactionPop = result.locusReactionMask.GetPop();
+      // result.locusReactionPop = result.locusReactionMask.GetPop();
       result.locusReactionPop1 = result.locusReactionMask1.GetPop();
       result.locusReactionPop2 = result.locusReactionMask2.GetPop();
-      result.locusReactionPopMore = result.locusReactionMaskMore.GetPop();
+      // result.locusReactionPopMore = result.locusReactionMaskMore.GetPop();
 
-      result.hasLocusReactionPop = result.locusReactionPop > 0;
+      // result.hasLocusReactionPop = result.locusReactionPop > 0;
       result.hasLocusReactionPop1 = result.locusReactionPop1 > 0;
       result.hasLocusReactionPop2 = result.locusReactionPop2 > 0;
-      result.hasLocusReactionPopMore = result.locusReactionPopMore > 0;
+      // result.hasLocusReactionPopMore = result.locusReactionPopMore > 0;
     }
 
     for (unsigned k = 0; k < input.forbiddenRLE.size(); k++) {
