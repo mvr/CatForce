@@ -8,8 +8,8 @@ LDFLAGS =
 # LDFLAGS = -L /usr/local/opt/gcc/lib/gcc/11 -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib -lSystem -lstdc++
 
 PROFDATAEXE = /Library/Developer/CommandLineTools/usr/bin/llvm-profdata
-ifneq ($(wildcard instrumenting/profile.profdata),)
-	INSTRUMENTFLAGS = -fprofile-use=instrumenting/profile.profdata
+ifneq ($(wildcard instrumenting/pass2.profdata),)
+	INSTRUMENTFLAGS = -fprofile-use=instrumenting/pass2.profdata
 else
 	INSTRUMENTFLAGS =
 endif
