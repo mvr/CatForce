@@ -1411,15 +1411,16 @@ inline std::pair<int, int> PerpComponent(SymmetryTransform transf,
   }
 }
 
-inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
-                              std::pair<int, int> offset) {
+LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
+                                 std::pair<int, int> offset) {
   switch (sym) {
   case C1:
     return state;
   case C2: {
     LifeState sym = state;
-    sym.Transform(Rotate180OddBoth);
-    sym.Move(offset);
+    sym.FlipX();
+    sym.FlipY();
+    sym.Move(offset.first+1, offset.second+1);
     sym.Join(state);
     return sym;
   }
@@ -1428,25 +1429,25 @@ inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
     sym.Transform(Rotate90);
     sym.Move(offset);
     sym.Join(state);
-    sym.Transform(Rotate90);
-    sym.Move(offset);
-    sym.Join(state);
-    sym.Transform(Rotate90);
-    sym.Move(offset);
-    sym.Join(state);
+
+    LifeState sym2 = sym;
+    sym2.FlipX();
+    sym2.FlipY();
+    sym2.Move(offset.first - offset.second + 1, offset.second + offset.first + 1);
+    sym.Join(sym2);
     return sym;
   }
   case D2AcrossX: {
     LifeState sym = state;
-    sym.Transform(ReflectAcrossX);
-    sym.Move(offset);
+    sym.FlipX();
+    sym.Move(offset.first, offset.second + 1);
     sym.Join(state);
     return sym;
   }
   case D2AcrossY: {
     LifeState sym = state;
-    sym.Transform(ReflectAcrossY);
-    sym.Move(offset);
+    sym.FlipY();
+    sym.Move(offset.first + 1, offset.second);
     sym.Join(state);
     return sym;
   }
@@ -1459,36 +1460,41 @@ inline LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
   }
   case D2negdiagodd: {
     LifeState sym = state;
-    sym.Transform(ReflectAcrossYeqNegXP1);
-    sym.Move(offset);
+    sym.Transpose(true);
+    sym.Move(offset.first + 1, offset.second + 1);
     sym.Join(state);
     return sym;
   }
+
   case D4: {
     LifeState acrossx = state;
-    acrossx.Transform(ReflectAcrossX);
     auto xoffset = PerpComponent(ReflectAcrossX, offset);
-    acrossx.Move(xoffset);
+    acrossx.FlipX();
+    acrossx.Move(xoffset.first, xoffset.second + 1);
     acrossx.Join(state);
+
     LifeState acrossy = acrossx;
-    acrossy.Transform(ReflectAcrossY);
     auto yoffset = PerpComponent(ReflectAcrossY, offset);
-    acrossy.Move(yoffset);
+    acrossy.FlipY();
+    acrossy.Move(yoffset.first + 1, yoffset.second);
     acrossy.Join(acrossx);
+
     return acrossy;
   }
   case D4diag: {
-    LifeState acrossx = state;
-    acrossx.Transform(ReflectAcrossYeqNegXP1);
-    auto xoffset = PerpComponent(ReflectAcrossYeqNegXP1, offset);
-    acrossx.Move(xoffset);
-    acrossx.Join(state);
-    LifeState acrossy = acrossx;
+    LifeState acrossy = state;
     acrossy.Transform(ReflectAcrossYeqX);
     auto yoffset = PerpComponent(ReflectAcrossYeqX, offset);
     acrossy.Move(yoffset);
-    acrossy.Join(acrossx);
-    return acrossy;
+    acrossy.Join(state);
+
+    LifeState acrossx = acrossy;
+    acrossx.FlipX();
+    acrossx.FlipY();
+    acrossx.Move(offset.first + 1, offset.second+1);
+    acrossx.Join(acrossy);
+
+    return acrossx;
   }
 
   default:
