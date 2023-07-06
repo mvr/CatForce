@@ -1696,12 +1696,21 @@ public:
     LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
     workspace.Join(conf.startingCatalysts);
 
+    std::vector<LifeTarget> movedTargets;
+
+    for (unsigned j = 0; j < params.numCatalysts; j++) {
+      for (auto &forbidden : catalysts[conf.curs[j]].forbidden) {
+        LifeTarget moved = forbidden;
+        moved.wanted.Move(conf.curx[j], conf.cury[j]);
+        moved.unwanted.Move(conf.curx[j], conf.cury[j]);
+        movedTargets.push_back(moved);
+      }
+    }
+
     for (unsigned i = 0; i <= curIter + 1; i++) {
-      for (unsigned j = 0; j < params.numCatalysts; j++) {
-        for (unsigned k = 0; k < catalysts[conf.curs[j]].forbidden.size(); k++) {
-          if (workspace.Contains(catalysts[conf.curs[j]].forbidden[k], conf.curx[j], conf.cury[j]))
-            return true;
-        }
+      for (auto &target : movedTargets) {
+        if (workspace.Contains(target))
+          return false;
       }
       workspace.Step();
     }
@@ -1796,15 +1805,15 @@ public:
   }
 
   void ReportSolution(Configuration &conf, unsigned successtime, unsigned failuretime) {
-    if (HasForbidden(conf, successtime + 3))
-      return;
-
     std::pair<int, int> shift = HalveOffset(conf.symmetry, conf.symmetryOffset);
     shift.first = -shift.first;
     shift.second = -shift.second;
 
     // if reportAll - ignore filters and update fullReport
     if (reportAll) {
+      if (HasForbidden(conf, successtime + 3))
+        return;
+
       LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
       workspace.Join(conf.startingCatalysts);
       workspace.Move(shift);
@@ -1826,6 +1835,9 @@ public:
           && !CheckOscillating(conf, successtime, failuretime))
         return;
     }
+
+    if (HasForbidden(conf, successtime + 3))
+      return;
 
     // If all filters validated update results
     LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
