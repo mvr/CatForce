@@ -2392,7 +2392,6 @@ public:
         if(search.state.gen % 2 == 1)
           symCatalyst.Step();
         newSearch.state |= symCatalyst;
-        newSearch.config.startingCatalysts |= symCatalyst;
 
         LifeState lookahead = newSearch.state;
         lookahead.Step(2);
@@ -2570,6 +2569,7 @@ public:
           newCatalysts |= Symmetricize(shiftedCatalyst, search.config.symmetry, search.config.symmetryOffset);
         }
         search.state = search.freeState | newCatalysts;
+        search.state.gen = search.freeState.gen;
         search.history = search.freeHistory | newCatalysts;
 
         search.history1 = search.freeHistory1;
