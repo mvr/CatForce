@@ -1874,7 +1874,6 @@ public:
     case D2negdiagodd:
       return 5;
     default:
-      exit(1);
       __builtin_unreachable();
     }
   }
@@ -1906,7 +1905,6 @@ public:
     case D2negdiagodd:
       return D2diagodd;
     default:
-      exit(1);
       __builtin_unreachable();
     }
   }
@@ -1980,7 +1978,6 @@ public:
       return negdiag;
     }
     default:
-      exit(1);
       __builtin_unreachable();
     }
   }
