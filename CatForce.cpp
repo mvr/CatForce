@@ -67,6 +67,8 @@ public:
   int maxJunk;
   int matchSurvive;
 
+  bool useCollisionMasks;
+
   SearchParams() {
     maxGen = 250;
     numCatalysts = 2;
@@ -94,6 +96,7 @@ public:
     stopAfterCatsDestroyed = -1;
     maxJunk = -1;
     matchSurvive = -1;
+    useCollisionMasks = true;
   }
 };
 
@@ -594,6 +597,8 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
   std::string maxJunk = "max-junk";
   std::string matchSurvive = "match-survive";
 
+  std::string useCollisionMasks = "use-collision-masks";
+
   std::string line;
 
   while (std::getline(infile, line)) {
@@ -686,6 +691,8 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
       params.maxJunk = atoi(elems[1].c_str());
     } else if (elems[0] == matchSurvive){
       params.matchSurvive = atoi(elems[1].c_str());
+    } else if (elems[0] == useCollisionMasks){
+      params.useCollisionMasks = atoi(elems[1].c_str());
     } else {
       if(std::isalpha(elems[0][0])) {
         std::cout << "Unknown input parameter: " << elems[0] << std::endl;
@@ -1218,7 +1225,7 @@ public:
   unsigned filterMaxGen;
 
   void LoadMasks() {
-    if (params.numCatalysts == 1)
+    if (params.numCatalysts == 1 || !params.useCollisionMasks)
       return;
 
     catalystCollisionMasks = std::vector<LifeState>(nonfixedCatalystCount * catalysts.size());
@@ -1708,8 +1715,10 @@ public:
           }
         }
 
-        for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-          newMasks[t].Join(catalystCollisionMasks[s * nonfixedCatalystCount + t]);
+        if(params.useCollisionMasks) {
+          for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
+            newMasks[t].Join(catalystCollisionMasks[s * nonfixedCatalystCount + t]);
+          }
         }
       }
 
@@ -1917,9 +1926,11 @@ public:
             }
           }
 
-          for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-            newMasks[t].Join(catalystCollisionMasks[s * nonfixedCatalystCount + t],
-                                    newPlacement.first, newPlacement.second);
+          if(params.useCollisionMasks) {
+            for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
+              newMasks[t].Join(catalystCollisionMasks[s * nonfixedCatalystCount + t],
+                               newPlacement.first, newPlacement.second);
+            }
           }
         }
 
