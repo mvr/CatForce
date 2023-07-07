@@ -69,6 +69,8 @@ public:
 
   int offsetArea[4]{};
 
+  bool useCollisionMasks;
+
   SearchParams() {
     maxGen = 250;
     numCatalysts = 2;
@@ -100,6 +102,7 @@ public:
     stopAfterCatsDestroyed = -1;
     maxJunk = -1;
     matchSurvive = -1;
+    useCollisionMasks = true;
   }
 };
 
@@ -793,6 +796,8 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
 
   std::string offsetArea = "offset-area";
 
+  std::string useCollisionMasks = "use-collision-masks";
+
   std::string line;
   while (std::getline(infile, line)) {
     std::vector<std::string> elems = splitwhitespace(line);
@@ -889,6 +894,8 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
       params.offsetArea[3] = atoi(elems[4].c_str());
     } else if (elems[0] == matchSurvive){
       params.matchSurvive = atoi(elems[1].c_str());
+    } else if (elems[0] == useCollisionMasks){
+      params.useCollisionMasks = atoi(elems[1].c_str());
     } else {
       if(std::isalpha(elems[0][0])) {
         std::cout << "Unknown input parameter: " << elems[0] << std::endl;
@@ -1551,7 +1558,7 @@ public:
   unsigned filterMaxGen;
 
   void LoadMasks() {
-    if (params.numCatalysts == 1)
+    if (params.numCatalysts == 1 || !params.useCollisionMasks)
       return;
 
     catalystCollisionMasks = std::vector<LifeState>(catalysts.size() * catalysts.size());
@@ -2304,9 +2311,10 @@ public:
             newMasks[t] |= ~bounds;
           }
         }
-
-        for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-          newMasks[t].Join(catalystCollisionMasks[s * catalysts.size() + t]);
+        if(params.useCollisionMasks) {
+          for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
+            newMasks[t].Join(catalystCollisionMasks[s * catalysts.size() + t]);
+          }
         }
       }
 
@@ -2534,9 +2542,11 @@ public:
             }
           }
 
-          for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
+          if(params.useCollisionMasks) {
+            for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
               newMasks[t].Join(catalystCollisionMasks[s * catalysts.size() + t],
-                             newPlacement.first, newPlacement.second);
+                               newPlacement.first, newPlacement.second);
+            }
           }
         }
 
