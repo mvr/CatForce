@@ -1916,7 +1916,7 @@ public:
     }
   }
 
-  LifeState IntersectingOffsets(LifeState &active, StaticSymmetry oldsym,
+  LifeState IntersectingOffsets(LifeState &pat1, LifeState &pat2, StaticSymmetry oldsym,
                        StaticSymmetry newsym) {
     if (oldsym != C1) {
       newsym = D2Continuation(oldsym);
@@ -1925,39 +1925,44 @@ public:
     LifeState transformed;
     switch (newsym) {
     case C2:
-      return active.Convolve(active);
+      return pat2.Convolve(pat1);
     case C4: {
-      transformed = active;
+      transformed = pat1;
       transformed.Transform(Rotate270);
 
       // Very inefficient
-      LifeState doubledcollisions = active.Convolve(active);
+      LifeState doubledcollisions = pat2.Convolve(pat1);
       doubledcollisions.Transform(ReflectAcrossYeqNegXP1);
       doubledcollisions = doubledcollisions.Skew().HalveY();
       doubledcollisions.Transform(ReflectAcrossYeqNegXP1);
       doubledcollisions = doubledcollisions.InvSkew();
 
-      return active.Convolve(transformed) | doubledcollisions;
+      return pat2.Convolve(pat1) | doubledcollisions;
     }
     case D2AcrossX:
-      transformed = active;
+      transformed = pat1;
       transformed.Transform(ReflectAcrossY);
-      return active.Convolve(transformed);
+      return pat2.Convolve(transformed);
     case D2AcrossY:
-      transformed = active;
+      transformed = pat1;
       transformed.Transform(ReflectAcrossX);
-      return active.Convolve(transformed);
+      return pat2.Convolve(transformed);
     case D2diagodd:
-      transformed = active;
+      transformed = pat1;
       transformed.Transform(ReflectAcrossYeqNegXP1);
-      return active.Convolve(transformed);
+      return pat2.Convolve(transformed);
     case D2negdiagodd:
-      transformed = active;
+      transformed = pat1;
       transformed.Transform(ReflectAcrossYeqX);
-      return active.Convolve(transformed);
+      return pat2.Convolve(transformed);
     default:
       __builtin_unreachable();
     }
+  }
+
+  LifeState IntersectingOffsets(LifeState &active, StaticSymmetry oldsym,
+                                StaticSymmetry newsym) {
+    return IntersectingOffsets(active, active, oldsym, newsym);
   }
 
   LifeState AllowedOffsets(StaticSymmetry sym) {
@@ -2122,9 +2127,7 @@ public:
         }
       }
 
-      newSearch.config.startingCatalysts =
-          Symmetricize(newSearch.config.startingCatalysts, newSym, newOffset);
-
+      newSearch.config.startingCatalysts = Symmetricize(newSearch.config.startingCatalysts, newSym, newOffset);
       newSearch.history = Symmetricize(search.history, newSym, newOffset);
       newSearch.history1 = Symmetricize(search.history1, newSym, newOffset);
       newSearch.history2 = Symmetricize(search.history2, newSym, newOffset);
@@ -2285,11 +2288,16 @@ public:
 
       if(newSearch.config.symmetry == C1) {
         for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-          newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(newSearch.history, C1, sym);
+          // newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(newSearch.history, C1, sym);
+          newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(newSearch.history1, newSearch.history2, C1, sym);
+          newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(newSearch.history2, newSearch.history1, C1, sym);
         }
       }
       if (SymIsD2(newSearch.config.symmetry)) {
-        newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))] |= IntersectingOffsets(newSearch.history, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
+        newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))]
+          |= IntersectingOffsets(newSearch.history1, newSearch.history2, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
+        newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))]
+          |= IntersectingOffsets(newSearch.history2, newSearch.history1, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
       }
 
       std::vector<LifeState> newMasks;
@@ -2609,6 +2617,11 @@ public:
           masks[s] |= search.history1.Convolve(catalysts[s].locusReactionMask2);
           masks[s] |= search.history2.Convolve(catalysts[s].locusReactionMask1);
           masks[s] |= search.historyMore.Convolve(catalysts[s].locusReactionMask);
+        }
+        for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
+          // search.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(search.history, C1, sym);
+          search.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(search.history1, search.history2, C1, sym);
+          search.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(search.history2, search.history1, C1, sym);
         }
       }
 
