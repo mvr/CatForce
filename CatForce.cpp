@@ -1001,6 +1001,8 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
                                           input.antirequiredXY.second, tran);
     }
 
+    result.required &= ~(pat ^ gen1);
+
     LifeState locus;
     if (input.locusRLE != "") {
       result.hasLocus = true;
@@ -1011,9 +1013,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       locus = (pat | gen1);
     }
 
-    LifeState shell = result.state.ZOI().Shell();
-    LifeState locusZOI = locus.ZOI();
-    LifeState nonLocusZOI = (result.state & ~locus).ZOI();
+    LifeState shell = pat.ZOI().Shell() | gen1.ZOI().Shell();
 
     LifeState contact;
     if (input.contactRLE != "") {
@@ -1021,15 +1021,17 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
                                  input.contactXY.first,
                                  input.contactXY.second, tran);
     } else {
+      LifeState locusZOI = locus.ZOI();
+      LifeState nonLocusZOI = (result.state & ~locus).ZOI();
       contact = locusZOI & ~nonLocusZOI & shell & ~result.required;
     }
 
     {
-      result.locusAvoidMask = nonLocusZOI & shell;
+      result.locusAvoidMask = shell & ~contact;
       result.locusAvoidMask.Transform(Rotate180OddBoth);
       result.locusAvoidMask.RecalculateMinMax();
 
-      result.locusReactionMask = locusZOI & shell;
+      result.locusReactionMask = shell & contact;
       result.locusReactionMask.Transform(Rotate180OddBoth);
       result.locusReactionMask.RecalculateMinMax();
       result.locusReactionMask &= ~result.locusAvoidMask;
@@ -2370,7 +2372,7 @@ public:
 
       newPlacements &= ~masks[s];
 
-      if (!newPlacements.IsEmpty() && catalysts[s].hasLocus) {
+      if (!newPlacements.IsEmpty()) {
         LifeState hitLocations = catalysts[s].locusAvoidMask.Convolve(activePartMore | search.historyMore);
         hitLocations |= catalysts[s].locusAvoidMask1.Convolve(activePart2 | search.history2);
         hitLocations |= catalysts[s].locusAvoidMask2.Convolve(activePart1 | search.history1);
@@ -2435,15 +2437,12 @@ public:
 
         {
           bool catalystFailed = false;
-          const unsigned skip = 1;
-          lookahead.Step(skip);
-          for (unsigned i = skip; i < REQUIRED_LOOKAHEAD - 2; i++) {
-            lookahead.Step();
-
-            if (!(newSearch.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
+          for (unsigned i = 2; i < REQUIRED_LOOKAHEAD; i++) {
+            if ((search.state.gen + i) % 2 == 0 && !(newSearch.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
               catalystFailed = true;
               break;
             }
+            lookahead.Step();
           }
           if (catalystFailed) {
               if (DEBUG_OUTPUT && search.config.count == 0) {
@@ -2580,6 +2579,8 @@ public:
         LifeState newCatalysts;
         for (unsigned i = search.freeCount; i < search.config.count; i++) {
           LifeState shiftedCatalyst = catalysts[search.config.curs[i]].state;
+          if (search.freeState.gen % 2 == 1)
+            shiftedCatalyst.Step();
           shiftedCatalyst.Move(search.config.curx[i], search.config.cury[i]);
           newCatalysts |= Symmetricize(shiftedCatalyst, search.config.symmetry, search.config.symmetryOffset);
         }
