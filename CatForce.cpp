@@ -137,6 +137,10 @@ public:
 
     rle = elems[1];
     maxDisappear = atoi(elems[2].c_str());
+    if (maxDisappear > 100) {
+      std::cout << line << std::endl;
+      exit(1);
+    }
     centerX = atoi(elems[3].c_str());
     centerY = atoi(elems[4].c_str());
     symmType = elems[5].at(0);
