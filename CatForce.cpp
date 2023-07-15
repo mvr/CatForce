@@ -698,6 +698,7 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
 class CatalystData {
 public:
   LifeState state;
+  LifeState statezoi;
 
   // bool hasLocusReactionPop;
   bool hasLocusReactionPop1;
@@ -760,6 +761,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     CatalystData result;
 
     result.state = pat;
+    result.statezoi = pat.ZOI();
     result.target = LifeTarget(pat);
     result.hasLocus = false;
     bool hasContact = false;
@@ -790,7 +792,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       locus = pat;
     }
 
-    LifeState shell = result.state.ZOI().Shell();
+    LifeState shell = result.statezoi.Shell();
     LifeState locusZOI = locus.ZOI();
     LifeState nonLocusZOI = (result.state & ~locus).ZOI();
 
@@ -1782,8 +1784,8 @@ public:
           newSearch.required.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
         }
 
-        LifeState unused = shiftedCatalyst;
         {
+          LifeState unused = shiftedCatalyst;
           bool catalystFailed = false;
           for (unsigned i = 1; i < REQUIRED_LOOKAHEAD; i++) {
             lookahead.Step();
@@ -1836,12 +1838,16 @@ public:
               // }
             }
           } else {
-            int gap = (search.state.gen + catalysts[s].maxDisappear) - lookahead.gen;
-            for (int i = 0; i < gap; i++) {
+            LifeState lookahead = newSearch.state;
+            LifeState active;
+            for (int i = 0; i < catalysts[s].maxDisappear; i++) {
               lookahead.Step();
-              unused &= lookahead;
+              active |= lookahead ^ shiftedCatalyst;
             }
-            if (!(unused & ~newSearch.required).IsEmpty()) {
+            LifeState unused = catalysts[s].statezoi;
+            unused.Move(newPlacement.first, newPlacement.second);
+            unused &= ~newSearch.required & ~active;
+            if (!unused.IsEmpty()) {
               if (DEBUG_OUTPUT && search.config.count == 0) {
                 std::cout << "Skipping catalyst " << s << " at "
                           << newPlacement.first << ", " << newPlacement.second
