@@ -21,6 +21,14 @@ void UpdateCounts(LifeState &__restrict__ state, LifeState &__restrict__ out1, L
   outMore |= ~state & (bit3 | bit2 | (bit1 & bit0));
 }
 
+void SetCounts(LifeState &__restrict__ state, LifeState &__restrict__ out1, LifeState &__restrict__ out2, LifeState &__restrict__ outMore) {
+  LifeState bit3(false), bit2(false), bit1(false), bit0(false);
+  state.CountNeighbourhood(bit3, bit2, bit1, bit0);
+  out1 = ~state & ~bit3 & ~bit2 & ~bit1 & bit0;
+  out2 = ~state & ~bit3 & ~bit2 & bit1 & ~bit0;
+  outMore = ~state & (bit3 | bit2 | (bit1 & bit0));
+}
+
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
@@ -1931,7 +1939,7 @@ public:
     }
   }
 
-  LifeState IntersectingOffsets(LifeState &pat1, LifeState &pat2, StaticSymmetry oldsym,
+  LifeState IntersectingOffsets(const LifeState &pat1, const LifeState &pat2, StaticSymmetry oldsym,
                        StaticSymmetry newsym) {
     if (oldsym != C1) {
       newsym = D2Continuation(oldsym);
@@ -1975,7 +1983,7 @@ public:
     }
   }
 
-  LifeState IntersectingOffsets(LifeState &active, StaticSymmetry oldsym,
+  LifeState IntersectingOffsets(const LifeState &active, StaticSymmetry oldsym,
                                 StaticSymmetry newsym) {
     return IntersectingOffsets(active, active, oldsym, newsym);
   }
@@ -2067,22 +2075,28 @@ public:
     RecursiveSearch(search, masks, shiftedTargets);
   }
 
-  void TryApplyingSymmetry(SearchState &search, std::vector<LifeState> &masks, std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets, LifeState &activePart) {
+  void
+  TryApplyingSymmetry(SearchState &search, std::vector<LifeState> &masks,
+                      std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets,
+                      const LifeState &activePart,
+                      const LifeState &activePart1,
+                      const LifeState &activePart2,
+                      const LifeState &activePartMore) {
 
     switch (search.config.symmetry) {
     case C1:
       for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd})
-        TryApplyingSpecificSymmetry(search, masks, shiftedTargets, activePart, sym);
+        TryApplyingSpecificSymmetry(search, masks, shiftedTargets, activePart, activePart1, activePart2, activePartMore, sym);
       break;
 
     case D2AcrossX:
     case D2AcrossY:
-      TryApplyingSpecificSymmetry(search, masks, shiftedTargets, activePart, D4);
+      TryApplyingSpecificSymmetry(search, masks, shiftedTargets, activePart, activePart1, activePart2, activePartMore, D4);
       break;
 
     case D2diagodd:
     case D2negdiagodd:
-      TryApplyingSpecificSymmetry(search, masks, shiftedTargets, activePart, D4diag);
+      TryApplyingSpecificSymmetry(search, masks, shiftedTargets, activePart, activePart1, activePart2, activePartMore, D4diag);
       break;
 
     default:
@@ -2090,13 +2104,20 @@ public:
     }
   }
 
-  void TryApplyingSpecificSymmetry(SearchState &search, std::vector<LifeState> &masks,
-                                   std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets,
-      LifeState &activePart, StaticSymmetry newSym) {
+  void TryApplyingSpecificSymmetry(
+      SearchState &search, std::vector<LifeState> &masks,
+      std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets,
+      const LifeState &state, const LifeState &state1,
+      const LifeState &state2, const LifeState &stateMore,
+      StaticSymmetry newSym) {
 
-    LifeState activezoi = activePart.ZOI();
-    LifeState newOffsets = IntersectingOffsets(activezoi, search.config.symmetry, newSym) &
-      ~search.triedOffsets[OffsetIndexForSym(search.config.symmetry, newSym)];
+    LifeState newOffsets =
+      (IntersectingOffsets(state1, state2, search.config.symmetry, newSym) |
+       IntersectingOffsets(state2, state1, search.config.symmetry, newSym) |
+       IntersectingOffsets(state, stateMore, search.config.symmetry, newSym) |
+       IntersectingOffsets(stateMore, state, search.config.symmetry, newSym)
+      )
+      & ~search.triedOffsets[OffsetIndexForSym(search.config.symmetry, newSym)];
     search.triedOffsets[OffsetIndexForSym(search.config.symmetry, newSym)] |= newOffsets;
 
     while (!newOffsets.IsEmpty()) {
@@ -2296,24 +2317,49 @@ public:
       }
 
       newSearch.history = search.history | symCatalyst;
-      UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
-      symCatalyst.Step();
-      newSearch.history |= symCatalyst;
-      UpdateCounts(symCatalyst, newSearch.history1, newSearch.history2, newSearch.historyMore);
+      LifeState catalyst1(false), catalyst2(false), catalystMore(false);
+      SetCounts(newSearch.config.startingCatalysts, catalyst1, catalyst2, catalystMore);
+      if(catalysts[s].periodic) {
+        symCatalyst.Step();
+        newSearch.history |= symCatalyst;
+        UpdateCounts(symCatalyst, catalyst1, catalyst2, catalystMore);
+      }
 
       if(newSearch.config.symmetry == C1) {
         for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-          // newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(newSearch.history, C1, sym);
-          newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(newSearch.history1, newSearch.history2, C1, sym);
-          newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(newSearch.history2, newSearch.history1, C1, sym);
+          unsigned index = OffsetIndexForSym(C1, sym);
+          newSearch.triedOffsets[index] |=
+            IntersectingOffsets(newSearch.history1, catalyst2, C1, sym);
+          newSearch.triedOffsets[index] |=
+            IntersectingOffsets(newSearch.history2, catalyst1, C1, sym);
+          newSearch.triedOffsets[index] |=
+              IntersectingOffsets(newSearch.historyMore, symCatalyst, C1, sym);
+          newSearch.triedOffsets[index] |=
+              IntersectingOffsets(newSearch.history, catalystMore, C1, sym);
         }
       }
+
       if (SymIsD2(newSearch.config.symmetry)) {
-        newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))]
-          |= IntersectingOffsets(newSearch.history1, newSearch.history2, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
-        newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))]
-          |= IntersectingOffsets(newSearch.history2, newSearch.history1, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
+        unsigned index =
+            OffsetIndexForSym(newSearch.config.symmetry,
+                              D2Continuation(newSearch.config.symmetry));
+        newSearch.triedOffsets[index] |= IntersectingOffsets(
+            newSearch.history1, catalyst2, newSearch.config.symmetry,
+            D2Continuation(newSearch.config.symmetry));
+        newSearch.triedOffsets[index] |= IntersectingOffsets(
+            newSearch.history2, catalyst1, newSearch.config.symmetry,
+            D2Continuation(newSearch.config.symmetry));
+        newSearch.triedOffsets[index] |= IntersectingOffsets(
+            newSearch.historyMore, symCatalyst, newSearch.config.symmetry,
+            D2Continuation(newSearch.config.symmetry));
+        newSearch.triedOffsets[index] |= IntersectingOffsets(
+            newSearch.history, catalystMore, newSearch.config.symmetry,
+            D2Continuation(newSearch.config.symmetry));
       }
+
+      newSearch.history1 |= catalyst1;
+      newSearch.history2 |= catalyst2;
+      newSearch.historyMore |= catalystMore;
 
       std::vector<LifeState> newMasks;
 
@@ -2543,20 +2589,48 @@ public:
                     << ", " << newPlacement.second << std::endl;
         }
 
-        newSearch.history = search.history | symCatalyst;
-        UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
-        symCatalyst.Step();
-        newSearch.history |= symCatalyst;
-        UpdateCounts(symCatalyst, newSearch.history1, newSearch.history2, newSearch.historyMore);
+        LifeState catalyst1(false), catalyst2(false), catalystMore(false);
+        SetCounts(newSearch.config.startingCatalysts, catalyst1, catalyst2, catalystMore);
+        if(catalysts[s].periodic) {
+          symCatalyst.Step();
+          newSearch.history |= symCatalyst;
+          UpdateCounts(symCatalyst, catalyst1, catalyst2, catalystMore);
+        }
 
         if(newSearch.config.symmetry == C1) {
           for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-            newSearch.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(newSearch.history, C1, sym);
+            unsigned index = OffsetIndexForSym(C1, sym);
+            newSearch.triedOffsets[index] |=
+              IntersectingOffsets(newSearch.history1, catalyst2, C1, sym);
+            newSearch.triedOffsets[index] |=
+              IntersectingOffsets(newSearch.history2, catalyst1, C1, sym);
+            newSearch.triedOffsets[index] |=
+              IntersectingOffsets(newSearch.historyMore, symCatalyst, C1, sym);
+            newSearch.triedOffsets[index] |=
+              IntersectingOffsets(newSearch.history, catalystMore, C1, sym);
           }
         }
         if (SymIsD2(newSearch.config.symmetry)) {
-          newSearch.triedOffsets[OffsetIndexForSym(newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry))] |= IntersectingOffsets(newSearch.history, newSearch.config.symmetry, D2Continuation(newSearch.config.symmetry));
+          unsigned index =
+              OffsetIndexForSym(newSearch.config.symmetry,
+                                D2Continuation(newSearch.config.symmetry));
+          newSearch.triedOffsets[index] |= IntersectingOffsets(
+              newSearch.history1, catalyst2, newSearch.config.symmetry,
+              D2Continuation(newSearch.config.symmetry));
+          newSearch.triedOffsets[index] |= IntersectingOffsets(
+              newSearch.history2, catalyst1, newSearch.config.symmetry,
+              D2Continuation(newSearch.config.symmetry));
+          newSearch.triedOffsets[index] |= IntersectingOffsets(
+              newSearch.historyMore, symCatalyst, newSearch.config.symmetry,
+              D2Continuation(newSearch.config.symmetry));
+          newSearch.triedOffsets[index] |= IntersectingOffsets(
+              newSearch.history, catalystMore, newSearch.config.symmetry,
+              D2Continuation(newSearch.config.symmetry));
         }
+
+        newSearch.history1 |= catalyst1;
+        newSearch.history2 |= catalyst2;
+        newSearch.historyMore |= catalystMore;
 
         std::vector<LifeState> newMasks;
 
@@ -2635,11 +2709,26 @@ public:
     for (unsigned g = search.state.gen; g <= filterMaxGen; g++) {
       // Block the locations that are hit too early
       if (search.state.gen < params.startGen) {
-        for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-          search.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(search.state, C1, sym);
-        }
         search.history |= search.state;
-        UpdateCounts(search.state, search.history1, search.history2, search.historyMore);
+
+        LifeState state1(false), state2(false), stateMore(false);
+        SetCounts(search.state, state1, state2, stateMore);
+
+        search.history1 |= state1;
+        search.history2 |= state2;
+        search.historyMore |= stateMore;
+
+        for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
+          search.triedOffsets[OffsetIndexForSym(C1, sym)] |=
+            IntersectingOffsets(state1, state2, C1, sym);
+          search.triedOffsets[OffsetIndexForSym(C1, sym)] |=
+            IntersectingOffsets(state2, state1, C1, sym);
+          search.triedOffsets[OffsetIndexForSym(C1, sym)] |=
+            IntersectingOffsets(search.state, stateMore, C1, sym);
+          search.triedOffsets[OffsetIndexForSym(C1, sym)] |=
+            IntersectingOffsets(stateMore, search.state, C1, sym);
+        }
+
         search.state.Step();
         continue;
       }
@@ -2648,11 +2737,6 @@ public:
           masks[s] |= search.history1.Convolve(catalysts[s].locusReactionMask2);
           masks[s] |= search.history2.Convolve(catalysts[s].locusReactionMask1);
           masks[s] |= search.historyMore.Convolve(catalysts[s].locusReactionMask);
-        }
-        for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-          // search.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(search.history, C1, sym);
-          search.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(search.history1, search.history2, C1, sym);
-          search.triedOffsets[OffsetIndexForSym(C1, sym)] |= IntersectingOffsets(search.history2, search.history1, C1, sym);
         }
       }
 
@@ -2691,8 +2775,11 @@ public:
           criticalArea = Symmetricize(criticalArea, search.config.symmetry, search.config.symmetryOffset);
         }
 
-        LifeState state1, state2, stateMore;
-        UpdateCounts(search.state, state1, state2, stateMore);
+        LifeState withoutCatalysts = search.state & ~search.config.startingCatalysts;
+        LifeState state1(false), state2(false), stateMore(false);
+        SetCounts(withoutCatalysts, state1, state2, stateMore);
+
+        TryApplyingSymmetry(search, masks, shiftedTargets, search.state, state1, state2, stateMore);
 
         LifeState newState1 = state1 & ~search.history1 & criticalArea;
         LifeState newState2 = state2 & ~search.history2 & criticalArea;
@@ -2702,8 +2789,6 @@ public:
         bool hasActivePart = !allNew.IsEmpty();
 
         if (hasActivePart) {
-          TryApplyingSymmetry(search, masks, shiftedTargets, allNew);
-
           if (search.state.gen >= params.startGen && search.config.count != params.numCatalysts) {
             LifeState next = search.state;
             next.Step();
