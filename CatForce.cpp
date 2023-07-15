@@ -120,6 +120,7 @@ public:
   bool checkRecovery;
   bool checkReaction;
   bool canSmother;
+  bool canRock;
   bool sacrificial;
   bool fixed;
   int fixedGen;
@@ -151,6 +152,7 @@ public:
     checkRecovery = false;
     checkReaction = false;
     canSmother = false;
+    canRock = false;
     sacrificial = false;
     fixed = false;
     fixedGen = -1;
@@ -196,6 +198,9 @@ public:
         checkReaction = true;
         argi += 1;
       } else if (elems[argi] == "can-smother") {
+        canSmother = true;
+        argi += 1;
+      } else if (elems[argi] == "can-rock") {
         canSmother = true;
         argi += 1;
       } else if (elems[argi] == "sacrificial") {
@@ -734,6 +739,7 @@ public:
   bool checkRecovery;
   bool checkReaction;
   bool canSmother;
+  bool canRock;
   bool sacrificial;
   bool fixed;
   int fixedGen;
@@ -864,6 +870,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.checkRecovery = input.checkRecovery;
     result.checkReaction = input.checkReaction;
     result.canSmother = input.canSmother;
+    result.canRock = input.canRock;
     result.sacrificial = input.sacrificial;
     result.fixed = input.fixed;
     result.fixedGen = input.fixedGen;
@@ -1775,12 +1782,13 @@ public:
           newSearch.required.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
         }
 
+        LifeState unused = shiftedCatalyst;
         {
           bool catalystFailed = false;
-          const unsigned skip = 1;
-          lookahead.Step(skip);
-          for (unsigned i = skip; i < REQUIRED_LOOKAHEAD; i++) {
+          for (unsigned i = 1; i < REQUIRED_LOOKAHEAD; i++) {
             lookahead.Step();
+
+            unused &= lookahead;
 
             if (!(newSearch.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
               catalystFailed = true;
@@ -1798,6 +1806,18 @@ public:
             newPlacements.Erase(newPlacement.first, newPlacement.second);
             continue;
           }
+
+          if (!catalysts[s].canRock && unused == shiftedCatalyst) {
+            if (DEBUG_OUTPUT && search.config.count == 0) {
+              std::cout << "Skipping catalyst " << s << " at "
+                        << newPlacement.first << ", " << newPlacement.second
+                        << " (is rock) " << std::endl;
+            }
+
+            masks[s].Set(newPlacement.first, newPlacement.second);
+            newPlacements.Erase(newPlacement.first, newPlacement.second);
+            continue;
+          }
         }
 
         shiftedTargets[search.config.count].wanted = shiftedCatalyst;
@@ -1807,7 +1827,7 @@ public:
         if (catalysts[s].checkRecovery) {
           bool catalystFailed = false;
           if(!catalysts[s].checkReaction) {
-            int gap = (search.state.gen + catalysts[s].maxDisappear) - (lookahead.gen);
+            int gap = (search.state.gen + catalysts[s].maxDisappear) - lookahead.gen;
             for (int i = 0; i < gap; i++) {
               lookahead.Step();
               // if (catalysts[s].hasRequired && !(catRequired & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
@@ -1816,14 +1836,12 @@ public:
               // }
             }
           } else {
-            // Have to restart for the cells that are used in first lookahead
-            lookahead = newSearch.state;
-            LifeState unused = shiftedCatalyst & ~newSearch.required;
-            for (int i = 0; i < catalysts[s].maxDisappear; i++) {
+            int gap = (search.state.gen + catalysts[s].maxDisappear) - lookahead.gen;
+            for (int i = 0; i < gap; i++) {
               lookahead.Step();
               unused &= lookahead;
             }
-            if (!unused.IsEmpty()) {
+            if (!(unused & ~newSearch.required).IsEmpty()) {
               if (DEBUG_OUTPUT && search.config.count == 0) {
                 std::cout << "Skipping catalyst " << s << " at "
                           << newPlacement.first << ", " << newPlacement.second
