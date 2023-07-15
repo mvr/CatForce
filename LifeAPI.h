@@ -133,6 +133,16 @@ enum SymmetryTransform {
   ReflectAcrossYeqNegXP1
 };
 
+SymmetryTransform TransformInverse(SymmetryTransform transf) {
+  switch (transf) {
+  case Rotate90Even: return Rotate270Even;
+  case Rotate90: return Rotate270;
+  case Rotate270Even: return Rotate90Even;
+  case Rotate270: return Rotate90;
+  default: return transf;
+  }
+}
+
 enum StaticSymmetry {
   C1,
   D2AcrossX,

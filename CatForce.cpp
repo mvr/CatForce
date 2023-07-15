@@ -129,6 +129,7 @@ public:
   bool checkRecovery;
   bool checkReaction;
   bool canSmother;
+  bool canRock;
   bool sacrificial;
   bool periodic;
   bool fixed;
@@ -147,6 +148,10 @@ public:
 
     rle = elems[1];
     maxDisappear = atoi(elems[2].c_str());
+    if (maxDisappear > 100) {
+      std::cout << line << std::endl;
+      exit(1);
+    }
     centerX = atoi(elems[3].c_str());
     centerY = atoi(elems[4].c_str());
     symmType = elems[5].at(0);
@@ -157,6 +162,7 @@ public:
     checkRecovery = false;
     checkReaction = false;
     canSmother = false;
+    canRock = false;
     sacrificial = false;
     periodic = false;
     fixed = false;
@@ -203,6 +209,9 @@ public:
         checkReaction = true;
         argi += 1;
       } else if (elems[argi] == "can-smother") {
+        canSmother = true;
+        argi += 1;
+      } else if (elems[argi] == "can-rock") {
         canSmother = true;
         argi += 1;
       } else if (elems[argi] == "sacrificial") {
@@ -908,6 +917,7 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
 class CatalystData {
 public:
   LifeState state;
+  LifeState statezoi;
 
   // bool hasLocusReactionPop;
   bool hasLocusReactionPop1;
@@ -949,6 +959,7 @@ public:
   bool checkRecovery;
   bool checkReaction;
   bool canSmother;
+  bool canRock;
   bool sacrificial;
   bool periodic;
   bool fixed;
@@ -971,6 +982,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
     CatalystData result;
     result.state = pat;
+    result.statezoi = pat.ZOI();
 
     LifeState gen1 = pat;
     gen1.Step();
@@ -1094,6 +1106,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.checkRecovery = input.checkRecovery;
     result.checkReaction = input.checkReaction;
     result.canSmother = input.canSmother;
+    result.canRock = input.canRock;
     result.sacrificial = input.sacrificial;
     result.periodic = input.periodic;
     result.fixed = input.fixed;
@@ -2436,8 +2449,11 @@ public:
         }
 
         {
+          LifeState unused = shiftedCatalyst;
           bool catalystFailed = false;
           for (unsigned i = 2; i < REQUIRED_LOOKAHEAD; i++) {
+            unused &= lookahead;
+
             if ((search.state.gen + i) % 2 == 0 && !(newSearch.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
               catalystFailed = true;
               break;
@@ -2454,6 +2470,18 @@ public:
               newPlacements.Erase(newPlacement.first, newPlacement.second);
               continue;
           }
+
+          if (!catalysts[s].canRock && unused == shiftedCatalyst) {
+            if (DEBUG_OUTPUT && search.config.count == 0) {
+              std::cout << "Skipping catalyst " << s << " at "
+                        << newPlacement.first << ", " << newPlacement.second
+                        << " (is rock) " << std::endl;
+            }
+
+            masks[s].Set(newPlacement.first, newPlacement.second);
+            newPlacements.Erase(newPlacement.first, newPlacement.second);
+            continue;
+          }
         }
 
         shiftedTargets[search.config.count] = catalysts[s].target;
@@ -2463,7 +2491,7 @@ public:
         if (catalysts[s].checkRecovery) {
           bool catalystFailed = false;
           if(!catalysts[s].checkReaction) {
-            int gap = (search.state.gen + catalysts[s].maxDisappear) - (lookahead.gen);
+            int gap = (search.state.gen + catalysts[s].maxDisappear) - lookahead.gen;
             for (int i = 0; i < gap; i++) {
               lookahead.Step();
               // if (catalysts[s].hasRequired && !(catRequired & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
@@ -2472,13 +2500,15 @@ public:
               // }
             }
           } else {
-            // Have to restart for the cells that are used in first lookahead
-            lookahead = newSearch.state;
-            LifeState unused = shiftedCatalyst & ~newSearch.required;
+            LifeState lookahead = newSearch.state;
+            LifeState active;
             for (int i = 0; i < catalysts[s].maxDisappear; i++) {
               lookahead.Step();
-              unused &= lookahead;
+              active |= lookahead ^ shiftedCatalyst;
             }
+            LifeState unused = catalysts[s].statezoi;
+            unused.Move(newPlacement.first, newPlacement.second);
+            unused &= ~newSearch.required & ~active;
             if (!unused.IsEmpty()) {
               if (DEBUG_OUTPUT && search.config.count == 0) {
                 std::cout << "Skipping catalyst " << s << " at "
