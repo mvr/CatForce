@@ -1996,17 +1996,18 @@ public:
       newsym = D2Continuation(oldsym);
     }
     switch (newsym) {
+    case C2:
     case C4:
       return IntersectingOffsets(a1, b2, oldsym, newsym) |
         IntersectingOffsets(a2, b1, oldsym, newsym) |
-        IntersectingOffsets(a, bMore, oldsym, newsym) |
-        IntersectingOffsets(aMore, b, oldsym, newsym);
+        IntersectingOffsets(a | a1 | a2 | aMore, b | bMore, oldsym, newsym) |
+        IntersectingOffsets(a | aMore, b | b1 | b2 | bMore, oldsym, newsym);
     case D2AcrossX:
     case D2AcrossY:
     case D2diagodd:
     case D2negdiagodd:
-      return IntersectingOffsets(a1, b, oldsym, newsym) |
-        IntersectingOffsets(a, b1, oldsym, newsym) |
+      return IntersectingOffsets(a1 | a2, b, oldsym, newsym) |
+        IntersectingOffsets(a, b1 | b2, oldsym, newsym) |
         IntersectingOffsets(aMore, bMore, oldsym, newsym);
     default:
       __builtin_unreachable();
@@ -2024,12 +2025,12 @@ public:
     case C2:
     case C4:
       return IntersectingOffsets(a1, a2, oldsym, newsym) |
-        IntersectingOffsets(a, aMore, oldsym, newsym);
+        IntersectingOffsets(a | a1 | a2 | aMore, a | aMore, oldsym, newsym);
     case D2AcrossX:
     case D2AcrossY:
     case D2diagodd:
     case D2negdiagodd:
-      return IntersectingOffsets(a1, a, oldsym, newsym) |
+      return IntersectingOffsets(a1 | a2, a, oldsym, newsym) |
         IntersectingOffsets(aMore, aMore, oldsym, newsym);
     default:
       __builtin_unreachable();
@@ -2221,6 +2222,12 @@ public:
         fundamentalDomain.Move(HalveOffset(newSym, newOffset));
         for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
           newMasks[t] |= ~fundamentalDomain;
+          // At this point, no more catalysts will be placed in this generation.
+          LifeState hitLocations = catalysts[t].statezoi.Convolve(newSearch.historyMore);
+          hitLocations |= catalysts[t].state1.Convolve(newSearch.history2);
+          hitLocations |= catalysts[t].state2.Convolve(newSearch.history1);
+
+          newMasks[t] |= hitLocations;
         }
       }
 
@@ -2800,8 +2807,6 @@ public:
         LifeState state1(false), state2(false), stateMore(false);
         SetCounts(withoutCatalysts, state1, state2, stateMore);
 
-        TryApplyingSymmetry(search, masks, shiftedTargets, search.state, state1, state2, stateMore);
-
         LifeState newState1 = state1 & ~search.history1 & criticalArea;
         LifeState newState2 = state2 & ~search.history2 & criticalArea;
         LifeState newStateMore = stateMore & ~search.historyMore & criticalArea;
@@ -2830,6 +2835,9 @@ public:
           search.history |= search.state;
           search.state.Step();
         }
+
+        TryApplyingSymmetry(search, masks, shiftedTargets, search.state, state1, state2, stateMore);
+
         search.history1 |= state1;
         search.history2 |= state2;
         search.historyMore |= stateMore;
