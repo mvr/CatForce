@@ -2017,9 +2017,7 @@ public:
     case D2AcrossY:
     case D2diagodd:
     case D2negdiagodd:
-      return IntersectingOffsets(a1 | a2, b, oldsym, newsym) |
-        IntersectingOffsets(a, b1 | b2, oldsym, newsym) |
-        IntersectingOffsets(aMore, bMore, oldsym, newsym);
+      return IntersectingOffsets(a | a1 | a2 | aMore, b | b1 | b2 | bMore, oldsym, newsym);
     default:
       __builtin_unreachable();
     }
@@ -2041,8 +2039,7 @@ public:
     case D2AcrossY:
     case D2diagodd:
     case D2negdiagodd:
-      return IntersectingOffsets(a1 | a2, a, oldsym, newsym) |
-        IntersectingOffsets(aMore, aMore, oldsym, newsym);
+      return IntersectingOffsets(a | a1 | a2 | aMore, a | a1 | a2 | aMore, oldsym, newsym);
     default:
       __builtin_unreachable();
     }
