@@ -925,7 +925,15 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
 class CatalystData {
 public:
   LifeState state;
+
+  LifeState state1;
+  LifeState state2;
+  LifeState stateMore;
   LifeState statezoi;
+
+  LifeState reaction1;
+  LifeState reaction2;
+  LifeState reactionMore;
 
   // bool hasLocusReactionPop;
   bool hasLocusReactionPop1;
@@ -950,10 +958,6 @@ public:
   LifeState required;
 
   LifeTarget target;
-
-  LifeState state1;
-  LifeState state2;
-  LifeState stateMore;
 
   bool hasRequired;
   bool hasLocus;
@@ -1065,6 +1069,13 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.state1 = state1;
       result.state2 = state2;
       result.stateMore = stateMore;
+
+      result.reaction1 = state1;
+      result.reaction1.Transform(Rotate180OddBoth);
+      result.reaction2 = state2;
+      result.reaction2.Transform(Rotate180OddBoth);
+      result.reactionMore = stateMore;
+      result.reactionMore.Transform(Rotate180OddBoth);
 
       result.locusReactionMask1 = state1 & contact;
       result.locusReactionMask1.Transform(Rotate180OddBoth);
@@ -1783,7 +1794,7 @@ public:
         // See whether there is a match at all
         if (shouldCheck && (filter.type == ANDFILTER ||
                             filter.type == ORFILTER)) {
-          if(workspace.Contains(filter.target))
+          if(workspace.Contains(filtertarget))
             return true;
         }
       }
@@ -2025,7 +2036,7 @@ public:
     case C2:
     case C4:
       return IntersectingOffsets(a1, a2, oldsym, newsym) |
-        IntersectingOffsets(a | a1 | a2 | aMore, a | aMore, oldsym, newsym);
+             IntersectingOffsets(a | aMore, a | a1 | a2 | aMore, oldsym, newsym);
     case D2AcrossX:
     case D2AcrossY:
     case D2diagodd:
@@ -2223,9 +2234,10 @@ public:
         for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
           newMasks[t] |= ~fundamentalDomain;
           // At this point, no more catalysts will be placed in this generation.
-          LifeState hitLocations = catalysts[t].statezoi.Convolve(newSearch.historyMore);
-          hitLocations |= catalysts[t].state1.Convolve(newSearch.history2);
-          hitLocations |= catalysts[t].state2.Convolve(newSearch.history1);
+          // TODO: handle catalysts.reactionMore
+          LifeState hitLocations =
+              catalysts[t].reaction1.Convolve(newSearch.history2)
+            | catalysts[t].reaction2.Convolve(newSearch.history1);
 
           newMasks[t] |= hitLocations;
         }
@@ -2824,23 +2836,18 @@ public:
             TryAddingCatalyst(search, masks, shiftedTargets, allNew, newState1, newState2, newStateMore, twonext);
 
             TryAddingFixedCatalyst(search, masks, shiftedTargets, allNew, twonext);
-
-            search.history |= search.state;
-            search.state = next;
-          } else {
-            search.history |= search.state;
-            search.state.Step();
           }
-        } else {
-          search.history |= search.state;
-          search.state.Step();
         }
 
-        TryApplyingSymmetry(search, masks, shiftedTargets, search.state, state1, state2, stateMore);
+        TryApplyingSymmetry(search, masks, shiftedTargets, withoutCatalysts,
+                            state1, state2, stateMore);
 
+        search.history |= search.state;
         search.history1 |= state1;
         search.history2 |= state2;
         search.historyMore |= stateMore;
+
+        search.state.Step();
       } else {
         search.state.Step();
       }
