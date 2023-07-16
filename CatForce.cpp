@@ -1939,8 +1939,7 @@ public:
     }
   }
 
-  LifeState IntersectingOffsets(const LifeState &pat1, const LifeState &pat2, StaticSymmetry oldsym,
-                       StaticSymmetry newsym) {
+  LifeState IntersectingOffsets(const LifeState &pat1, const LifeState &pat2, StaticSymmetry oldsym, StaticSymmetry newsym) {
     if (oldsym != C1) {
       newsym = D2Continuation(oldsym);
     }
@@ -1986,6 +1985,55 @@ public:
   LifeState IntersectingOffsets(const LifeState &active, StaticSymmetry oldsym,
                                 StaticSymmetry newsym) {
     return IntersectingOffsets(active, active, oldsym, newsym);
+  }
+
+  LifeState InteractingOffsets(const LifeState &a, const LifeState &a1,
+                               const LifeState &a2, const LifeState &aMore,
+                               const LifeState &b, const LifeState &b1,
+                               const LifeState &b2, const LifeState &bMore,
+                               StaticSymmetry oldsym, StaticSymmetry newsym) {
+    if (oldsym != C1) {
+      newsym = D2Continuation(oldsym);
+    }
+    switch (newsym) {
+    case C4:
+      return IntersectingOffsets(a1, b2, oldsym, newsym) |
+        IntersectingOffsets(a2, b1, oldsym, newsym) |
+        IntersectingOffsets(a, bMore, oldsym, newsym) |
+        IntersectingOffsets(aMore, b, oldsym, newsym);
+    case D2AcrossX:
+    case D2AcrossY:
+    case D2diagodd:
+    case D2negdiagodd:
+      return IntersectingOffsets(a1, b, oldsym, newsym) |
+        IntersectingOffsets(a, b1, oldsym, newsym) |
+        IntersectingOffsets(aMore, bMore, oldsym, newsym);
+    default:
+      __builtin_unreachable();
+    }
+  }
+
+  // Special, faster case when the two patterns are the same
+  LifeState InteractingOffsets(const LifeState &a, const LifeState &a1,
+                               const LifeState &a2, const LifeState &aMore,
+                               StaticSymmetry oldsym, StaticSymmetry newsym) {
+    if (oldsym != C1) {
+      newsym = D2Continuation(oldsym);
+    }
+    switch (newsym) {
+    case C2:
+    case C4:
+      return IntersectingOffsets(a1, a2, oldsym, newsym) |
+        IntersectingOffsets(a, aMore, oldsym, newsym);
+    case D2AcrossX:
+    case D2AcrossY:
+    case D2diagodd:
+    case D2negdiagodd:
+      return IntersectingOffsets(a1, a, oldsym, newsym) |
+        IntersectingOffsets(aMore, aMore, oldsym, newsym);
+    default:
+      __builtin_unreachable();
+    }
   }
 
   LifeState AllowedOffsets(StaticSymmetry sym) {
@@ -2111,12 +2159,8 @@ public:
       const LifeState &state2, const LifeState &stateMore,
       StaticSymmetry newSym) {
 
-    LifeState newOffsets =
-      (IntersectingOffsets(state1, state2, search.config.symmetry, newSym) |
-       IntersectingOffsets(state2, state1, search.config.symmetry, newSym) |
-       IntersectingOffsets(state, stateMore, search.config.symmetry, newSym) |
-       IntersectingOffsets(stateMore, state, search.config.symmetry, newSym)
-      )
+    LifeState newOffsets = InteractingOffsets(state, state1, state2, stateMore,
+                                              search.config.symmetry, newSym)
       & ~search.triedOffsets[OffsetIndexForSym(search.config.symmetry, newSym)];
     search.triedOffsets[OffsetIndexForSym(search.config.symmetry, newSym)] |= newOffsets;
 
@@ -2190,6 +2234,7 @@ public:
         // We need to update the masks for the continuation.
         newSearch.triedOffsets[continuationIndex] = search.triedOffsets[continuationIndex];
         newSearch.triedOffsets[continuationIndex].Move(newOffset);
+        // TODO: this is wrong, should use InteractingOffsets somehow:
         newSearch.triedOffsets[continuationIndex] |= IntersectingOffsets(newSearch.history, C1, D2Continuation(newSym));
 
         if(newSym == D2diagodd || newSym == D2negdiagodd)
@@ -2328,14 +2373,11 @@ public:
       if(newSearch.config.symmetry == C1) {
         for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
           unsigned index = OffsetIndexForSym(C1, sym);
-          newSearch.triedOffsets[index] |=
-            IntersectingOffsets(newSearch.history1, catalyst2, C1, sym);
-          newSearch.triedOffsets[index] |=
-            IntersectingOffsets(newSearch.history2, catalyst1, C1, sym);
-          newSearch.triedOffsets[index] |=
-              IntersectingOffsets(newSearch.historyMore, symCatalyst, C1, sym);
-          newSearch.triedOffsets[index] |=
-              IntersectingOffsets(newSearch.history, catalystMore, C1, sym);
+          newSearch.triedOffsets[index] |= InteractingOffsets(
+              newSearch.history, newSearch.history1, newSearch.history2,
+              newSearch.historyMore, symCatalyst, catalyst1, catalyst2,
+              catalystMore,
+              C1, sym);
         }
       }
 
@@ -2343,17 +2385,10 @@ public:
         unsigned index =
             OffsetIndexForSym(newSearch.config.symmetry,
                               D2Continuation(newSearch.config.symmetry));
-        newSearch.triedOffsets[index] |= IntersectingOffsets(
-            newSearch.history1, catalyst2, newSearch.config.symmetry,
-            D2Continuation(newSearch.config.symmetry));
-        newSearch.triedOffsets[index] |= IntersectingOffsets(
-            newSearch.history2, catalyst1, newSearch.config.symmetry,
-            D2Continuation(newSearch.config.symmetry));
-        newSearch.triedOffsets[index] |= IntersectingOffsets(
-            newSearch.historyMore, symCatalyst, newSearch.config.symmetry,
-            D2Continuation(newSearch.config.symmetry));
-        newSearch.triedOffsets[index] |= IntersectingOffsets(
-            newSearch.history, catalystMore, newSearch.config.symmetry,
+        newSearch.triedOffsets[index] |= InteractingOffsets(
+            newSearch.history, newSearch.history1, newSearch.history2,
+            newSearch.historyMore, symCatalyst, catalyst1, catalyst2,
+            catalystMore, newSearch.config.symmetry,
             D2Continuation(newSearch.config.symmetry));
       }
 
@@ -2600,31 +2635,20 @@ public:
         if(newSearch.config.symmetry == C1) {
           for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
             unsigned index = OffsetIndexForSym(C1, sym);
-            newSearch.triedOffsets[index] |=
-              IntersectingOffsets(newSearch.history1, catalyst2, C1, sym);
-            newSearch.triedOffsets[index] |=
-              IntersectingOffsets(newSearch.history2, catalyst1, C1, sym);
-            newSearch.triedOffsets[index] |=
-              IntersectingOffsets(newSearch.historyMore, symCatalyst, C1, sym);
-            newSearch.triedOffsets[index] |=
-              IntersectingOffsets(newSearch.history, catalystMore, C1, sym);
+            newSearch.triedOffsets[index] |= InteractingOffsets(
+                newSearch.history, newSearch.history1, newSearch.history2,
+                newSearch.historyMore, symCatalyst, catalyst1, catalyst2,
+                catalystMore, C1, sym);
           }
         }
         if (SymIsD2(newSearch.config.symmetry)) {
           unsigned index =
               OffsetIndexForSym(newSearch.config.symmetry,
                                 D2Continuation(newSearch.config.symmetry));
-          newSearch.triedOffsets[index] |= IntersectingOffsets(
-              newSearch.history1, catalyst2, newSearch.config.symmetry,
-              D2Continuation(newSearch.config.symmetry));
-          newSearch.triedOffsets[index] |= IntersectingOffsets(
-              newSearch.history2, catalyst1, newSearch.config.symmetry,
-              D2Continuation(newSearch.config.symmetry));
-          newSearch.triedOffsets[index] |= IntersectingOffsets(
-              newSearch.historyMore, symCatalyst, newSearch.config.symmetry,
-              D2Continuation(newSearch.config.symmetry));
-          newSearch.triedOffsets[index] |= IntersectingOffsets(
-              newSearch.history, catalystMore, newSearch.config.symmetry,
+          newSearch.triedOffsets[index] |= InteractingOffsets(
+              newSearch.history, newSearch.history1, newSearch.history2,
+              newSearch.historyMore, symCatalyst, catalyst1, catalyst2,
+              catalystMore, newSearch.config.symmetry,
               D2Continuation(newSearch.config.symmetry));
         }
 
@@ -2718,15 +2742,12 @@ public:
         search.history2 |= state2;
         search.historyMore |= stateMore;
 
-        for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
-          search.triedOffsets[OffsetIndexForSym(C1, sym)] |=
-            IntersectingOffsets(state1, state2, C1, sym);
-          search.triedOffsets[OffsetIndexForSym(C1, sym)] |=
-            IntersectingOffsets(state2, state1, C1, sym);
-          search.triedOffsets[OffsetIndexForSym(C1, sym)] |=
-            IntersectingOffsets(search.state, stateMore, C1, sym);
-          search.triedOffsets[OffsetIndexForSym(C1, sym)] |=
-            IntersectingOffsets(stateMore, search.state, C1, sym);
+        for (auto sym :
+             {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
+          unsigned index = OffsetIndexForSym(C1, sym);
+          search.triedOffsets[index] |= InteractingOffsets(
+              search.state, state1, state2, stateMore,
+              C1, sym);
         }
 
         search.state.Step();
