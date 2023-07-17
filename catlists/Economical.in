@@ -1,17 +1,17 @@
 # eater
-cat 2b2o$bobo$bo$2o! 13 -2 -2 * required 2b2o$b3o$b4o$6o$4o$b3o! -3 -3 contact 5bo$5bo$5bo3$o! -3 -3 locus 3bo$3bo2$o! -2 -2 can-smother
+cat 2b2o$bobo$bo$2o! 13 -2 -2 * required 2b2o$b3o$b4o$6o$4o$b3o! -3 -3 contact 5bo$5bo$5bo3$o! -3 -3 locus 3bo$3bo2$o! -2 -2 can-smother can-rock
 # block
 cat 2o$2o! 7 -1 -1 @ required 2o$2o$2o$2o! -2 -2 contact o$o$o! 1 -2 locus o$o! 0 -1 can-smother
 # toad
-cat 3o$b3o! 3 -3 -1 * period 2 required b3o$6o$6o$6o$5o$2b3o! -4 -3 contact o! 1 1 locus o! 0 0 can-smother
+cat 3o$b3o! 3 -3 -1 * period 2 required b3o$6o$6o$6o$5o$2b3o! -4 -3 contact o! 1 1 locus o! 0 0 can-smother can-rock
 # eater2
 cat 3bob2o$b3ob2o$o$b3ob2o$3bobo$3bobo$4bo! 10 -5 0 * required 3bo$b5o2bo$5o3bo$6ob2o$9o$b8o$3b5o$3b5o$4b3o! -6 -1 contact 6o! -3 -1 locus ob2o! -2 0
 # killer-toads
-cat 3o$b3o4$b3o$3o! 2 -3 -3 @ period 2 required b3o$6o$6o$6o$5o$2b3o$5o$6o$6o$6o$b3o! -4 -5 contact o2$o! 1 -1 locus o4$o! 0 -2
+cat 3o$b3o4$b3o$3o! 2 -3 -3 @ period 2 required b3o$6o$6o$6o$5o$2b3o$5o$6o$6o$6o$b3o! -4 -5 contact o2$o! 1 -1 locus o4$o! 0 -2 can-rock
 # drifty-eater
 cat 2o$o2bob2o$b3obobo$5bobo$b5ob3o$bo4bo3bo$4bobo2b2o$4b2o! 29 -6 -2 * required 4o$5o$4o$5o4bo$b5ob5o$b12o$b12o$b12o$4b9o$4b4o! -7 -3 contact 2o$b2o! 0 -2 locus 2o$2bo! -1 -1
 # tub
-cat bo$obo$bo! 9 -2 -1 * required b2o$3o$3o$3obo$b3o! -3 -2 contact o$bo$bo$bo! 0 -2 locus o$bo! -1 -1 can-smother
+cat bo$obo$bo! 9 -2 -1 * required b2o$3o$3o$3obo$b3o! -3 -2 contact o$bo$bo$bo! 0 -2 locus o$bo! -1 -1 can-smother can-rock
 # bts
 cat o2bob2o$4obo$5bobo$2b2o2b2o$2bo$3bo$2b2o! 9 -5 0 * required 3o$6o$10o$10o$2b8o$2b8o$2b4o$2b4o$2b4o! -6 -1 contact 4o! -1 -1 locus ob2o! -2 0
 # eater4
@@ -19,7 +19,7 @@ cat o$3o$3bo$2obo$o2b2o$b2o4bo$3b5o$3bo4b2o$4b2o2bo$6bobo$6bobobo$7b2ob3o$9bo3bo
 # eater-and-toad
 cat 3o$b3o4$2b2o$bobo$bo$2o! 5 -3 -4 * period 2 required b3o$6o$6o$6o$5o$2b3o$2b3o$b3o$b4o$5o$4o$4o! -4 -6 contact o2$o$o! 1 -2 locus o4$o$o! 0 -3
 # hook-with-tail
-cat 2bobo$bob2o$bo$2o! 3 -3 0 * required 2b2ob2o$b6o$b6o$7o$4o$4o! -4 -1 contact o! 0 -1 locus obo! -1 0
+cat 2bobo$bob2o$bo$2o! 3 -3 0 * required 2b2ob2o$b6o$b6o$7o$4o$4o! -4 -1 contact o! 0 -1 locus obo! -1 0 can-rock
 # clock
 cat bo$bobo$obo$2bo! 1 0 0 . period 2 required b4o$6o$6o$6o$6o$b4o! -1 -1 contact o! 3 -1 can-smother
 # eater-and-ship
