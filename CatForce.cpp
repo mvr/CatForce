@@ -201,7 +201,7 @@ public:
         canSmother = true;
         argi += 1;
       } else if (elems[argi] == "can-rock") {
-        canSmother = true;
+        canRock = true;
         argi += 1;
       } else if (elems[argi] == "sacrificial") {
         sacrificial = true;
