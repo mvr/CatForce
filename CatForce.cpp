@@ -1180,8 +1180,11 @@ struct SearchState {
   std::pair<int, int> violationCell;
   unsigned violationGen;
 
-  std::array<unsigned, MAX_CATALYSTS> missingTime;
+  std::array<int, MAX_CATALYSTS> missingTime;
   std::array<unsigned, MAX_CATALYSTS> recoveredTime;
+
+  std::array<int, MAX_CATALYSTS> freeMissingTime;
+  std::array<unsigned, MAX_CATALYSTS> freeRecoveredTime;
 };
 
 class CatalystSearcher {
@@ -1526,10 +1529,14 @@ public:
     search.freeHistory2 = search.state;
     search.freeHistoryMore = search.state;
     search.freeCount = 0;
+    search.freeMissingTime = std::array<int, MAX_CATALYSTS>();
+    search.freeMissingTime.fill(-1);
+    search.freeRecoveredTime = std::array<unsigned, MAX_CATALYSTS>();
     search.violationCell = {-1, -1};
     search.violationGen = 0;
     search.required = alsoRequired;
-    search.missingTime = std::array<unsigned, MAX_CATALYSTS>();
+    search.missingTime = std::array<int, MAX_CATALYSTS>();
+    search.missingTime.fill(-1);
     search.recoveredTime = std::array<unsigned, MAX_CATALYSTS>();
 
     search.config.count = 0;
@@ -1558,7 +1565,7 @@ public:
   }
 
   std::pair<std::pair<int, int>, unsigned> FindViolation(SearchState &search, std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets) {
-    std::array<unsigned, MAX_CATALYSTS> missingTime = search.missingTime;
+    std::array<int, MAX_CATALYSTS> missingTime = search.missingTime;
     LifeState lookahead = search.state;
     for(unsigned g = 1; g <= LIGHTSPEED_LOOKAHEAD; g++) {
       lookahead.Step();
@@ -1942,6 +1949,9 @@ public:
         search.history2 = search.freeHistory2;
         search.historyMore = search.freeHistoryMore;
         UpdateCounts(search.config.startingCatalysts, search.history1, search.history2, search.historyMore);
+
+        search.missingTime = search.freeMissingTime;
+        search.recoveredTime = search.freeRecoveredTime;
       }
       search.violationCell = newViolationCell;
       search.violationGen = newViolationGen;
@@ -1994,6 +2004,8 @@ public:
           search.freeHistory2 = search.history2;
           search.freeHistoryMore = search.historyMore;
           search.freeCount = search.config.count;
+          search.freeMissingTime = search.missingTime;
+          search.freeRecoveredTime = search.recoveredTime;
         } else {
           int distance = search.violationGen - search.state.gen;
           criticalArea = LifeState::NZOIAround(search.violationCell, distance-1);
@@ -2039,9 +2051,14 @@ public:
           continue;
 
         if (search.state.Contains(shiftedTargets[i]) || catalysts[search.config.curs[i]].sacrificial) {
-          search.missingTime[i] = 0;
-          search.recoveredTime[i] += 1;
+          if (search.missingTime[i] != -1 || catalysts[search.config.curs[i]].canSmother) {
+            search.missingTime[i] = 0;
+            search.recoveredTime[i] += 1;
+          }
         } else {
+          // We use -1 as a sentinel to mean the catalyst hasn't interacted yet
+          if (search.missingTime[i] == -1)
+            search.missingTime[i] = 0;
           search.missingTime[i] += 1;
           search.recoveredTime[i] = 0;
         }
