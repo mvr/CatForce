@@ -1555,6 +1555,7 @@ struct SearchState {
   LifeState freeHistory1;
   LifeState freeHistory2;
   LifeState freeHistoryMore;
+  StaticSymmetry freeSymmetry;
   std::array<LifeState, 6> triedOffsets;
   Configuration config;
 
@@ -2096,6 +2097,7 @@ public:
     search.freeHistory1 = search.state;
     search.freeHistory2 = search.state;
     search.freeHistoryMore = search.state;
+    search.freeSymmetry = C1;
     search.freeCount = 0;
     search.violationCell = {-1, -1};
     search.violationGen = 0;
@@ -2726,16 +2728,29 @@ public:
           if (search.freeState.gen % 2 == 1)
             shiftedCatalyst.Step();
           shiftedCatalyst.Move(search.config.curx[i], search.config.cury[i]);
-          newCatalysts |= Symmetricize(shiftedCatalyst, search.config.symmetry, search.config.symmetryOffset);
+          newCatalysts |= shiftedCatalyst;
         }
-        search.state = search.freeState | newCatalysts;
-        search.state.gen = search.freeState.gen;
-        search.history = search.freeHistory | newCatalysts;
 
-        search.history1 = search.freeHistory1;
-        search.history2 = search.freeHistory2;
-        search.historyMore = search.freeHistoryMore;
-        UpdateCounts(search.config.startingCatalysts, search.history1, search.history2, search.historyMore);
+        if (search.freeSymmetry == search.config.symmetry) {
+          search.state = search.freeState | newCatalysts;
+          search.state.gen = search.freeState.gen;
+          search.history = search.freeHistory;
+
+          search.history1 = search.freeHistory1;
+          search.history2 = search.freeHistory2;
+          search.historyMore = search.freeHistoryMore;
+          UpdateCounts(search.config.startingCatalysts, search.history1, search.history2, search.historyMore);
+        } else {
+          newCatalysts = Symmetricize(newCatalysts, search.config.symmetry, search.config.symmetryOffset);
+          search.state = Symmetricize(search.freeState, search.config.symmetry, search.config.symmetryOffset) | newCatalysts;
+          search.state.gen = search.freeState.gen;
+          search.history = Symmetricize(search.freeHistory, search.config.symmetry, search.config.symmetryOffset);
+
+          search.history1 = Symmetricize(search.freeHistory1, search.config.symmetry, search.config.symmetryOffset);
+          search.history2 = Symmetricize(search.freeHistory2, search.config.symmetry, search.config.symmetryOffset);
+          search.historyMore = Symmetricize(search.freeHistoryMore, search.config.symmetry, search.config.symmetryOffset);
+          UpdateCounts(search.config.startingCatalysts, search.history1, search.history2, search.historyMore);
+        }
       }
       search.violationCell = newViolationCell;
       search.violationGen = newViolationGen;
@@ -2805,6 +2820,7 @@ public:
           search.freeHistory1 = search.history1;
           search.freeHistory2 = search.history2;
           search.freeHistoryMore = search.historyMore;
+          search.freeSymmetry = search.config.symmetry;
           search.freeCount = search.config.count;
         } else {
           int distance = search.violationGen - search.state.gen;
