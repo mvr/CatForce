@@ -876,27 +876,30 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
     } else if (elems[0] == maxCatSize) {
       params.maxCatSize = atoi(elems[1].c_str());
     } else if (elems[0] == symmetry) {
-      std::string symmetryString = "";
-      // reverse-compatibility reasons.
-      if (elems[1] == "horizontal") {
-        symmetryString = "D2|odd";
-      } else if (elems[1] == "horizontaleven") {
-        symmetryString = "D2|even";
-      } else if (elems[1] == "diagonal") {
-        symmetryString =
-            "D2/"; // I think this was the way that it worked before?
-      } else if (elems[1] == "rotate180") {
-        symmetryString = "C2";
-      } else if (elems[1] == "rotate180evenx") {
-        symmetryString = "C2horizontaleven";
-      } else if (elems[1] == "rotate180evenboth") {
-        symmetryString = "C2evenboth";
-      } else {
-        symmetryString = elems[1];
-      }
+      // std::string symmetryString = "";
+      // // reverse-compatibility reasons.
+      // if (elems[1] == "horizontal") {
+      //   symmetryString = "D2|odd";
+      // } else if (elems[1] == "horizontaleven") {
+      //   symmetryString = "D2|even";
+      // } else if (elems[1] == "diagonal") {
+      //   symmetryString =
+      //       "D2/"; // I think this was the way that it worked before?
+      // } else if (elems[1] == "rotate180") {
+      //   symmetryString = "C2";
+      // } else if (elems[1] == "rotate180evenx") {
+      //   symmetryString = "C2horizontaleven";
+      // } else if (elems[1] == "rotate180evenboth") {
+      //   symmetryString = "C2evenboth";
+      // } else {
+      //   symmetryString = elems[1];
+      // }
 
-      params.symmetry = SymmetryFromString(symmetryString);
-      params.symmetryChain = SymmetryChainFromEnum(params.symmetry);
+      // params.symmetry = SymmetryFromString(symmetryString);
+      // params.symmetryChain = SymmetryChainFromEnum(params.symmetry);
+
+      std::cout << "symmetry option forbidden in offsets branch" << std::endl;
+      exit(1);
     } else if (elems[0] == alsoRequired) {
       params.alsoRequired = elems[1].c_str();
       params.alsoRequiredXY = std::make_pair(atoi(elems[2].c_str()), atoi(elems[3].c_str()));
