@@ -2664,6 +2664,10 @@ public:
           newSearch.history |= symCatalyst;
           UpdateCounts(symCatalyst, catalyst1, catalyst2, catalystMore);
         }
+        newSearch.history |= symCatalyst;
+        newSearch.history1 |= catalyst1;
+        newSearch.history2 |= catalyst2;
+        newSearch.historyMore |= catalystMore;
 
         if(newSearch.config.symmetry == C1) {
           for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
@@ -2684,10 +2688,6 @@ public:
               catalystMore, newSearch.config.symmetry,
               D2Continuation(newSearch.config.symmetry));
         }
-
-        newSearch.history1 |= catalyst1;
-        newSearch.history2 |= catalyst2;
-        newSearch.historyMore |= catalystMore;
 
         std::vector<LifeState> newMasks;
 
@@ -2848,9 +2848,8 @@ public:
           criticalArea = Symmetricize(criticalArea, search.config.symmetry, search.config.symmetryOffset);
         }
 
-        LifeState withoutCatalysts = search.state & ~search.config.startingCatalysts;
         LifeState state1(false), state2(false), stateMore(false);
-        SetCounts(withoutCatalysts, state1, state2, stateMore);
+        SetCounts(search.state, state1, state2, stateMore);
 
         LifeState newState1 = state1 & ~search.history1 & criticalArea;
         LifeState newState2 = state2 & ~search.history2 & criticalArea;
@@ -2872,7 +2871,7 @@ public:
           }
         }
 
-        TryApplyingSymmetry(search, masks, shiftedTargets, withoutCatalysts,
+        TryApplyingSymmetry(search, masks, shiftedTargets, search.state,
                             state1, state2, stateMore);
 
         search.history |= search.state;
