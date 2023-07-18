@@ -1967,14 +1967,14 @@ public:
       transformed = pat1;
       transformed.Transform(Rotate270);
 
-      // Very inefficient
-      LifeState doubledcollisions = pat2.Convolve(pat1);
-      doubledcollisions.Transform(ReflectAcrossYeqNegXP1);
-      doubledcollisions = doubledcollisions.Skew().HalveY();
-      doubledcollisions.Transform(ReflectAcrossYeqNegXP1);
-      doubledcollisions = doubledcollisions.InvSkew();
+      // // Very inefficient
+      // LifeState doubledcollisions = pat2.Convolve(pat1);
+      // doubledcollisions.Transform(ReflectAcrossYeqNegXP1);
+      // doubledcollisions = doubledcollisions.Skew().HalveY();
+      // doubledcollisions.Transform(ReflectAcrossYeqNegXP1);
+      // doubledcollisions = doubledcollisions.InvSkew();
 
-      return pat2.Convolve(pat1) | doubledcollisions;
+      return pat2.Convolve(transformed); // | doubledcollisions;
     }
     case D2AcrossX:
       transformed = pat1;
@@ -2039,6 +2039,11 @@ public:
     case C4:
       return IntersectingOffsets(a1, a2, oldsym, newsym) |
              IntersectingOffsets(a | aMore, a | a1 | a2 | aMore, oldsym, newsym);
+    // case C4:
+    //   return IntersectingOffsets(a1, a2, oldsym, newsym) |
+    //          IntersectingOffsets(a2, a1, oldsym, newsym) |
+    //          IntersectingOffsets(a | aMore, a | a1 | a2 | aMore, oldsym, newsym) |
+    //          IntersectingOffsets(a | a1 | a2 | aMore, a | aMore, oldsym, newsym);
     case D2AcrossX:
     case D2AcrossY:
     case D2diagodd:
