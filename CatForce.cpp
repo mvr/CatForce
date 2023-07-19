@@ -141,7 +141,7 @@ public:
   bool sacrificial;
   bool periodic;
   bool fixed;
-  int fixedGen;
+  unsigned fixedGen;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems = splitwhitespace(line);
@@ -174,7 +174,7 @@ public:
     sacrificial = false;
     periodic = false;
     fixed = false;
-    fixedGen = -1;
+    fixedGen = 0;
 
     unsigned argi = 6;
 
@@ -978,7 +978,7 @@ public:
   bool sacrificial;
   bool periodic;
   bool fixed;
-  int fixedGen;
+  unsigned fixedGen;
 
   static std::vector<CatalystData> FromInput(CatalystInput &input);
 };
@@ -1010,7 +1010,6 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     // result.reactionMask.RecalculateMinMax();
 
     result.hasLocus = false;
-    bool hasContact = false;
 
     result.required = LifeState();
 
@@ -1185,9 +1184,9 @@ struct Configuration {
   unsigned transparentCount;
   unsigned limitedCount;
   unsigned mustIncludeCount;
-  std::array<int, MAX_CATALYSTS> curx;
-  std::array<int, MAX_CATALYSTS> cury;
-  std::array<int, MAX_CATALYSTS> curs;
+  std::array<unsigned, MAX_CATALYSTS> curx;
+  std::array<unsigned, MAX_CATALYSTS> cury;
+  std::array<unsigned, MAX_CATALYSTS> curs;
 
   StaticSymmetry symmetry;
   std::pair<int, int> symmetryOffset;
@@ -1688,10 +1687,10 @@ public:
     unsigned maxGen = params.maxGen;
 
     for (auto &filter : filters) {
-      if (filter.gen >= 0 && filter.gen > maxGen)
+      if (filter.gen >= 0 && (unsigned)filter.gen > maxGen)
         maxGen = filter.gen;
 
-      if (filter.range.second >= 0 && filter.range.second > maxGen)
+      if (filter.range.second >= 0 && (unsigned)filter.range.second > maxGen)
         maxGen = filter.range.second;
     }
 
@@ -2300,7 +2299,7 @@ public:
           missingTime[i] += 1;
         }
 
-        if (missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
+        if ((unsigned)missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
           std::pair<int, int> cell = (shiftedTargets[i].wanted & ~lookahead).FirstOn();
           if (cell != std::make_pair(-1, -1))
             return {cell, search.state.gen + g};
@@ -2616,7 +2615,7 @@ public:
           } else {
             LifeState lookahead = newSearch.state;
             LifeState active;
-            for (int i = 0; i < catalysts[s].maxDisappear; i++) {
+            for (unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
               lookahead.Step();
               active |= lookahead ^ shiftedCatalyst;
             }
@@ -2901,7 +2900,7 @@ public:
           search.recoveredTime[i] = 0;
         }
 
-        if (search.missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
+        if (search.missingTime[i] != -1 && (unsigned)search.missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
           failuretime = search.state.gen;
           failure = true;
           break;
