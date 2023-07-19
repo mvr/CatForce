@@ -184,9 +184,9 @@ class LifeState {
 public:
   uint64_t state[N];
 
-  int min;
-  int max;
-  int gen;
+  unsigned min;
+  unsigned max;
+  unsigned gen;
 
   LifeState() : state{0}, min(0), max(N - 1), gen(0) {}
   LifeState(bool dummy) {}
@@ -317,7 +317,7 @@ public:
     if (y < 0)
       y += 64;
 
-    for (int i = delta.min; i <= delta.max; i++)
+    for (unsigned i = delta.min; i <= delta.max; i++)
       temp1[i] = RotateLeft(delta.state[i], y);
 
     memmove(state, temp1 + (N - x), x * sizeof(uint64_t));

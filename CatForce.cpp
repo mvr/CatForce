@@ -123,7 +123,7 @@ public:
   bool canRock;
   bool sacrificial;
   bool fixed;
-  int fixedGen;
+  unsigned fixedGen;
 
   explicit CatalystInput(std::string &line) {
     std::vector<std::string> elems = splitwhitespace(line);
@@ -155,7 +155,7 @@ public:
     canRock = false;
     sacrificial = false;
     fixed = false;
-    fixedGen = -1;
+    fixedGen = 0;
 
     unsigned argi = 6;
 
@@ -743,7 +743,7 @@ public:
   bool canRock;
   bool sacrificial;
   bool fixed;
-  int fixedGen;
+  unsigned fixedGen;
 
   static std::vector<CatalystData> FromInput(CatalystInput &input);
 };
@@ -764,7 +764,6 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.statezoi = pat.ZOI();
     result.target = LifeTarget(pat);
     result.hasLocus = false;
-    bool hasContact = false;
 
     result.required = LifeState();
 
@@ -920,9 +919,9 @@ struct Configuration {
   unsigned transparentCount;
   unsigned limitedCount;
   unsigned mustIncludeCount;
-  std::array<int, MAX_CATALYSTS> curx;
-  std::array<int, MAX_CATALYSTS> cury;
-  std::array<int, MAX_CATALYSTS> curs;
+  std::array<unsigned, MAX_CATALYSTS> curx;
+  std::array<unsigned, MAX_CATALYSTS> cury;
+  std::array<unsigned, MAX_CATALYSTS> curs;
 };
 
 // Fix a, what positions of b causes a collision?
@@ -1302,10 +1301,10 @@ public:
     unsigned maxGen = params.maxGen;
 
     for (auto &filter : filters) {
-      if (filter.gen >= 0 && filter.gen > maxGen)
+      if (filter.gen >= 0 && (unsigned)filter.gen > maxGen)
         maxGen = filter.gen;
 
-      if (filter.range.second >= 0 && filter.range.second > maxGen)
+      if (filter.range.second >= 0 && (unsigned)filter.range.second > maxGen)
         maxGen = filter.range.second;
     }
 
@@ -1441,7 +1440,7 @@ public:
           }
         }
 
-        if (succeeded && (params.maxJunk == -1 || junk.GetPop() <= params.maxJunk)) {
+        if (succeeded && (params.maxJunk == -1 || junk.GetPop() <= (unsigned)params.maxJunk)) {
           filterPassed[k] = true;
 
           // If this was an OR filter, consider all the other OR filters passed
@@ -1582,7 +1581,7 @@ public:
           missingTime[i] += 1;
         }
 
-        if (missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
+        if ((unsigned)missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
           std::pair<int, int> cell = (shiftedTargets[i].wanted & ~lookahead).FirstOn();
           if (cell != std::make_pair(-1, -1))
             return {cell, search.state.gen + g};
@@ -1847,7 +1846,7 @@ public:
           } else {
             LifeState lookahead = newSearch.state;
             LifeState active;
-            for (int i = 0; i < catalysts[s].maxDisappear; i++) {
+            for (unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
               lookahead.Step();
               active |= lookahead ^ shiftedCatalyst;
             }
@@ -2063,7 +2062,7 @@ public:
           search.recoveredTime[i] = 0;
         }
 
-        if (search.missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
+        if (search.missingTime[i] != -1 && (unsigned)search.missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
           failuretime = search.state.gen;
           failure = true;
           break;
