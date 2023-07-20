@@ -1062,6 +1062,10 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.locusReactionMask.RecalculateMinMax();
       result.locusReactionMask &= ~result.locusAvoidMask;
 
+      // Avoids a flip back later
+      if(input.fixed)
+        result.locusReactionMask.Transform(Rotate180OddBoth);
+
       // result.locusAvoidMask = result.locusAvoidMask.Shell();
 
       LifeState state1, state2, stateMore;
@@ -1601,10 +1605,10 @@ public:
     if (params.numCatalysts == 1 || !params.useCollisionMasks)
       return;
 
-    catalystCollisionMasks = std::vector<LifeState>(catalysts.size() * catalysts.size());
+    catalystCollisionMasks = std::vector<LifeState>(nonfixedCatalystCount * catalysts.size());
 
     for (unsigned s = 0; s < catalysts.size(); s++) {
-      for (unsigned t = 0; t < catalysts.size(); t++) {
+      for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
         if (params.numCatalysts == 2 && hasMustInclude &&
             !catalysts[s].mustInclude && !catalysts[t].mustInclude)
           continue;
@@ -1613,8 +1617,8 @@ public:
             catalysts[t].transparent)
           continue;
 
-        catalystCollisionMasks[s * catalysts.size() + t] = CollisionMask(catalysts[s], catalysts[t]);
-        catalystCollisionMasks[s * catalysts.size() + t].RecalculateMinMax();
+        catalystCollisionMasks[s * nonfixedCatalystCount + t] = CollisionMask(catalysts[s], catalysts[t]);
+        catalystCollisionMasks[s * nonfixedCatalystCount + t].RecalculateMinMax();
       }
     }
   }
@@ -2311,7 +2315,7 @@ public:
 
   void TryAddingFixedCatalyst(SearchState &search, std::vector<LifeState> &masks,
                               std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets,
-                              const LifeState &activePart,
+                              const LifeState &activeZOI,
                               const LifeState &twonext) {
     for (unsigned s = nonfixedCatalystCount; s < nonfixedCatalystCount + fixedCatalystCount; s++) {
       if (catalysts[s].fixedGen != search.state.gen)
@@ -2335,7 +2339,7 @@ public:
       if (search.config.count == params.numCatalysts - 1 &&
           search.config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
-      if((activePart & catalysts[s].locusReactionMask).IsEmpty())
+      if((activeZOI & catalysts[s].locusReactionMask).IsEmpty())
         continue;
 
       // Do the placement
@@ -2449,7 +2453,7 @@ public:
         }
         if(params.useCollisionMasks) {
           for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-            newMasks[t].Join(catalystCollisionMasks[s * catalysts.size() + t]);
+            newMasks[t].Join(catalystCollisionMasks[s * nonfixedCatalystCount + t]);
           }
         }
       }
@@ -2711,7 +2715,7 @@ public:
 
           if(params.useCollisionMasks) {
             for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-              newMasks[t].Join(catalystCollisionMasks[s * catalysts.size() + t],
+              newMasks[t].Join(catalystCollisionMasks[s * nonfixedCatalystCount + t],
                                newPlacement.first, newPlacement.second);
             }
           }
