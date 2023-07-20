@@ -1132,11 +1132,6 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.periodic = input.periodic;
     result.fixed = input.fixed;
     result.fixedGen = input.fixedGen;
-    if(input.fixedGen != -1) {
-      // We flip it back to avoid a convolve later
-      result.locusReactionMask.Transform(Rotate180OddBoth);
-      result.locusReactionMask.RecalculateMinMax();
-    }
 
     if(input.fixed) {
       // We flip it back to avoid a convolve later
