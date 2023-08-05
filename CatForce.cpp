@@ -977,6 +977,7 @@ public:
   bool canRock;
   bool sacrificial;
   bool periodic;
+  unsigned phase;
   bool fixed;
   unsigned fixedGen;
 
@@ -993,21 +994,18 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
   for (int phase = 0; phase < 2; phase++) {
   for (auto &tran : trans) {
     LifeState pat = LifeState::Parse(rle, input.centerX, input.centerY, tran);
-    pat.Step(phase);
+    LifeState phasepat = pat;
+    phasepat.Step(phase);
 
     CatalystData result;
-    result.state = pat;
-    result.statezoi = pat.ZOI();
+    result.state = phasepat;
+    result.statezoi = phasepat.ZOI();
 
     LifeState gen1 = pat;
     gen1.Step();
     result.target = LifeTarget();
     result.target.wanted = pat & gen1;
     result.target.unwanted = (pat | gen1).ZOI() & ~(pat | gen1);
-
-    // result.reactionMask = (pat | gen1).BigZOI();
-    // result.reactionMask.Transform(Rotate180OddBoth);
-    // result.reactionMask.RecalculateMinMax();
 
     result.hasLocus = false;
 
@@ -1036,10 +1034,10 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
                                       input.locusXY.first,
                                       input.locusXY.second, tran);
     } else {
-      locus = (pat | gen1);
+      locus = pat;
     }
 
-    LifeState shell = pat.ZOI().Shell() | gen1.ZOI().Shell();
+    LifeState shell = pat.ZOI().Shell();
 
     LifeState contact;
     if (input.contactRLE != "") {
@@ -1065,8 +1063,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       // result.locusAvoidMask = result.locusAvoidMask.Shell();
 
       LifeState state1, state2, stateMore;
-      UpdateCounts(result.state, state1, state2, stateMore);
-      UpdateCounts(gen1, state1, state2, stateMore);
+      UpdateCounts(pat, state1, state2, stateMore);
 
       result.state1 = state1;
       result.state2 = state2;
@@ -1130,6 +1127,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     result.canRock = input.canRock;
     result.sacrificial = input.sacrificial;
     result.periodic = input.periodic;
+    result.phase = phase;
     result.fixed = input.fixed;
     result.fixedGen = input.fixedGen;
 
@@ -2472,6 +2470,8 @@ public:
     unsigned activePartPop2 = activePart2.GetPop();
 
     for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
+      if (catalysts[s].periodic && search.state.gen % 2 != catalysts[s].phase)
+        continue;
       if (search.config.transparentCount == params.numTransparent &&
           catalysts[s].transparent)
         continue;
