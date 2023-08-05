@@ -3,11 +3,11 @@ cat 2b2o$bobo$bo$2o! 13 -2 -2 * required 2b2o$b3o$b4o$6o$4o$b3o! -3 -3 contact 5
 # block
 cat 2o$2o! 7 -1 -1 @ required 2o$2o$2o$2o! -2 -2 contact o$o$o! 1 -2 locus o$o! 0 -1 can-smother
 # toad
-cat 3o$b3o! 3 -3 -1 * period 2 required b3o$6o$6o$6o$5o$2b3o! -4 -3 contact o! 1 1 locus o! 0 0 can-smother can-rock
+cat 3o$b3o! 3 -3 -1 * period 2 required b3o$6o$6o$6o$5o$2b3o! -4 -3 contact o! 1 1 locus o! 0 0 check-recovery check-reaction can-smother can-rock
 # eater2
 cat 3bob2o$b3ob2o$o$b3ob2o$3bobo$3bobo$4bo! 10 -5 0 * required 3bo$b5o2bo$5o3bo$6ob2o$9o$b8o$3b5o$3b5o$4b3o! -6 -1 contact 6o! -3 -1 locus ob2o! -2 0
 # killer-toads
-cat 3o$b3o4$b3o$3o! 2 -3 -3 @ period 2 required b3o$6o$6o$6o$5o$2b3o$5o$6o$6o$6o$b3o! -4 -5 contact o2$o! 1 -1 locus o4$o! 0 -2 can-rock
+cat 3o$b3o4$b3o$3o! 2 -3 -3 @ period 2 required b3o$6o$6o$6o$5o$2b3o$5o$6o$6o$6o$b3o! -4 -5 contact o2$o! 1 -1 locus o4$o! 0 -2 check-recovery check-reaction can-rock
 # drifty-eater
 cat 2o$o2bob2o$b3obobo$5bobo$b5ob3o$bo4bo3bo$4bobo2b2o$4b2o! 29 -6 -2 * required 4o$5o$4o$5o4bo$b5ob5o$b12o$b12o$b12o$4b9o$4b4o! -7 -3 contact 2o$b2o! 0 -2 locus 2o$2bo! -1 -1
 # tub
@@ -19,17 +19,17 @@ cat o$3o$3bo$2obo$o2b2o$b2o4bo$3b5o$3bo4b2o$4b2o2bo$6bobo$6bobobo$7b2ob3o$9bo3bo
 # eater-and-toad
 cat 3o$b3o4$2b2o$bobo$bo$2o! 5 -3 -4 * period 2 required b3o$6o$6o$6o$5o$2b3o$2b3o$b3o$b4o$5o$4o$4o! -4 -6 contact o2$o$o! 1 -2 locus o4$o$o! 0 -3
 # hook-with-tail
-cat 2bobo$bob2o$bo$2o! 3 -3 0 * required 2b2ob2o$b6o$b6o$7o$4o$4o! -4 -1 contact o! 0 -1 locus obo! -1 0 can-rock
+cat 2bobo$bob2o$bo$2o! 3 -3 0 * required 2b2ob2o$b6o$b6o$7o$4o$4o! -4 -1 contact o! 0 -1 locus obo! -1 0 check-recovery check-reaction can-rock
 # clock
-cat bo$bobo$obo$2bo! 1 0 0 . period 2 required b4o$6o$6o$6o$6o$b4o! -1 -1 contact o! 3 -1 can-smother
+cat bo$bobo$obo$2bo! 1 0 0 | period 2 required b4o$6o$6o$6o$6o$b4o! -1 -1 contact 5bo3$o! -1 0 check-recovery check-reaction can-smother can-rock
 # eater-and-ship
 cat 5b2o$5bobo$6b2o$2b2o$bobo$bo$2o! 12 -7 -2 * required 5b4o$5b5o$7bo$2b3o$b3o2bo$b4o$6o$4o$4o! -8 -3 contact o$o! 1 0 locus o$o! 0 -1
 # eater3
-cat 3bo$2bobo$3bo2$b5o$bo4bo$4bo2bo$4b2obo2bo$bo5bobobo$obo4bo2bo$o2bo2b2o$b2o! 17 -1 -11 @ required 3b3o$2b5o$2b5o$2b5o$b7o$b8o$b9o$b3obob6o$b3o2b8o$2o5b7o$o4b9o$o4b8o$4b6o$2b3o! -2 -12 contact 2o$bo! -2 0 locus o$bo! -1 -1 check-recovery
+cat 3bo$2bobo$3bo2$b5o$bo4bo$4bo2bo$4b2obo2bo$bo5bobobo$obo4bo2bo$o2bo2b2o$b2o! 17 -1 -11 @ required 3b3o$2b5o$2b5o$2b5o$b7o$b8o$b9o$b3obob6o$b3o2b8o$2o5b7o$o4b9o$o4b8o$4b6o$2b3o! -2 -12 contact 2o$bo! -2 0 locus o$bo! -1 -1 check-recovery check-reaction
 # flincher
-cat 4b2ob2o$3bobobobo$b3o3bobo$o4bobob3o$b3ob2obo3bo$3bo4bo2b2o$5b3o$4b2o! 8 -6 0 * required 4b2o4bo$3b2o2bo2b2o$b4o6bo$6obob5o$15o$15o$b14o$3b12o$4b6o$4b4o! -7 -1 contact 3o! -1 -1 locus 2ob2o! -2 0
+cat 4b2ob2o$3bobobobo$b3o3bobo$o4bobob3o$b3ob2obo3bo$3bo4bo2b2o$5b3o$4b2o! 8 -6 0 * required 4b2o4bo$3b2o2bo2b2o$b4o6bo$6obob5o$15o$15o$b14o$3b12o$4b6o$4b4o! -7 -1 contact 3o! -1 -1 locus 2ob2o! -2 0 check-recovery check-reaction
 # blinker
-cat 3o! 13 -2 0 * period 2 required o$2o$b2o! -3 0 contact o$2o$2o! 0 -2 locus o$2o! -1 -1 check-recovery
+cat 3o! 13 -1 0 * period 2 required o$o$2o$b2o! -2 -1 contact 2o$2o! 1 -1 locus o$o! 0 -1 check-recovery
 # eater-bridge-snake
 cat 6b2o$ob2obobo$2obobo$4b2o! 11 -5 -3 * required 6b4o$10o$10o$10o$5o$4bo! -6 -4 contact o! 0 1 locus 2o! -1 0
 # xs26_g8e1e8z1pl5d113
@@ -37,7 +37,7 @@ cat b2o$bo2bo$2b3o$7bo$8o$o$b2ob2o$2bobo$2bobo$3bo! 9 -4 -2 * required b4o$b4o$b
 # hivepush
 cat 6b2ob2o$7bobo$2b2obo5bob2o$bobob2o3b2obobo$o6bobo6bo$7o3b7o2$2b3o7b3o$bo2bo3bo3bo2bo$b2o4bobo4b2o$7bobo$8bo! 15 -8 -11 @ required 6b7o$6b7o$2b15o$b17o$19o$4ob2o2bo2b2ob4o$4o2bo2bo2bo2b4o$5o3bobo3b5o$b3o11b3o$b3o11b3o$b6o5b6o$b4o9b4o! -9 -12 contact 3o! -1 1 locus o! 0 0 check-recovery check-reaction
 # eater2-blinker
-cat 5bo$4bobo$4bobo$3b2ob3o$9bo$3b2ob3o$3b2obo3$3o! 26 -1 -9 * period 2 required 2b3o$b5o$b5o$8o$9o$2ob6o$4b5o$3b5o$3b3o$bo! 1 -10 contact 2o$o$o2bo$2b2o! -2 -1 locus o$o$o! 0 -1 check-recovery check-reaction
+cat 8b3o2$3bob2o$b3ob2o$o$b3ob2o$3bobo$3bobo$4bo! 14 0 0 * period 2 required 9bo3$3b5o$b5o3bo$5o$6ob2o$9o$b8o$3b5o$3b5o$4b3o! -1 -2 contact o$o! 11 0 check-recovery check-reaction
 # eater-block
 cat 6b2o$2b2o2b2o$bobo$bo$2o! 9 -7 0 * required 2b3o$b3o2bob2o$b4ob4o$6o$4o$4o! -8 0 contact 2o! -1 -1 locus 2o! -1 0
 # xs27_caabo796z352w56
@@ -65,17 +65,17 @@ cat 7bo$6bobo$6bobo$5b2ob2o2$5b2ob2o$5b2obo$10bo$2bo6b2o$bobo$o2bo2b2o$b2o3b2o! 
 # b-wall
 cat 2o$o2bo2bobobo$b6ob2obo$11bo$3b2o6b2o$3b2o! 11 -8 -1 * required 4o$5o6b2o$4ob9o$14o$b14o$3b4o4b4o$3b4o4b4o$3b4o! -9 -2 contact obo! -1 -1 locus obobo! -2 0
 # wannabe
-cat 2ob2o$ob2obobo$5b2obo$b2obo3b3o$bo3b3o3bo$2b3o3b3o$5bo2bo$4b2o! 9 -6 -1 * required 4o$4o5bo$6o4bo$4o4b5o$b3o3b7o$b13o$b13o$2b11o$4b7o$4b4o! -7 -2 contact 3o! 0 -1 locus obo! -1 0
+cat 2ob2o$ob2obobo$5b2obo$b2obo3b3o$bo3b3o3bo$2b3o3b3o$5bo2bo$4b2o! 9 -6 -1 * required 4o$4o5bo$6o4bo$4o4b5o$b3o3b7o$b13o$b13o$2b11o$4b7o$4b4o! -7 -2 contact 3o! 0 -1 locus obo! -1 0 check-recovery check-reaction
 # tongue
 cat 2b2o$bo2bo$b2obo$4b2o$b2o4b2o$ob4obo$o4bobo$b3obobobo$3b2o2bob3o$7bo4bo$3b4o2b3o$3bo3b2o$6bo2bo$7b2o! 18 -8 -4 * required 2b4o$b6o$b6o$b7o$b6o$7o$5o$6obo3bo$6o3b5o$b5o2b7o$3b12o$3b12o$3b11o$3b9o$6b6o$7b4o! -9 -5 contact 2o! 0 -1 locus 2o! -1 0
 # eater2-rock
-cat 3bob2o$3b2obo$b2o$o3b2o$4ob3o$8bo$2b2ob3o$2b2obo! 8 -2 -7 * required 3b6o$3b6o$b8o$9o$10o$11o$b3ob6o$6b5o$5b5o$3b5o! -3 -8 contact o$o! -1 0 locus o$o! 0 -1
+cat 3bob2o$3b2obo$b2o$o3b2o$4ob3o$8bo$2b2ob3o$2b2obo! 8 -2 -7 * required 3b6o$3b6o$b8o$9o$10o$11o$b3ob6o$6b5o$5b5o$3b5o! -3 -8 contact o$o! -1 0 locus o$o! 0 -1 check-recovery check-reaction
 # feet
 cat 4b2o$bo2bo3b2o$obobo3bo$obo2b2obo$bobobobo$3bobo$2b2ob2o! 13 -4 -6 * required 4b4o$b11o$12o$12o$11o$11o$b2o2bo2b2o! -5 -7 contact 7o! -3 1 locus 2ob2o! -2 0
 # xs16_1784cgc453
-cat 4bo$3bobobo$b3ob2obo$o7bo$2o6b2o! 9 -4 0 * required 3b2o2b3o$b10o$11o$12o$4o4b4o$4o4b4o! -5 0 contact 2o! -1 -1 locus o! 0 0
+cat 4bo$3bobobo$b3ob2obo$o7bo$2o6b2o! 9 -4 0 * required 3b2o2b3o$b10o$11o$12o$4o4b4o$4o4b4o! -5 0 contact 2o! -1 -1 locus o! 0 0 check-recovery check-reaction
 # claw-eater
-cat 6b2o$2b2o2bo2bo$bobo3b2obo$bo8bo$2o8b2o! 5 -7 0 * required 9bo$2b3o5b2o$b3o2b3ob3o$b4ob7o$6ob7o$4o6b4o$4o6b4o! -8 -1 contact 2o! -1 -1 locus 2o! -1 0
+cat 6b2o$2b2o2bo2bo$bobo3b2obo$bo8bo$2o8b2o! 5 -7 0 * required 9bo$2b3o5b2o$b3o2b3ob3o$b4ob7o$6ob7o$4o6b4o$4o6b4o! -8 -1 contact 2o! -1 -1 locus 2o! -1 0 check-recovery check-reaction
 # skew-hivepush
 cat 8b2ob2o$9bobo$4b2obo5bob2o$3bobob2o3b2obobo$2bo6bobo6bo$3b6o3b6o$3o15b3o$o3b3o7b3o3bo$b3o2bo3bo3bo2b3o$4bo4bobo4bo$3bo5bobo5bo$3bobo4bo4bobo$4bobo7bobo$5bo9bo$10bo$9bobo$9bobo$10bo! 26 -11 -16 @ required 8b7o$8b7o$4b15o$3b17o$2b19o$2b4ob2o2bo2b2ob4o$6o2bo2bo2bo2b6o$7o3bobo3b7o$6o11b6o$6o11b6o$b8o5b8o$3b5o7b5o$3b6o5b6o$3b6o2bo2b6o$4b5o5b5o$5b3o7b3o! -12 -17 contact 3bo$3bo$3o! -2 0 locus bo$bo$o! -1 -1 check-recovery check-reaction
 # drifty-eater-hook
@@ -87,11 +87,11 @@ cat 2b2o$3bo2b2o$3bobobo7b2o$2b2o2bo3b2o3bo$o2bo5bobo4b3o$2o7bobobo5bo$8b2obob6o
 # sturdy-block
 cat 3b2o2b2o$3bo3b2o$2obo9b2o$o2b2o6bo2bo$b2o5bo2b2o$3b2o2bobobo$3bo2bobo2bo$5b2obobo$9bo! 14 -8 0 * required 3b2obo$3b2o$6o4bo2b4o$6o6b5o$5o6b6o$9o2b6o$b14o$3b11o$3b11o$5b8o$9b3o! -9 -1 contact 2o! -1 -1 locus 2o! -1 0 check-recovery check-reaction
 # traffic-stop
-cat 7b3o2$11bo$11bo$11bo$2b2o$bobo3b3o$bo$2o! 45 -9 -3 * period 2 required 12bo3$2b2o$b3o$b4o$6o$4o4bo$4o! -10 -2 contact b3o$4o5$6b2o3$b3o$b3o! -3 -5 locus bo$3o3$4bo$4bo2$3o! -2 -4 check-recovery check-reaction
+cat 8bo$8bo$8bo2$10b3o2$2b2o4bo$bobo4bo$bo6bo$2o! 40 -9 -4 * period 2 required 8bo$7bo$7bo$12bo3$2b2o$b3o$b4o$6o$4o4bo$4o! -10 -5 contact 3o$3o5$5b2o3$3o$3o! -2 -5 locus 3o3$4bo$4bo2$3o! -2 -3 check-recovery check-reaction
 # traffic-burst
 cat 4b2o$2o2bo$obobo$2bob2o$bo3bo$b4o2$b4o$bo3bo$2bob2o$obobo$2o2bo$4b2o! 9 -1 -6 @ required 4b4o$8o$8o$2b6o$4b4o$4b4o$4b4o$2b5o$4b4o$4b4o$4b4o$2b6o$8o$8o$4b4o! -2 -7 contact o$o$o! -1 -1 locus o$o2$o$o! 0 -2
 # tether
-cat 3b2o$3b2o$8b2o$3b2o2bo2bo$b3o3bobo$o4bobobobo$bob2obobo2b3o$2b2o2bo2b2o3bo$5b2o4b3o$11bo! 8 -9 -2 * required 3b4o$3b4o$3b2obo$3b3o5bo$b4obo5bo$6ob3o3bo$12ob3o$17o$b16o$2b15o$5b4o2b5o$11b3o! -10 -3 contact 2o! 0 -1 locus 2o! -1 0
+cat 3b2o$3b2o$8b2o$3b2o2bo2bo$b3o3bobo$o4bobobobo$bob2obobo2b3o$2b2o2bo2b2o3bo$5b2o4b3o$11bo! 8 -9 -2 * required 3b4o$3b4o$3b2obo$3b3o5bo$b4obo5bo$6ob3o3bo$12ob3o$17o$b16o$2b15o$5b4o2b5o$11b3o! -10 -3 contact 2o! 0 -1 locus 2o! -1 0 check-recovery check-reaction
 # beehive
 cat b2o$o2bo$b2o! 40 -2 -1 / contact b4o$2o3bo$o4bo$2o2b2o$b4o! -3 -2 locus b2o$o2bo$b2o! -2 -1 transparent check-recovery check-reaction
 # blinker-eater
@@ -119,7 +119,7 @@ cat 4b2o$5bo$4bo$4b2o$2b2o$bo2b4ob2o$obo4bobobo$obob2obobobo$b2o2bobobob3o$3bo2b
 # ship
 cat 2o$obo$b2o! 15 -1 -1 @ required 3bo2$o$bo! -2 -1 contact 3o2$4bo$4bo$3b2o! -2 -2 locus 2o$2bo$b2o! -1 -1 transparent check-recovery
 # pi-slicer
-cat 8bo2b2o$4b2obobo2bo$o2bobobob3o$4obo2bo$5bo3b3o$2b3o6bo$2bo! 8 -8 0 * required 11b4o$4b2o5b4o$5ob2o3b4o$10ob4o$14o$14o$2b6ob5o$2b5o4b3o$2b3o! -9 -1 contact o! -1 -1 locus o! 0 0
+cat 8bo2b2o$4b2obobo2bo$o2bobobob3o$4obo2bo$5bo3b3o$2b3o6bo$2bo! 8 -8 0 * required 11b4o$4b2o5b4o$5ob2o3b4o$10ob4o$14o$14o$2b6ob5o$2b5o4b3o$2b3o! -9 -1 contact o! -1 -1 locus o! 0 0 check-recovery check-reaction
 # hook-block
 cat 3b2o2b2o$o3bo2b2o$4o2$2o$2o! 10 -2 -1 * required 9b2o$9b2o$3b4o2b2o$8ob2o$6o$4o$4o$4o! -3 -2 contact 2b2o$2o! -2 -2 locus 3b2o$o! -2 -1 check-recovery check-reaction
 # double-duty
@@ -127,17 +127,17 @@ cat 3b2o$3b2o2$b3obo$o3b2o$b2o$3b2obo$3bob2o! 7 -4 -1 * required 3bo$3bo$3bo$b3o
 # dimple
 cat 5bo$4bobo$3bobo$b3obobo$o5b2o$2o! 10 -5 0 * required 4bo$3bo$b9o$10o$10o$4o2b4o$4o! -6 0 contact 2o! -1 -1 locus o! 0 0
 # hook-table
-cat o2bo2b2o$4o3bo$4b3o$2bobo$2b2o! 4 -3 0 * required 2o2bo2b3o$4o2b4o$10o$10o$2b7o$2b5o$2b4o! -4 -1 contact 3o! -1 -1 locus o! 0 0
+cat o2bo2b2o$4o3bo$4b3o$2bobo$2b2o! 4 -3 0 * required 2o2bo2b3o$4o2b4o$10o$10o$2b7o$2b5o$2b4o! -4 -1 contact 3o! -1 -1 locus o! 0 0 check-recovery check-reaction
 # hanging-boat
 cat 6b2o$5bobo$2o2bo$o2bob2o$2b2obobo$6bo! 8 -6 -5 * required 6b4o$5b5o$10o$10o$10o$6obo$2b2obo! -7 -6 contact obo! -1 1 locus o! 0 0
 # kazyan
-cat 2b2o$o2bo$2obobo$3bob3o$3bo4bo$2b2o3b2o! 5 -3 0 * required 2bo$2o$2ob5o$10o$11o$2b9o$2b4ob4o$2b4ob4o! -4 -1 contact 2o! -1 -1 locus 2o! -1 0
+cat 2b2o$o2bo$2obobo$3bob3o$3bo4bo$2b2o3b2o! 5 -3 0 * required 2bo$2o$2ob5o$10o$11o$2b9o$2b4ob4o$2b4ob4o! -4 -1 contact 2o! -1 -1 locus 2o! -1 0 check-recovery check-reaction
 # chucklebait
 cat 6bo$5bobo$b2obobo$obobobobo$o4bobobo$b4o2bobo$7b2o$b2o$b2o! 11 -6 0 * required bo6b2o$2o2bob5o$o4b7o$12o$12o$b11o$b4o2b4o$b4o$b4o! -7 1 contact o! 1 -1 locus o! 0 0 check-recovery check-reaction
 # ak47-suppressor
 cat bo3b2o$obo2bo$obo4bo$bob5o$3bo$2bo3b2o$bo4b2o$b2o! 9 -7 -6 * required b3ob4o$9o$10o$10o$10o$b9o$b5ob3o$b3o$b4o$b4o! -8 -7 contact 2o! -1 1 locus 2o! -1 0 check-recovery check-reaction
 # xs28_wgadharzoggldzw66
-cat 3b2o$3bo$2obo4bo$2obobobobobo$4b2obob2obo$8bo3bo$9bobo$8b2ob2o! 4 -8 -2 * required 3b3o$3b4o$6o3bo$7o5b2o$10ob4o$15o$4b11o$8b7o$8b7o$8b7o! -9 -3 contact 3o! -1 -1 locus o! 0 0
+cat 3b2o$3bo$2obo4bo$2obobobobobo$4b2obob2obo$8bo3bo$9bobo$8b2ob2o! 4 -8 -2 * required 3b3o$3b4o$6o3bo$7o5b2o$10ob4o$15o$4b11o$8b7o$8b7o$8b7o! -9 -3 contact 3o! -1 -1 locus o! 0 0 check-recovery check-reaction
 # xs28_03lkmz32c54ra96
 cat b2o$bo2bo$2b3o2$2b3o$o2bobobo$2o3b2obo$2b3o3bo$2bo2b3o$5bo! 12 -4 -2 * required b4o$b4o$b4o$b4o$2b4o$5o3b2o$6ob4o$11o$11o$2b9o$2b8o$5b3o! -5 -3 contact o$o! 1 -2 locus o$o! 0 -1
 # xs20_04s0fpz17871
@@ -147,11 +147,11 @@ cat 7b2o$2o5bo$bo2b2obo$bobo2bo$2bobo$4b2o2b2o$3bo5bo$4b5o2$4b2ob4o$4b2obo2bo! 1
 # xs24_2530352zc97079c
 cat bo5b2o$obo2bo2bo$2o3b3o2$2o3b3o$obo2bo2bo$bo5b2o! 10 -1 0 * required bo5b4o$o5b5o$2b3o2b4o$4o3b4o$4o2b4o$4o3b4o$5ob5o$11o$b3o3b4o! -2 -1 contact 3o! -1 -1 locus o! 0 0
 # half-blockade
-cat 2o$2o2b2o$4b2o! 9 -5 -1 * required 2o$2obo3bo$4o$8o$4b4o! -6 -2 contact 2o! -1 -1 locus 2o! -1 0
+cat 2o$2o2b2o$4b2o! 9 -5 -1 * required 2o$2obo3bo$4o$8o$4b4o! -6 -2 contact 2o! -1 -1 locus 2o! -1 0 check-recovery check-reaction
 # xs23_o8bdggzxpie123
-cat 3b2o$3bo$2obo$ob2obo2b2o$4bobo2bo$4bob3o$5bo$6bo$5b2o! 7 -9 -3 * required 3b4o$3b4o$7o$6o$7o2bobo$7ob4o$4b8o$4b7o$5b4o$5b4o$5b4o! -10 -4 contact 2o! 0 -1 locus 2o! -1 0
+cat 3b2o$3bo$2obo$ob2obo2b2o$4bobo2bo$4bob3o$5bo$6bo$5b2o! 7 -9 -3 * required 3b4o$3b4o$7o$6o$7o2bobo$7ob4o$4b8o$4b7o$5b4o$5b4o$5b4o! -10 -4 contact 2o! 0 -1 locus 2o! -1 0 check-recovery check-reaction
 # eater-blinker
-cat 5b3o2$2b2o$bobo$bo$2o! 34 -6 0 * period 2 required 2b2o$b3o$b4o$5o$4o$4o! -7 1 contact 3o$o2bo$3bo$2b2o$2bo! -1 -2 locus 3o! -1 0 check-recovery check-reaction
+cat 6bo$6bo$6bo$2b2o$bobo$bo$2o! 19 -6 -1 * period 2 required 2b2o$b3o$b4o$5o$4o$4o! -7 1 contact 3o$o2$2bo$2bo! -1 -2 locus 3o! -1 0 check-recovery check-reaction
 # long-hook
 cat 4b2o$3bobo$3bo$2obo$2ob2o! 8 -5 -1 * required 4b3o$3b3o$3b3o$6o$7o$7o$7o! -6 -2 contact o$o$o! 1 -2 locus o$o! 0 -1 check-recovery check-reaction
 # xs25_33gv1o8zy047064ko
@@ -171,9 +171,9 @@ cat b2o$bobo$3bo2b2o$2b2obo2bo$o2bobobo$2o4bo! 8 -7 -4 * required b4o$b5o$b9o$b7
 # shield-push
 cat 2o4bo$o2bobobo$2b2obobo$6bo3bo$7b4o2$7b2o$7b2o! 6 -7 -1 * required 4o$5o$8o$9o3bo$2b9o$6b7o$7b6o$7b4o$7b4o$7b4o! -8 -2 contact 3o$2b2o$3bo! -2 -2 locus o$bo$bo! -1 -1
 # eater-and-hive
-cat 6b2o$5bo2bo$6b2o$2b2o$bobo$bo$2o! 17 -7 -2 * required 6bo3$2b3o$b3o2bo$b4o$6o$4o$4o! -8 -3 contact 2bo$b2o$2o! 0 -1 locus 2bo$2o! -1 -1 check-recovery
+cat 6b2o$5bo2bo$6b2o$2b2o$bobo$bo$2o! 16 -7 -2 * required 6bo3$2b3o$b3o2bo$b4o$6o$4o$4o! -8 -3 contact 2bo$b2o$2o! 0 -1 locus 2bo$2o! -1 -1 check-recovery
 # hunch
-cat 6bo$5bobo$2bobobo$bob2obobo$bo3bob2o$2o3bo$4b2o! 6 -6 0 * required 8bo$6bo2bo$2b2o3b3o$b4ob5o$b10o$11o$11o$8o$4b4o! -7 -1 contact o! -1 -1 locus o! 0 0
+cat 6bo$5bobo$2bobobo$bob2obobo$bo3bob2o$2o3bo$4b2o! 6 -6 0 * required 8bo$6bo2bo$2b2o3b3o$b4ob5o$b10o$11o$11o$8o$4b4o! -7 -1 contact o! -1 -1 locus o! 0 0 check-recovery check-reaction
 # block-and-tub
 cat 2o$2o3bo$4bobo$5bo! 8 -3 -1 * required 2obo$2o$7bo$bo6bo$4bob3o$5b3o! -4 -2 contact 6b2o2$obo! -4 -1 locus 2o3bo! -3 0
 # very-long-house
@@ -189,11 +189,9 @@ cat 3b2o$3bo$2obo5b2o$o2bob2o2b2o$2b2obo$5bo$5b2o$8bob2o$5b4obobo$5bo3bo2b3o$6bo
 # xs26_8e1lmz35t1s6zx1
 cat 4b2obo$3bobob3o$b3obo4bo$o4b2obobo$b3o2bob2o$3b2o! 12 -6 0 * required 9bo$3bo4b4o$b5ob6o$13o$13o$13o$b11o$3b4o! -7 -1 contact 3ob2o! -3 -1 locus 2obo! -2 0
 # xs28_0bdg6qz05b8dz3156
-cat 10b2o$2obobobo2bo$ob2ob2obobobo$4bo3bo2b2o$b2o2bob2o$bob2o! 5 -6 -1 * required 13bo$5o4b2ob2o$6obo2b5o$15o$15o$b14o$b10o$b6o! -7 -2 contact o! 0 -1 locus obo! -1 0
+cat 10b2o$2obobobo2bo$ob2ob2obobobo$4bo3bo2b2o$b2o2bob2o$bob2o! 5 -6 -1 * required 13bo$5o4b2ob2o$6obo2b5o$15o$15o$b14o$b10o$b6o! -7 -2 contact o! 0 -1 locus obo! -1 0 check-recovery check-reaction
 # xs29_697o4kmzw110pgf0cc
 cat b2o$o2bo$3o2bo$3b3o$2bo$2bob2o2b2o$b2obo4bo$5b4o2$7b2o$7b2o! 10 -9 -5 * required b4o$6o$7o$6o$6o$2b5obo$b9obo$b11o$b11o$5b6o$7b4o$7b4o$7b4o! -10 -6 contact 2o! 0 -1 locus 2o! -1 0 check-recovery check-reaction
-# cradle
-cat 18b2o$18bo$19bo$18b2o$17bo$17b3o$10bo9bo$9bobo7b2o$b2o6bobo$o2bo6bo5b2o$3o2bo10bobo$3b3o12bo$2bo15b2o$2bob2o7b2o$b2obo8bo$4bo9b3o$4b2o10bo! 31 -10 -7 * required 18b4o$18b4o$18b4o$18b4o$17b5o$19b3o$19b4o$19b4o$b4o14b4o$6o12b5o$7o11b3o$6o11b4o$6o10b6o$2b5o9bob4o$b6o6bob2ob4o$b7o5b6o$b7o5b6o$4b4o6b5o$4b4o8b3o! -11 -8 contact 3o$o! -1 -2 locus bo$o! -1 -1 check-recovery check-reaction
 # xs29_o8b9czxj5t3og8ozx11
 cat b2o$2bo$bo$b2o$4b2o$b3obo$o2bobob2o$2o2b2obo2bo$7bob2o$7bo$6b2o! 8 -1 -7 * required b4o$b4o$b4o$b4o$b7o$b7o$11o$4ob8o$6b7o$3bo3b6o$6b7o$6b4o$6b4o! -2 -8 contact 2o! -2 1 locus 2o! -1 0
 # xs31_o8b9acz4abo3t53zy01
@@ -201,56 +199,56 @@ cat 4b2o$3bobo$b3obob2o$o3b2obobo$b2o4bo2bo$2bob2obob2o$2bobo2bo$3bo2b2o! 13 -5 
 # xs21_w33zcicw33zy1354c
 cat 5b2o$4bo2bo$5b2o5b2o$12b2o2$2b2o3b2o$bobo3b2o$bo$2o! 30 -5 -1 * required 12bob2o$14b2o$14b2o$2b3o9b2o$b3o$b4o2bo2bo$6ob4o$4o$4o! -6 0 contact 2b2o$o$o! -2 -2 locus b2o$o! -1 -1 check-recovery check-reaction
 # double-eater2
-cat 3bob2o$b3ob2o$o$b3ob2o$3bobobob2o$6b2ob2o2$6b2ob2o$7bobo$7bobo$8bo! 6 -8 -2 * required 3b5o$b5o$5o$6ob2o$7ob2o$b7obo2bo$3b6o3bo$6b4ob2o$6b7o$6b7o$7b5o$7b5o$8b3o! -9 -3 contact o$o3$3b2o! -1 -3 locus o$o3$3b2o! -2 -2
+cat 3bob2o$b3ob2o$o$b3ob2o$3bobobob2o$6b2ob2o2$6b2ob2o$7bobo$7bobo$8bo! 6 -8 -2 * required 3b5o$b5o$5o$6ob2o$7ob2o$b7obo2bo$3b6o3bo$6b4ob2o$6b7o$6b7o$7b5o$7b5o$8b3o! -9 -3 contact o$o3$3b2o! -1 -3 locus o$o3$3b2o! -2 -2 check-recovery check-reaction
 # diagonal-scramble
 cat 2b2o$2bobo$4bo$4b2o$7b2o$4b3o2bo$3bo4bobo$3bob2obob3o$2obobo2bo4bo$2obo2bobob3o$3bo3b2obo$3b2o! 11 -9 -5 * required 2b4o$2b5o$2b5o$2b6o$4b5o$4b3o$3b4o5bo$3b5o3b4o$6o4b6o$7o3b6o$6o2b8o$15o$3b10o$3b4o! -10 -6 contact o$2o! 0 -2 locus o$bo! -1 -1
 # nose-and-hive
-cat 7b2o$6bo2bo$7b2o$3b2o$3bobo$2obobo$ob2obobo$6b2o! 9 -9 -2 * required 7b4o$6b2o2b2o$6bo4bo$3b4o$3b4o$6o$10o$10o$10o$6b4o! -10 -3 contact 2o! 0 0 locus bo$o! -1 -1 check-recovery
+cat 7b2o$6bo2bo$7b2o$3b2o$3bobo$2obobo$ob2obobo$6b2o! 9 -9 -2 * required 7b4o$6b2o2b2o$6bo4bo$3b4o$3b4o$6o$10o$10o$10o$6b4o! -10 -3 contact 2o! 0 0 locus bo$o! -1 -1 check-recovery check-reaction
 # flap-and-tub
-cat 12b2o$12bo$10bobo$bo8b2o$obo2bo$bo3b3o$8bo$5b2ob3o$6b2o3bo$4bo4b2o$4b5o$8bo$6bo$6b2o! 7 -5 -4 * required 12b4o$12b4o$10b6o$b3o7b4o$4o2bo5b3o$5o2bo3b3o$8o2bo$b3ob4ob3o$5b9o$4b10o$4b10o$4b9o$4b7o$6b5o$6b4o$6b4o! -6 -5 contact 3o! -1 -1 locus o! 0 0
+cat 12b2o$12bo$10bobo$bo8b2o$obo2bo$bo3b3o$8bo$5b2ob3o$6b2o3bo$4bo4b2o$4b5o$8bo$6bo$6b2o! 7 -5 -4 * required 12b4o$12b4o$10b6o$b3o7b4o$4o2bo5b3o$5o2bo3b3o$8o2bo$b3ob4ob3o$5b9o$4b10o$4b10o$4b9o$4b7o$6b5o$6b4o$6b4o! -6 -5 contact 3o! -1 -1 locus o! 0 0 check-recovery check-reaction
 # finger
 cat 5b2o$5bo$3bobobo$b3obob3o$o3bobo3bo$2o2bobo2b2o$5bo! 11 -6 0 * required 8bo$3bo4b2o$b5ob5o$13o$13o$13o$13o$5b3o! -7 0 contact 4o! -2 -1 locus 2o! -1 0
 # xs25_4aar0v1qb8ozy01
 cat 6bo$o2bobobo$4obob3o$5bo4bo$2b2obob3o$2bob2obo! 8 -4 -1 * required 8bo$2o6b2o$4obo2b4o$4o3b6o$13o$2b11o$2b10o$2b8o! -5 -2 contact o! 0 -1 locus obo! -1 0
 # beluga
-cat 4b2o$3bo2bo$3bob2o$b3obo$o4bobo$2o3b2obo$8bo$8b2o! 10 -6 -2 * required 4bo$3b2o$3bo$b5o$10o$11o$4ob6o$4ob7o$8b4o$8b4o! -7 -3 contact o$o! 1 -2 locus o$o! 0 -1
+cat 4b2o$3bo2bo$3bob2o$b3obo$o4bobo$2o3b2obo$8bo$8b2o! 10 -6 -2 * required 4bo$3b2o$3bo$b5o$10o$11o$4ob6o$4ob7o$8b4o$8b4o! -7 -3 contact o$o! 1 -2 locus o$o! 0 -1 check-recovery check-reaction
 # eater-weld-boat
 cat 2b2o3bo$3bo2bobo$3o3b2o$o2b3o$2bo2bo$3b2o! 7 -5 0 * required 2b2o3bo$5obob3o$11o$10o$8o$2b6o$3b4o! -6 0 contact 2ob2o! -2 -1 locus 2o3bo! -3 0
 # xs25_0c4gf9gz69e1dd
-cat 4bo$2obobo2bo$2obob4o$3b2o$3o3bo$o2bob2o$b2o! 5 -4 0 * required 4bo$3o6b2o$2ob3ob4o$11o$11o$9o$9o$9o$b4o! -5 -1 contact 2o! -1 -1 locus o! 0 0
+cat 4bo$2obobo2bo$2obob4o$3b2o$3o3bo$o2bob2o$b2o! 5 -4 0 * required 4bo$3o6b2o$2ob3ob4o$11o$11o$9o$9o$9o$b4o! -5 -1 contact 2o! -1 -1 locus o! 0 0 check-recovery check-reaction
 # xs40_08owgiligzamhcba8p023z0c871
-cat b2o$bobo$3bo$3b2o$b2o4bo$o2b5o$bobo$2o2b2o3b2o$2bobo2bo2bo$2bo2b5o$b2o$7bo$6bobo$7bo! 12 -7 -4 * required b4o$b5o$b5o$b6o$b5obo$6o3bo$5obo2bo$7o2b4o$6o3b4o$8ob4o$b12o$b11o$b4ob5o$6b5o$6b5o$7b3o! -8 -5 contact o! 1 -1 locus o! 0 0
+cat b2o$bobo$3bo$3b2o$b2o4bo$o2b5o$bobo$2o2b2o3b2o$2bobo2bo2bo$2bo2b5o$b2o$7bo$6bobo$7bo! 12 -7 -4 * required b4o$b5o$b5o$b6o$b5obo$6o3bo$5obo2bo$7o2b4o$6o3b4o$8ob4o$b12o$b11o$b4ob5o$6b5o$6b5o$7b3o! -8 -5 contact o! 1 -1 locus o! 0 0 check-recovery check-reaction
 # xs25_32acz0cik8y2cczy36a8o
-cat 2o$bo5b2o$bobo2bo2bo$2b2o3bobo$8bo3$11b2o$11bobo$13bo$13b2o$7b2o$7b2o! 20 -9 -3 * required 4o$4o3bo$7o$b4obo$b3o2bo$2b3o2$12b3o$13b3o$12b4o$11b6o$7bo2bo2b4o$13b4o$7b4o$7b4o! -10 -4 contact o! 1 -1 locus o$o! 0 -1 check-recovery
+cat 2o$bo5b2o$bobo2bo2bo$2b2o3bobo$8bo3$11b2o$11bobo$13bo$13b2o$7b2o$7b2o! 20 -9 -3 * required 4o$4o3bo$7o$b4obo$b3o2bo$2b3o2$12b3o$13b3o$12b4o$11b6o$7bo2bo2b4o$13b4o$7b4o$7b4o! -10 -4 contact o! 1 -1 locus o$o! 0 -1 check-recovery check-reaction
 # xs20_g88bbgz178b5
-cat 4bo$bobobob2o$ob2obob2o$o4bo$b3obo$3b2o! 7 -4 0 * required b3o5b2o$8ob2o$11o$11o$8o$b7o$3b4o! -5 0 contact 2o! 0 -1 locus o! 0 0
+cat 4bo$bobobob2o$ob2obob2o$o4bo$b3obo$3b2o! 7 -4 0 * required b3o5b2o$8ob2o$11o$11o$8o$b7o$3b4o! -5 0 contact 2o! 0 -1 locus o! 0 0 check-recovery check-reaction
 # xp2_6a8o0o4pb8ozx8881
-cat 3b2o$3bo$2obo$o2b2o$2bo2bo$3b2o3bo$8bo$3b2o3bo$3bo$bobo$b2o! 16 -8 -7 * period 2 required 3b4o$3b4o$7o$6o$5o$6o$2b4o$3b3o$3b3o$b6o$b5o$b5o$b4o! -9 -8 contact o3$o! 1 -3 locus o$o! 0 -1 check-recovery
+cat 3b2o$3bo$2obo$o2b2o$2bo2bo$3b2o3bo$8bo$3b2o3bo$3bo$bobo$b2o! 16 0 0 * period 2 required 3b4o$3b4o$7o$6o$5o$6o$2b4obo$3b3o$3b3obo$b6ob3o$b5o$b5o$b4o! -1 -1 contact o! 9 4 check-recovery
 # block-eater-snake
-cat 5b2o$5b2o3$4b2o$2obobo$ob2obobo$6b2o! 8 -6 -1 * required 5b2o$5b2o2$5bo$4bo2bo$5o$10o$10o$10o$6b4o! -7 -2 contact o$o! 1 -1 locus o$o! 0 -1
+cat 5b2o$5b2o3$4b2o$2obobo$ob2obobo$6b2o! 8 -6 -1 * required 5b2o$5b2o2$5bo$4bo2bo$5o$10o$10o$10o$6b4o! -7 -2 contact o$o! 1 -1 locus o$o! 0 -1 check-recovery check-reaction
 # xs29_o8alligzx1226hu066
 cat 7b2o$8bo$6bobob2o$4b3obob2o$3bo3bo$o2b4o$3o$3b2o$2bo2bo$3b2o! 11 -5 -3 * required 9b2o$9b2o$8b6o$8b6o$8b6o$2o3b9o$10o$9o$8o$2b6o$2b6o$3b4o! -6 -4 contact 2o! -2 -1 locus 2o! -1 0
 # xs35_8o6p784czohill2zw6ip
 cat 2b2o$2bo$3bo2bo$3o2bobob2o2b2o$o2b3obobobo2bo$b2o3bo2bob2o$3b3o3bo$3bo4b2o! 8 -6 -2 * required 2b3o$2b4o$2b4o$6o5b6o$6o3b2ob5o$6ob10o$17o$b14o$3b9o$3b3o2b4o! -7 -3 contact o! 1 -1 locus o! 0 0
 # xs48_3lkm0uicw8ogkcz1245d8622raa4
-cat 13b2o$8b2obo2bo$2o5bobob3o$o2b2o2bobo$b3o4b2ob3o$5bo4b2o2bo$3b6o4bo$2bo5bob3o$3b3o3b2o$5bo! 16 -9 -1 * required 13b4o$12b5o$4o3bo5b4o$6o6b5o$5o4bob5o$6o3b8o$b5ob10o$2b15o$2b14o$2b13o$3b5ob4o$5b3o! -10 -2 contact 2o! -1 -1 locus 2o! -1 0
+cat 13b2o$8b2obo2bo$2o5bobob3o$o2b2o2bobo$b3o4b2ob3o$5bo4b2o2bo$3b6o4bo$2bo5bob3o$3b3o3b2o$5bo! 16 -9 -1 * required 13b4o$12b5o$4o3bo5b4o$6o6b5o$5o4bob5o$6o3b8o$b5ob10o$2b15o$2b14o$2b13o$3b5ob4o$5b3o! -10 -2 contact 2o! -1 -1 locus 2o! -1 0 check-recovery check-reaction
 # xs35_0gg0s2p6o8ge2zoh4e1e96
-cat 2o$o2bob2o$2b2obobo$3bobobo$bo2bobo$b2obobobobo$4bobob2obo$4bo2bo3bo$5bobo3b2o$6bo! 13 -6 -1 * required 4o$5o$6o$6obo$b5o$b8o2b2o$b8ob4o$b13o$4b11o$4b6ob4o$5b5ob4o$6b3o! -7 -2 contact 2o! 0 -1 locus 2o! -1 0
+cat 2o$o2bob2o$2b2obobo$3bobobo$bo2bobo$b2obobobobo$4bobob2obo$4bo2bo3bo$5bobo3b2o$6bo! 13 -6 -1 * required 4o$5o$6o$6obo$b5o$b8o2b2o$b8ob4o$b13o$4b11o$4b6ob4o$5b5ob4o$6b3o! -7 -2 contact 2o! 0 -1 locus 2o! -1 0 check-recovery check-reaction
 # xs29_x4aabp6o8a6zca513
 cat 2o$obo$bo2bo$2b3o$7bobo$4b4ob3o$3bo4bo3bo$4b3obo2b2o$6b2o! 8 -7 -3 * required 4o$4o$5o$5o$b5o5bo$2b6ob5o$3b12o$3b12o$3b12o$4b11o$6b4o! -8 -4 contact o2$3bo! -2 -2 locus o2$3bobo! -3 -1
 # traffic-mess
-cat b2o$o2bo$b2o$9b2o$9b2o4$4b2o$4b2o! 37 0 -1 * required 5bob2o$7b2o$7b2o$5bob2o2$3bo2$4o$4o! 3 1 contact o! -1 1 locus o! 0 0 check-recovery
+cat b2o$o2bo$b2o$9b2o$9b2o4$4b2o$4b2o! 37 0 -1 * required 5bob2o$7b2o$7b2o$5bob2o2$3bo2$4o$4o! 3 1 contact o! -1 1 locus o! 0 0 check-recovery check-reaction
 # xs37_g8eh6o8zd5llc1uizx343
 cat 4b2ob2o$3bobobo$b3obobobo$o3b2obob3o$b2o4b2o3bo$3b3o4b2o$3bo2b4o$6bo2bo! 12 -7 -4 * required 3bo6bo$b3obobo2b2o$8ob5o$15o$15o$b14o$3b11o$3b2o3b4o$10b2o! -8 -4 contact b4o9$o! -2 -5 locus ob2o7$bo! -2 -4
 # xs29_3ihf8b5z32cl13zw11
 cat 8bobo$4b2obob2o$5bobo$2obobob4o$ob2o2bo3bo$4bobo2bo$4b2o3b2o! 6 -5 -1 * required 10b3o$7bo2b3o$4bo4b4o$5o2bob4o$13o$13o$13o$4b9o$4b4ob4o! -6 -2 contact 2o! -1 -1 locus 2o! -1 0
 # xs26_0dbgz651hgx696z04701
-cat 6b2o$5bo2bo$6b2o4$9b2o$4b2o3bo$2obobo4b3o$ob2obobo4bo$6b2o! 17 -7 0 * required 5bo3$12bo$4bo2bobob2o$5o4b6o$15o$15o$10o2b3o$6b4o! -8 2 contact o! 0 -1 locus 2o! -1 0 check-recovery
+cat 6b2o$5bo2bo$6b2o4$9b2o$4b2o3bo$2obobo4b3o$ob2obobo4bo$6b2o! 17 -7 0 * required 5bo3$12bo$4bo2bobob2o$5o4b6o$15o$15o$10o2b3o$6b4o! -8 2 contact o! 0 -1 locus 2o! -1 0 check-recovery check-reaction
 # xs20_32acy0okczy831e8
-cat 15bo$13b3o$5b2o5bo$5bobo4b2o$6b2o$2b2o$bobo$bo$2o! 7 -10 -4 * required 15b3o$13b5o$5b4o3b6o$5b5o2b6o$7bo6b2o$2b3o$b3o2bo$b4o$6o$4o$4o! -11 -5 contact o2b2o! -2 0 locus o4b2o$o! -3 -1
+cat 15bo$13b3o$5b2o5bo$5bobo4b2o$6b2o$2b2o$bobo$bo$2o! 7 -10 -4 * required 15b3o$13b5o$5b4o3b6o$5b5o2b6o$7bo6b2o$2b3o$b3o2bo$b4o$6o$4o$4o! -11 -5 contact o2b2o! -2 0 locus o4b2o$o! -3 -1 check-recovery check-reaction
 # worm
 cat 3b2o$3bobo$o4bo$5o2$2bo$bobo$2bo! 5 -3 -1 * required 5b2o$5b3o$o3b4o$2b6o$8o$7o$b5o$b5o$b5o$2b3o! -4 -2 contact o$o! -1 -2 locus o$o! 0 -1
 # xs38_gjlkmkhf0raicz1w66x23
-cat 3bob2o3b2o$b3obo2bo2bo$o4bob4o$ob2obo$bobo2b7o$3bo8bo$3b2o3b2o$8b2o! 17 -6 0 * required 3b2o5b4o$b5o3b5o$6obo3b3o$7o4b3o$9ob5o$15o$b14o$3b4ob7o$3b4ob4o$8b4o! -7 -1 contact o! 0 -1 locus 2o! -1 0
+cat 3bob2o3b2o$b3obo2bo2bo$o4bob4o$ob2obo$bobo2b7o$3bo8bo$3b2o3b2o$8b2o! 17 -6 0 * required 3b2o5b4o$b5o3b5o$6obo3b3o$7o4b3o$9ob5o$15o$b14o$3b4ob7o$3b4ob4o$8b4o! -7 -1 contact o! 0 -1 locus 2o! -1 0 check-recovery check-reaction
 # xs57_y4g8eh6kk8zxg8go4qb0v056z25t1qaiq221zx1
-cat 11bo$10bobo$10bob3o$9b2o4bo$8bo2bob2o$9bobobo$8b2obo2bo$7bo3bob2o$4bobob2obo$3bob2obo2bo$b3o6bo$o3b6o$b2o$2bob2obo$2bobob2o$3bo! 7 -6 -6 * required 11b3o$10b5o$10b7o$9b9o$8bob8o$10b8o$12b5o$11b6o$4bo4bob6o$3bo4bob7o$b5o3bob3o$6ob7o$13o$12o$b9o$2b8o$2b8o$3b3o! -7 -7 contact 4bo$4bo$4bo2$3o! -3 -3 locus 4bo2$4bo2$obo! -2 -2
+cat 11bo$10bobo$10bob3o$9b2o4bo$8bo2bob2o$9bobobo$8b2obo2bo$7bo3bob2o$4bobob2obo$3bob2obo2bo$b3o6bo$o3b6o$b2o$2bob2obo$2bobob2o$3bo! 7 -6 -6 * required 11b3o$10b5o$10b7o$9b9o$8bob8o$10b8o$12b5o$11b6o$4bo4bob6o$3bo4bob7o$b5o3bob3o$6ob7o$13o$12o$b9o$2b8o$2b8o$3b3o! -7 -7 contact 4bo$4bo$4bo2$3o! -3 -3 locus 4bo2$4bo2$obo! -2 -2 check-recovery check-reaction
