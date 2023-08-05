@@ -1046,7 +1046,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
                                  input.contactXY.second, tran);
     } else {
       LifeState locusZOI = locus.ZOI();
-      LifeState nonLocusZOI = (result.state & ~locus).ZOI();
+      LifeState nonLocusZOI = (pat & ~locus).ZOI();
       contact = locusZOI & ~nonLocusZOI & shell & ~result.required;
     }
 
