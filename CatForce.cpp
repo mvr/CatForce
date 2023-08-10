@@ -1813,10 +1813,6 @@ public:
   bool CheckOscillating(Configuration &conf, unsigned successtime, unsigned failuretime) {
     LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
     workspace.Join(conf.startingCatalysts);
-    workspace.Step(10);
-
-    LifeState tortoise = workspace;
-    LifeState hare = workspace;
 
     unsigned stopTime;
     if (params.stopAfterCatsDestroyed != -1)
@@ -1824,29 +1820,32 @@ public:
     else
       stopTime = filterMaxGen;
 
-    for(int i = 1; i < std::min((unsigned)50, std::min((unsigned)filters[0].range.second, stopTime)); i++) {
-      tortoise.Step(1);
-      hare.Step(2);
+    std::stack<std::pair<uint64_t, int>> minhashes;
 
-      if((tortoise & ~hare).IsEmpty()) {
-        // Now find the actual period
-        LifeState tortoise2 = tortoise;
-        for(int j = 1; j <= i; j++) {
-          tortoise2.Step();
-          if((tortoise2 & ~tortoise).IsEmpty()) {
-            // See if it stabilises too quickly
-            tortoise2.Step(10);
-            LifeState tortoise3 = tortoise2;
-            tortoise3.Step(2);
-            if(tortoise3 == tortoise2)
-              return false;
+    for(unsigned i = 0; i < std::max((unsigned)50, std::min((unsigned)filters[0].range.second, stopTime)); i++) {
+      uint64_t newhash = workspace.GetHash();
 
-            // Avoid some common periods (pentadecathlon and TL hassler)
-            return j > 10 && j != 8 && j != 15 && j != 14 && j != 30 && j != 36 && j != 46;
-          }
+      while(true) {
+        if(minhashes.empty())
+          break;
+        if(minhashes.top().first < newhash)
+          break;
+
+        if(minhashes.top().first == newhash) {
+          unsigned p = i - minhashes.top().second;
+          // Avoid some common periods (pentadecathlon and TL hassler)
+          return p > 10 && p != 8 && p != 15 && p != 14 && p != 30 && p != 36 && p != 46;
         }
+
+        if(minhashes.top().first > newhash)
+          minhashes.pop();
       }
+
+      minhashes.push({newhash, i});
+
+      workspace.Step();
     }
+
     return false;
   }
 
