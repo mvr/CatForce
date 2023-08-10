@@ -96,6 +96,35 @@ uint64_t rand64() {
 
 } // namespace PRNG
 
+// Taken from https://github.com/wangyi-fudan/wyhash
+namespace HASH {
+  static inline void _wymum(uint64_t *A, uint64_t *B){
+#if defined(__SIZEOF_INT128__)
+    __uint128_t r=*A; r*=*B;
+    *A=(uint64_t)r; *B=(uint64_t)(r>>64);
+#elif defined(_MSC_VER) && defined(_M_X64)
+    *A=_umul128(*A,*B,B);
+#else
+    uint64_t ha=*A>>32, hb=*B>>32, la=(uint32_t)*A, lb=(uint32_t)*B, hi, lo;
+    uint64_t rh=ha*hb, rm0=ha*lb, rm1=hb*la, rl=la*lb, t=rl+(rm0<<32), c=t<rl;
+    lo=t+(rm1<<32); c+=lo<t; hi=rh+(rm0>>32)+(rm1>>32)+c;
+    *A=lo;  *B=hi;
+#endif
+  }
+
+  static inline uint64_t _wymix(uint64_t A, uint64_t B){
+    _wymum(&A,&B);
+    return A^B;
+  }
+
+  static inline uint64_t hash64(uint64_t A, uint64_t B){
+    A ^= 0xa0761d6478bd642full;
+    B ^= 0xe7037ed1a0b428dbull;
+    _wymum(&A,&B);
+    return _wymix(A^0xa0761d6478bd642full, B^0xe7037ed1a0b428dbull);
+  }
+} // namespace HASH
+
 // void fastMemcpy(void *pvDest, void *pvSrc, size_t nBytes) {
 //   assert(nBytes % 32 == 0);
 //   assert((intptr_t(pvDest) & 31) == 0);
@@ -208,7 +237,7 @@ public:
     uint64_t result = 0;
 
     for (int i = 0; i < N; i++) {
-      result = (result + RotateLeft(result)) ^ state[i];
+      result = HASH::hash64(result, state[i]);
     }
 
     return result;
