@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <stack>
 
 const bool DEBUG_OUTPUT = false;
 const int MAX_CATALYSTS = 5;
