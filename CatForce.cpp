@@ -958,6 +958,9 @@ public:
   LifeState locusAvoidMask2;
   LifeState locusAvoidMaskMore;
 
+  // p2 HACK
+  LifeState offPhaseReactionMask;
+
   LifeState required;
 
   LifeTarget target;
@@ -1109,6 +1112,11 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.hasLocusReactionPop1 = result.locusReactionPop1 > 0;
       result.hasLocusReactionPop2 = result.locusReactionPop2 > 0;
       // result.hasLocusReactionPopMore = result.locusReactionPopMore > 0;
+
+      // p2 HACK
+      result.offPhaseReactionMask = gen1.ZOI().Shell();
+      result.offPhaseReactionMask.Transform(Rotate180OddBoth);
+      result.offPhaseReactionMask.RecalculateMinMax();
     }
 
     for (unsigned k = 0; k < input.forbiddenRLE.size(); k++) {
@@ -2394,6 +2402,7 @@ public:
       newSearch.history = search.history | symCatalyst;
       LifeState catalyst1(false), catalyst2(false), catalystMore(false);
       SetCounts(newSearch.config.startingCatalysts, catalyst1, catalyst2, catalystMore);
+      // p2 HACK
       if(catalysts[s].periodic) {
         symCatalyst.Step();
         newSearch.history |= symCatalyst;
@@ -2469,8 +2478,6 @@ public:
     unsigned activePartPop2 = activePart2.GetPop();
 
     for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
-      if (catalysts[s].periodic && search.state.gen % 2 != catalysts[s].phase)
-        continue;
       if (search.config.transparentCount == params.numTransparent &&
           catalysts[s].transparent)
         continue;
@@ -2496,9 +2503,15 @@ public:
       if (catalysts[s].canSmother)
         newPlacements |= activePartMore.Convolve(catalysts[s].locusReactionMask);
 
+      // p2 HACK
+      if(catalysts[s].periodic && search.state.gen % 2 != catalysts[s].phase)
+        newPlacements |= catalysts[s].offPhaseReactionMask.Convolve(activePart | search.history1 | search.history2);
+
       newPlacements &= ~masks[s];
 
-      if (!newPlacements.IsEmpty()) {
+      if (!newPlacements.IsEmpty()
+          // p2 HACK
+          && !catalysts[s].periodic) {
         LifeState hitLocations = catalysts[s].locusAvoidMask.Convolve(activePartMore | search.historyMore);
         hitLocations |= catalysts[s].locusAvoidMask1.Convolve(activePart2 | search.history2);
         hitLocations |= catalysts[s].locusAvoidMask2.Convolve(activePart1 | search.history1);
@@ -2537,6 +2550,7 @@ public:
         LifeState lookahead = newSearch.state;
         lookahead.Step(2);
 
+        // p2 HACK
         // Do a two-step lookahead to see if the catalyst interacts
         {
           LifeState difference = lookahead ^ twonext ^ symCatalyst;
@@ -2553,6 +2567,13 @@ public:
             continue;
           }
         }
+
+        // // p2 HACK
+        // if(catalysts[s].periodic && search.state.gen % 2 != catalysts[s].phase) {
+        //   masks[s].Set(newPlacement.first, newPlacement.second);
+        //   newPlacements.Erase(newPlacement.first, newPlacement.second);
+        //   continue;
+        // }
 
         LifeState catRequired;
 
@@ -2658,6 +2679,7 @@ public:
 
         LifeState catalyst1(false), catalyst2(false), catalystMore(false);
         SetCounts(newSearch.config.startingCatalysts, catalyst1, catalyst2, catalystMore);
+        // p2 HACK
         if(catalysts[s].periodic) {
           symCatalyst.Step();
           newSearch.history |= symCatalyst;
