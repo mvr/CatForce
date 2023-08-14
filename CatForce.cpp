@@ -2544,11 +2544,10 @@ public:
         symCatalyst = Symmetricize(symCatalyst, newSearch.config.symmetry,
                                    newSearch.config.symmetryOffset);
         newSearch.config.startingCatalysts |= symCatalyst;
-        if(catalysts[s].periodic) {
-          if(search.state.gen % 2 == 1)
+        if(catalysts[s].periodic && search.state.gen % 2 == 1) {
             symCatalyst.Step();
-          newSearch.state |= symCatalyst;
         }
+        newSearch.state |= symCatalyst;
 
         LifeState lookahead = newSearch.state;
         lookahead.Step(2);
