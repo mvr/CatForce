@@ -2544,9 +2544,11 @@ public:
         symCatalyst = Symmetricize(symCatalyst, newSearch.config.symmetry,
                                    newSearch.config.symmetryOffset);
         newSearch.config.startingCatalysts |= symCatalyst;
-        if(search.state.gen % 2 == 1)
-          symCatalyst.Step();
-        newSearch.state |= symCatalyst;
+        if(catalysts[s].periodic) {
+          if(search.state.gen % 2 == 1)
+            symCatalyst.Step();
+          newSearch.state |= symCatalyst;
+        }
 
         LifeState lookahead = newSearch.state;
         lookahead.Step(2);
@@ -2578,7 +2580,6 @@ public:
 
         LifeState catRequired;
 
-        newSearch.required = search.required;
         if(catalysts[s].hasRequired) {
           newSearch.required.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
         }
@@ -2679,17 +2680,24 @@ public:
         }
 
         LifeState catalyst1(false), catalyst2(false), catalystMore(false);
-        SetCounts(newSearch.config.startingCatalysts, catalyst1, catalyst2, catalystMore);
-        // p2 HACK
-        if(catalysts[s].periodic) {
-          symCatalyst.Step();
+        if (newSearch.config.count != params.numCatalysts
+            || newSearch.config.symmetry == C1
+            || SymIsD2(newSearch.config.symmetry)
+            ) {
           newSearch.history |= symCatalyst;
-          UpdateCounts(symCatalyst, catalyst1, catalyst2, catalystMore);
+          SetCounts(newSearch.config.startingCatalysts, catalyst1, catalyst2, catalystMore);
+
+          // p2 HACK
+          if(catalysts[s].periodic) {
+            symCatalyst.Step();
+            newSearch.history |= symCatalyst;
+            UpdateCounts(symCatalyst, catalyst1, catalyst2, catalystMore);
+          }
+
+          newSearch.history1 |= catalyst1;
+          newSearch.history2 |= catalyst2;
+          newSearch.historyMore |= catalystMore;
         }
-        newSearch.history |= symCatalyst;
-        newSearch.history1 |= catalyst1;
-        newSearch.history2 |= catalyst2;
-        newSearch.historyMore |= catalystMore;
 
         if(newSearch.config.symmetry == C1) {
           for (auto sym : {C2, C4, D2AcrossX, D2AcrossY, D2diagodd, D2negdiagodd}) {
@@ -2716,8 +2724,6 @@ public:
         // If we just placed the last catalyst, don't bother
         // updating the masks
         if (newSearch.config.count != params.numCatalysts) {
-          UpdateCounts(newSearch.config.startingCatalysts, newSearch.history1, newSearch.history2, newSearch.historyMore);
-
           newMasks = masks;
           if (params.maxW != -1) {
             LifeState rect =
@@ -2762,7 +2768,7 @@ public:
         LifeState newCatalysts;
         for (unsigned i = search.freeCount; i < search.config.count; i++) {
           LifeState shiftedCatalyst = catalysts[search.config.curs[i]].state;
-          if (search.freeState.gen % 2 == 1)
+          if (catalysts[search.config.curs[i]].periodic && search.freeState.gen % 2 == 1)
             shiftedCatalyst.Step();
           shiftedCatalyst.Move(search.config.curx[i], search.config.cury[i]);
           newCatalysts |= shiftedCatalyst;
