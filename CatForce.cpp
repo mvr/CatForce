@@ -961,6 +961,13 @@ public:
 
   // p2 HACK
   LifeState offPhaseReactionMask;
+  LifeState off;
+  LifeState off1;
+  LifeState off2;
+  LifeState offMore;
+  LifeState offReaction1;
+  LifeState offReaction2;
+  LifeState offReactionMore;
 
   LifeState required;
 
@@ -1118,6 +1125,21 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.offPhaseReactionMask = gen1.ZOI().Shell();
       result.offPhaseReactionMask.Transform(Rotate180OddBoth);
       result.offPhaseReactionMask.RecalculateMinMax();
+
+      LifeState off1, off2, offMore;
+      UpdateCounts(gen1, off1, off2, offMore);
+
+      result.off = gen1;
+      result.off1 = off1;
+      result.off2 = off2;
+      result.offMore = offMore;
+
+      result.offReaction1 = off1;
+      result.offReaction1.Transform(Rotate180OddBoth);
+      result.offReaction2 = off2;
+      result.offReaction2.Transform(Rotate180OddBoth);
+      result.offReactionMore = offMore;
+      result.offMore.Transform(Rotate180OddBoth);
     }
 
     for (unsigned k = 0; k < input.forbiddenRLE.size(); k++) {
@@ -1204,18 +1226,24 @@ struct Configuration {
 LifeState CollisionMask(const CatalystData &a, const CatalystData &b) {
   LifeState bFlipped = b.state;
   bFlipped.Transform(Rotate180OddBoth);
-  LifeState bState1Flipped = b.state1;
-  bState1Flipped.Transform(Rotate180OddBoth);
-  LifeState bState2Flipped = b.state2;
-  bState2Flipped.Transform(Rotate180OddBoth);
-  LifeState bStateMoreFlipped = b.stateMore;
-  bStateMoreFlipped.Transform(Rotate180OddBoth);
 
   // Assumes both are still (so will break with periodic)
   LifeState possibleReactionMask =
-      (a.state.ZOI().Convolve(bFlipped | bStateMoreFlipped))
-    | (a.state1.Convolve(bState2Flipped))
-    | (a.state2.Convolve(bState1Flipped));
+      (a.state.ZOI().Convolve(bFlipped | b.reactionMore))
+    | (a.state1.Convolve(b.reaction2))
+    | (a.state2.Convolve(b.reaction1));
+
+  if(a.periodic || b.periodic) {
+    LifeState bOffFlipped = b.off;
+    bOffFlipped.Transform(Rotate180OddBoth);
+
+    // Assumes both are still (so will break with periodic)
+    possibleReactionMask |=
+      (a.off.ZOI().Convolve(bOffFlipped | b.offReactionMore))
+      | (a.off1.Convolve(b.offReaction2))
+      | (a.off2.Convolve(b.offReaction1));
+  }
+
   return possibleReactionMask;
 }
 
@@ -2506,7 +2534,7 @@ public:
 
       // p2 HACK
       if(catalysts[s].periodic && search.state.gen % 2 != catalysts[s].phase)
-        newPlacements |= catalysts[s].offPhaseReactionMask.Convolve(activePart | search.history1 | search.history2);
+        newPlacements |= catalysts[s].offPhaseReactionMask.Convolve(activePart);
 
       newPlacements &= ~masks[s];
 
@@ -2576,8 +2604,6 @@ public:
         //   newPlacements.Erase(newPlacement.first, newPlacement.second);
         //   continue;
         // }
-
-        LifeState catRequired;
 
         if(catalysts[s].hasRequired) {
           newSearch.required.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
@@ -2773,7 +2799,7 @@ public:
           newCatalysts |= shiftedCatalyst;
         }
 
-        if (search.freeSymmetry == search.config.symmetry) {
+        if (search.config.symmetry == C1) {
           search.state = search.freeState | newCatalysts;
           search.state.gen = search.freeState.gen;
           search.history = search.freeHistory;
