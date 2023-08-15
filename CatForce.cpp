@@ -960,14 +960,14 @@ public:
   LifeState locusAvoidMaskMore;
 
   // p2 HACK
-  LifeState offPhaseReactionMask;
+  LifeState offReactionMask;
   LifeState off;
   LifeState off1;
   LifeState off2;
   LifeState offMore;
-  LifeState offReaction1;
-  LifeState offReaction2;
-  LifeState offReactionMore;
+  LifeState offReactionMask1;
+  LifeState offReactionMask2;
+  LifeState offReactionMaskMore;
 
   LifeState required;
 
@@ -1122,9 +1122,9 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       // result.hasLocusReactionPopMore = result.locusReactionPopMore > 0;
 
       // p2 HACK
-      result.offPhaseReactionMask = gen1.ZOI().Shell();
-      result.offPhaseReactionMask.Transform(Rotate180OddBoth);
-      result.offPhaseReactionMask.RecalculateMinMax();
+      result.offReactionMask = gen1.ZOI().Shell();
+      result.offReactionMask.Transform(Rotate180OddBoth);
+      result.offReactionMask.RecalculateMinMax();
 
       LifeState off1, off2, offMore;
       UpdateCounts(gen1, off1, off2, offMore);
@@ -1134,11 +1134,11 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       result.off2 = off2;
       result.offMore = offMore;
 
-      result.offReaction1 = off1;
-      result.offReaction1.Transform(Rotate180OddBoth);
-      result.offReaction2 = off2;
-      result.offReaction2.Transform(Rotate180OddBoth);
-      result.offReactionMore = offMore;
+      result.offReactionMask1 = off1;
+      result.offReactionMask1.Transform(Rotate180OddBoth);
+      result.offReactionMask2 = off2;
+      result.offReactionMask2.Transform(Rotate180OddBoth);
+      result.offReactionMaskMore = offMore;
       result.offMore.Transform(Rotate180OddBoth);
     }
 
@@ -1237,11 +1237,10 @@ LifeState CollisionMask(const CatalystData &a, const CatalystData &b) {
     LifeState bOffFlipped = b.off;
     bOffFlipped.Transform(Rotate180OddBoth);
 
-    // Assumes both are still (so will break with periodic)
     possibleReactionMask |=
-      (a.off.ZOI().Convolve(bOffFlipped | b.offReactionMore))
-      | (a.off1.Convolve(b.offReaction2))
-      | (a.off2.Convolve(b.offReaction1));
+      (a.off.ZOI().Convolve(bOffFlipped | b.offReactionMaskMore))
+      | (a.off1.Convolve(b.offReactionMask2))
+      | (a.off2.Convolve(b.offReactionMask1));
   }
 
   return possibleReactionMask;
@@ -2401,7 +2400,7 @@ public:
       lookahead.Step(2);
       // Do a two-step lookahead to see if the catalyst interacts
       {
-        LifeState difference = lookahead ^ twonext ^ symCatalyst;
+        LifeState difference = lookahead ^ (twonext & symCatalyst);
         if (difference.IsEmpty()) {
           continue;
         }
@@ -2494,14 +2493,17 @@ public:
     }
   }
 
-  void TryAddingCatalyst(SearchState &search,
-                         std::vector<LifeState> &masks,
+  void TryAddingCatalyst(SearchState &search, std::vector<LifeState> &masks,
                          std::array<LifeTarget, MAX_CATALYSTS> &shiftedTargets,
+                         const LifeState &state1,
+                         const LifeState &state2,
+                         const LifeState &stateMore,
                          const LifeState &activePart,
                          const LifeState &activePart1,
                          const LifeState &activePart2,
                          const LifeState &activePartMore,
-                         const LifeState &twonext) {
+                         const LifeState &twonext,
+                         bool justPeriodic) {
 
     unsigned activePartPop1 = activePart1.GetPop();
     unsigned activePartPop2 = activePart2.GetPop();
@@ -2514,6 +2516,8 @@ public:
         continue;
       if (search.config.count == params.numCatalysts - 1 &&
           search.config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
+        continue;
+      if (justPeriodic && !catalysts[s].periodic)
         continue;
 
       LifeState newPlacements;
@@ -2533,8 +2537,19 @@ public:
         newPlacements |= activePartMore.Convolve(catalysts[s].locusReactionMask);
 
       // p2 HACK
-      if(catalysts[s].periodic && search.state.gen % 2 != catalysts[s].phase)
-        newPlacements |= catalysts[s].offPhaseReactionMask.Convolve(activePart);
+      if (catalysts[s].periodic) {
+        if (search.state.gen % 2 == catalysts[s].phase){
+          newPlacements |= catalysts[s].locusReactionMask1.Convolve(state2);
+          newPlacements |= catalysts[s].locusReactionMask2.Convolve(state1);
+          if (catalysts[s].canSmother)
+            newPlacements |= catalysts[s].locusReactionMask.Convolve(stateMore);
+        } else {
+          newPlacements |= catalysts[s].offReactionMask1.Convolve(state2);
+          newPlacements |= catalysts[s].offReactionMask2.Convolve(state1);
+          if (catalysts[s].canSmother)
+            newPlacements |= catalysts[s].offReactionMask.Convolve(stateMore);
+        }
+      }
 
       newPlacements &= ~masks[s];
 
@@ -2583,7 +2598,7 @@ public:
         // p2 HACK
         // Do a two-step lookahead to see if the catalyst interacts
         {
-          LifeState difference = lookahead ^ twonext ^ symCatalyst;
+          LifeState difference = lookahead ^ (twonext & symCatalyst);
           if (difference.IsEmpty()) {
             if (DEBUG_OUTPUT && search.config.count == 0) {
               std::cout << "Skipping catalyst " << s << " at "
@@ -2597,13 +2612,6 @@ public:
             continue;
           }
         }
-
-        // // p2 HACK
-        // if(catalysts[s].periodic && search.state.gen % 2 != catalysts[s].phase) {
-        //   masks[s].Set(newPlacement.first, newPlacement.second);
-        //   newPlacements.Erase(newPlacement.first, newPlacement.second);
-        //   continue;
-        // }
 
         if(catalysts[s].hasRequired) {
           newSearch.required.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
@@ -2911,18 +2919,18 @@ public:
         LifeState allNew = newState1 | newState2 | newStateMore;
         bool hasActivePart = !allNew.IsEmpty();
 
-        if (hasActivePart) {
+        // if (hasActivePart) {
           if (search.state.gen >= params.startGen && search.config.count != params.numCatalysts) {
             LifeState next = search.state;
             next.Step();
             LifeState twonext = next;
             twonext.Step();
 
-            TryAddingCatalyst(search, masks, shiftedTargets, allNew, newState1, newState2, newStateMore, twonext);
+            TryAddingCatalyst(search, masks, shiftedTargets, state1, state2, stateMore, allNew, newState1, newState2, newStateMore, twonext, !hasActivePart);
 
             TryAddingFixedCatalyst(search, masks, shiftedTargets, allNew, twonext);
           }
-        }
+        // }
 
         TryApplyingSymmetry(search, masks, shiftedTargets, search.state,
                             state1, state2, stateMore);
