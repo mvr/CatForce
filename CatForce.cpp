@@ -2521,20 +2521,22 @@ public:
         continue;
 
       LifeState newPlacements;
-      if (catalysts[s].hasLocusReactionPop1) {
-        if (activePartPop2 < catalysts[s].locusReactionPop1)
-          newPlacements |= activePart2.Convolve(catalysts[s].locusReactionMask1);
-        else
-          newPlacements |= catalysts[s].locusReactionMask1.Convolve(activePart2);
+      if (!catalysts[s].periodic) {
+        if (catalysts[s].hasLocusReactionPop1) {
+          if (activePartPop2 < catalysts[s].locusReactionPop1)
+            newPlacements |= activePart2.Convolve(catalysts[s].locusReactionMask1);
+          else
+            newPlacements |= catalysts[s].locusReactionMask1.Convolve(activePart2);
+        }
+        if (catalysts[s].hasLocusReactionPop2) {
+          if (activePartPop1 < catalysts[s].locusReactionPop2)
+            newPlacements |= activePart1.Convolve(catalysts[s].locusReactionMask2);
+          else
+            newPlacements |= catalysts[s].locusReactionMask2.Convolve(activePart1);
+        }
+        if (catalysts[s].canSmother)
+          newPlacements |= activePartMore.Convolve(catalysts[s].locusReactionMask);
       }
-      if (catalysts[s].hasLocusReactionPop2) {
-        if (activePartPop1 < catalysts[s].locusReactionPop2)
-          newPlacements |= activePart1.Convolve(catalysts[s].locusReactionMask2);
-        else
-          newPlacements |= catalysts[s].locusReactionMask2.Convolve(activePart1);
-      }
-      if (catalysts[s].canSmother)
-        newPlacements |= activePartMore.Convolve(catalysts[s].locusReactionMask);
 
       // p2 HACK
       if (catalysts[s].periodic) {
@@ -2668,6 +2670,9 @@ public:
               //   break;
               // }
             }
+            if (!lookahead.Contains(shiftedTargets[search.config.count])) {
+              catalystFailed = true;
+            }
           } else {
             LifeState lookahead = newSearch.state;
             LifeState active;
@@ -2675,9 +2680,9 @@ public:
               lookahead.Step();
               active |= lookahead ^ shiftedCatalyst;
             }
-            LifeState unused = catalysts[s].statezoi;
+            LifeState unused = catalysts[s].state;
             unused.Move(newPlacement.first, newPlacement.second);
-            unused &= ~newSearch.required & ~active;
+            unused &= ~(newSearch.required | active);
             if (!unused.IsEmpty()) {
               if (DEBUG_OUTPUT && search.config.count == 0) {
                 std::cout << "Skipping catalyst " << s << " at "
@@ -2689,10 +2694,9 @@ public:
               newPlacements.Erase(newPlacement.first, newPlacement.second);
               continue;
             }
-          }
-
-          if (!catalystFailed && !lookahead.Contains(shiftedTargets[search.config.count])) {
-            catalystFailed = true;
+            if (!lookahead.Contains(shiftedTargets[search.config.count])) {
+              catalystFailed = true;
+            }
           }
 
           if (catalystFailed) {
