@@ -11,7 +11,7 @@ enum CatEvalMode {
   ARG_SOUP,
   DIGESTS,
 };
-const CatEvalMode mode = FILE_SOUPS;
+const CatEvalMode mode = RANDOM_SOUPS;
 
 enum CatEvalOrder {
   SMALLEST,
@@ -419,7 +419,7 @@ void Report(int total, std::vector<CatalystData> &catalysts, std::map<uint64_t, 
       auto keypat = p.contact;
       keypat.Move(-32, -32);
       auto key = keypat.RLE() + std::to_string(p.duration);
-      if (!inverted.contains(key))
+      if (inverted.count(key) == 0)
         inverted[key] = {};
       inverted[key].push_back(p);
     }
