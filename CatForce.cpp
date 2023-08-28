@@ -1442,12 +1442,17 @@ public:
 
                   if (!(matchedAdvanced & ~workspaceAdvanced).IsEmpty())
                     continue;
-                }
 
-                succeeded = true;
-                if(params.maxJunk != -1)
-                  junk = withoutCatalysts & ~matchedPart;
-                break;
+                  succeeded = true;
+                  if(params.maxJunk != -1)
+                    junk = workspaceAdvanced & ~matchedAdvanced & ~conf.startingCatalysts;
+                  break;
+                } else {
+                  succeeded = true;
+                  if(params.maxJunk != -1)
+                    junk = withoutCatalysts & ~matchedPart;
+                  break;
+                }
               }
             }
           }
