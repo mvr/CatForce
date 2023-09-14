@@ -1404,9 +1404,11 @@ public:
     for (unsigned g = 0; g <= stopTime; g++) {
       unsigned k = 0;
       for (auto &filter : filters) {
-        if (filterPassed[k])
+        if (filterPassed[k]) {
+          k++;
           continue; // No need to check it again.
-
+        }
+        
         bool inSingle = workspace.gen == filter.gen;
         bool inRange = filter.gen == -1 &&
                        filter.range.first <= workspace.gen &&
