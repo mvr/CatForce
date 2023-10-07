@@ -1188,6 +1188,8 @@ struct SearchState {
   LifeState freeHistoryMore;
   Configuration config;
 
+  unsigned endTime;
+
   unsigned freeCount; // How many catalysts we had at the last free choice
   std::pair<int, int> violationCell;
   unsigned violationGen;
@@ -1557,6 +1559,7 @@ public:
     search.missingTime = std::array<int, MAX_CATALYSTS>();
     search.missingTime.fill(-1);
     search.recoveredTime = std::array<unsigned, MAX_CATALYSTS>();
+    search.endTime = filterMaxGen;
 
     search.config.count = 0;
     search.config.transparentCount = 0;
@@ -1652,6 +1655,8 @@ public:
         newSearch.config.limitedCount++;
       if (catalysts[s].mustInclude)
         newSearch.config.mustIncludeCount++;
+
+      newSearch.endTime = std::max(newSearch.endTime, search.state.gen + catalysts[s].maxDisappear);
 
       LifeState symCatalyst = catalysts[s].state;
       symCatalyst.JoinWSymChain(catalysts[s].state, params.symmetryChain);
@@ -1797,6 +1802,8 @@ public:
           newSearch.config.limitedCount++;
         if (catalysts[s].mustInclude)
           newSearch.config.mustIncludeCount++;
+
+        newSearch.endTime = std::max(newSearch.endTime, search.state.gen + catalysts[s].maxDisappear);
 
         LifeState shiftedCatalyst = catalysts[s].state;
         shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
@@ -1985,7 +1992,7 @@ public:
     unsigned successtime;
     unsigned failuretime;
 
-    for (unsigned g = search.state.gen; g <= filterMaxGen; g++) {
+    for (unsigned g = search.state.gen; g <= search.endTime; g++) {
       // Block the locations that are hit too early
       if (search.state.gen < params.startGen) {
         UpdateCounts(search.state, search.history1, search.history2, search.historyMore);
