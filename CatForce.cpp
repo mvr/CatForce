@@ -1640,6 +1640,8 @@ public:
       if (search.config.count == params.numCatalysts - 1 &&
           search.config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
+      if (!(catalysts[s].state & search.state).IsEmpty())
+        continue;
       if((activeZOI & catalysts[s].locusReactionMask).IsEmpty())
         continue;
 
@@ -1807,6 +1809,13 @@ public:
 
         LifeState shiftedCatalyst = catalysts[s].state;
         shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
+
+        if (!params.useCollisionMasks &&
+            !(newSearch.state & shiftedCatalyst).IsEmpty()) {
+          masks[s].Set(newPlacement.first, newPlacement.second);
+          newPlacements.Erase(newPlacement.first, newPlacement.second);
+          continue;
+        }
 
         LifeState symCatalyst;
         symCatalyst.JoinWSymChain(shiftedCatalyst, params.symmetryChain);
