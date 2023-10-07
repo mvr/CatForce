@@ -1677,7 +1677,7 @@ public:
 
       newSearch.required = search.required | catalysts[s].required;
 
-      for(unsigned i = 0; i < REQUIRED_LOOKAHEAD - 1; i++) {
+      for(unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
         lookahead.Step();
         if (!(newSearch.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
           continue;
@@ -1686,23 +1686,8 @@ public:
 
       shiftedTargets[search.config.count] = catalysts[s].target;
 
-      if (catalysts[s].checkRecovery) {
-        bool catalystFailed = false;
-        for (int i = 0; i < (int)catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD + 1; i++) {
-          lookahead.Step();
-          if (!(catalysts[s].required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
-            catalystFailed = true;
-            break;
-          }
-        }
-
-        if (!catalystFailed && !lookahead.Contains(shiftedTargets[search.config.count])) {
-          catalystFailed = true;
-        }
-
-        if (catalystFailed) {
-          continue;
-        }
+      if (!lookahead.Contains(shiftedTargets[search.config.count])) {
+        continue;
       }
 
       if (search.config.count == 0) {
