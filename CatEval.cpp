@@ -294,14 +294,19 @@ std::vector<Perturbation> Perturbations(CatalystData cat, LifeState pat, int sou
           for (auto &c : cs) {
             bool isHit = false;
             currentwcat = current | c;
+            int presenttime = 0;
             for (int j = 0; g+j < roughrecovery; j++) {
               currentwcat.Step();
-              isHit = isHit || !((currentwcat ^ c) & c.ZOI()).IsEmpty();
-            }
-
-            if (isHit && currentwcat.Contains(c)) {
-              worksAlone = true;
-              break;
+              bool present = ((currentwcat ^ c) & positionedmatch).IsEmpty();
+              isHit = isHit || !present;
+              if(isHit && present)
+                presenttime += 1;
+              if(isHit && !present)
+                presenttime = 0;
+              if(presenttime > stabletime) {
+                worksAlone = true;
+                break;
+              }
             }
           }
           if(worksAlone)

@@ -813,7 +813,6 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
   std::string matchSurvive = "match-survive";
 
   std::string offsetArea = "offset-area";
-
   std::string useCollisionMasks = "use-collision-masks";
 
   std::string line;
@@ -1596,6 +1595,8 @@ struct SearchState {
   std::array<LifeState, 6> triedOffsets;
   Configuration config;
 
+  unsigned endTime;
+
   unsigned freeCount; // How many catalysts we had at the last free choice
   std::pair<int, int> violationCell;
   unsigned violationGen;
@@ -2152,6 +2153,7 @@ public:
     search.missingTime = std::array<int, MAX_CATALYSTS>();
     search.missingTime.fill(-1);
     search.recoveredTime = std::array<unsigned, MAX_CATALYSTS>();
+    search.endTime = filterMaxGen;
 
     LifeState patzoi = pat.ZOI();
     search.triedOffsets = StartingOffsets(patzoi);
@@ -2369,6 +2371,8 @@ public:
       if (search.config.count == params.numCatalysts - 1 &&
           search.config.mustIncludeCount == 0 && !catalysts[s].mustInclude)
         continue;
+      if (!(catalysts[s].state & search.state).IsEmpty())
+        continue;
       if((activeZOI & catalysts[s].locusReactionMask).IsEmpty())
         continue;
 
@@ -2387,6 +2391,9 @@ public:
 
       if(!(catalysts[s].required & search.history).IsEmpty())
         continue;
+
+      newSearch.endTime = std::max(newSearch.endTime, search.state.gen + catalysts[s].maxDisappear);
+
 
       LifeState symCatalyst = catalysts[s].state;
       symCatalyst = Symmetricize(symCatalyst, newSearch.config.symmetry,
@@ -2408,19 +2415,17 @@ public:
 
       newSearch.required = search.required | catalysts[s].required;
 
-      lookahead.Step(REQUIRED_LOOKAHEAD - 2);
-
-      if (!(newSearch.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
-        continue;
+      for(unsigned i = 0; i < catalysts[s].maxDisappear; i++) {
+        lookahead.Step();
+        if (!(newSearch.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
+          continue;
+        }
       }
 
       shiftedTargets[search.config.count] = catalysts[s].target;
 
-      if (catalysts[s].checkRecovery) {
-        lookahead.Step(catalysts[s].maxDisappear - REQUIRED_LOOKAHEAD);
-
-        if (!lookahead.Contains(shiftedTargets[search.config.count]))
-          continue;
+      if (!lookahead.Contains(shiftedTargets[search.config.count])) {
+        continue;
       }
 
       if (search.config.count == 0 && search.config.symmetry == C1) {
@@ -2482,6 +2487,7 @@ public:
             newMasks[t] |= ~bounds;
           }
         }
+
         if(params.useCollisionMasks) {
           for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
             newMasks[t].Join(catalystCollisionMasks[s * nonfixedCatalystCount + t]);
@@ -2582,12 +2588,23 @@ public:
         if (catalysts[s].mustInclude)
           newSearch.config.mustIncludeCount++;
 
+        newSearch.endTime = std::max(newSearch.endTime, search.state.gen + catalysts[s].maxDisappear);
+
         LifeState shiftedCatalyst = catalysts[s].state;
         shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
+
+        if (!params.useCollisionMasks &&
+            !(newSearch.state & shiftedCatalyst).IsEmpty()) {
+          masks[s].Set(newPlacement.first, newPlacement.second);
+          newPlacements.Erase(newPlacement.first, newPlacement.second);
+          continue;
+        }
 
         LifeState symCatalyst = shiftedCatalyst;
         symCatalyst = Symmetricize(symCatalyst, newSearch.config.symmetry,
                                    newSearch.config.symmetryOffset);
+
+        newSearch.state |= symCatalyst;
         newSearch.config.startingCatalysts |= symCatalyst;
         if(catalysts[s].periodic && search.state.gen % 2 == 1) {
             symCatalyst.Step();
@@ -2844,7 +2861,7 @@ public:
     unsigned successtime;
     unsigned failuretime;
 
-    for (unsigned g = search.state.gen; g <= filterMaxGen; g++) {
+    for (unsigned g = search.state.gen; g <= search.endTime; g++) {
       // Block the locations that are hit too early
       if (search.state.gen < params.startGen) {
         search.history |= search.state;
