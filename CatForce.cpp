@@ -1,6 +1,7 @@
 // CatForce - Catalyst search utility based on LifeAPI using brute force.
 // Written by Michael Simkin 2015
-#include "LifeAPI.h"
+#include "LifeAPI.hpp"
+#include "Symmetry.hpp"
 #include <ctime>
 #include <fstream>
 #include <sstream>
@@ -76,6 +77,7 @@ public:
   int maxJunk;
   int matchSurvive;
 
+  unsigned maxOffsetGen;
   int offsetArea[4]{};
 
   bool useCollisionMasks;
@@ -91,6 +93,7 @@ public:
     searchArea[1] = -30;
     searchArea[2] = 60;
     searchArea[3] = 60;
+    maxOffsetGen = 250;
     offsetArea[0] = -15;
     offsetArea[1] = -15;
     offsetArea[2] = 30;
@@ -313,469 +316,6 @@ public:
   }
 };
 
-inline std::vector<SymmetryTransform> AllTransforms() {
-  return {Identity,
-          ReflectAcrossXEven,
-          ReflectAcrossX,
-          ReflectAcrossYEven,
-          ReflectAcrossY,
-          Rotate90Even,
-          Rotate90,
-          Rotate270Even,
-          Rotate270,
-          Rotate180OddBoth,
-          Rotate180EvenHorizontal,
-          Rotate180EvenVertical,
-          Rotate180EvenBoth,
-          ReflectAcrossYeqX,
-          ReflectAcrossYeqNegX,
-          ReflectAcrossYeqNegXP1};
-}
-
-inline std::vector<SymmetryTransform> SymmetryGroupFromEnum(const StaticSymmetry sym) {
-  switch (sym) {
-  case StaticSymmetry::C1:
-    return {Identity};
-  case StaticSymmetry::D2AcrossX:
-    return {Identity, ReflectAcrossX};
-    // vertical/horizontal here refer to box dimensions, NOT axis of reflection
-  case StaticSymmetry::D2AcrossXEven:
-    return {Identity, ReflectAcrossXEven};
-  case StaticSymmetry::D2AcrossY:
-    return {Identity, ReflectAcrossY};
-  case StaticSymmetry::D2AcrossYEven:
-    return {Identity, ReflectAcrossYEven};
-  case StaticSymmetry::D2diagodd:
-    return {Identity, ReflectAcrossYeqX};
-  case StaticSymmetry::D2negdiagodd:
-    return {Identity, ReflectAcrossYeqNegXP1};
-  case StaticSymmetry::C2:
-    return {Identity, Rotate180OddBoth};
-  case StaticSymmetry::C2even:
-    return {Identity, Rotate180EvenBoth};
-  case StaticSymmetry::C2horizontaleven:
-    return {Identity, Rotate180EvenHorizontal};
-  case StaticSymmetry::C2verticaleven:
-    return {Identity, Rotate180EvenVertical};
-  case StaticSymmetry::C4:
-    return {Identity, Rotate90, Rotate180OddBoth, Rotate270};
-  case StaticSymmetry::C4even:
-    return {Identity, Rotate90Even, Rotate180EvenBoth, Rotate270Even};
-  case StaticSymmetry::D4:
-    return {Identity, ReflectAcrossX, Rotate180OddBoth, ReflectAcrossY};
-  case StaticSymmetry::D4even:
-    return {Identity, ReflectAcrossXEven, Rotate180EvenBoth,
-            ReflectAcrossYEven};
-  case StaticSymmetry::D4horizontaleven:
-    return {Identity, ReflectAcrossYEven, Rotate180EvenHorizontal,
-            ReflectAcrossX};
-  case StaticSymmetry::D4verticaleven:
-    return {Identity, ReflectAcrossXEven, Rotate180EvenVertical,
-            ReflectAcrossY};
-  case StaticSymmetry::D4diag:
-    return {Identity, ReflectAcrossYeqX, Rotate180OddBoth,
-            ReflectAcrossYeqNegXP1};
-  case StaticSymmetry::D4diageven:
-    return {Identity, ReflectAcrossYeqX, Rotate180EvenBoth,
-            ReflectAcrossYeqNegX};
-  case StaticSymmetry::D8:
-    return {Identity,       ReflectAcrossX,         ReflectAcrossYeqX,
-            ReflectAcrossY, ReflectAcrossYeqNegXP1, Rotate90,
-            Rotate270,      Rotate180OddBoth};
-  case StaticSymmetry::D8even:
-    return {Identity,           ReflectAcrossXEven,   ReflectAcrossYeqX,
-            ReflectAcrossYEven, ReflectAcrossYeqNegX, Rotate90Even,
-            Rotate270Even,      Rotate180EvenBoth};
-  }
-}
-
-inline std::vector<SymmetryTransform> SymmetryChainFromEnum(const StaticSymmetry sym) {
-  switch (sym) {
-  case StaticSymmetry::C1:
-    return {};
-  case StaticSymmetry::D2AcrossY:
-    return {ReflectAcrossY};
-  case StaticSymmetry::D2AcrossYEven:
-    return {ReflectAcrossYEven};
-  case StaticSymmetry::D2AcrossX:
-    return {ReflectAcrossX};
-  case StaticSymmetry::D2AcrossXEven:
-    return {ReflectAcrossXEven};
-  case StaticSymmetry::D2diagodd:
-    return {ReflectAcrossYeqX};
-  case StaticSymmetry::D2negdiagodd:
-    return {ReflectAcrossYeqNegXP1};
-  case StaticSymmetry::C2:
-    return {Rotate180OddBoth};
-  case StaticSymmetry::C2even:
-    return {Rotate180EvenBoth};
-  case StaticSymmetry::C2horizontaleven:
-    return {Rotate180EvenHorizontal};
-  case StaticSymmetry::C2verticaleven:
-    return {Rotate180EvenVertical};
-  case StaticSymmetry::C4:
-    return {Rotate90, Rotate180OddBoth};
-  case StaticSymmetry::C4even:
-    return {Rotate90Even, Rotate180EvenBoth};
-  case StaticSymmetry::D4:
-    return {ReflectAcrossX, ReflectAcrossY};
-  case StaticSymmetry::D4even:
-    return {ReflectAcrossXEven, ReflectAcrossYEven};
-  case StaticSymmetry::D4horizontaleven:
-    return {ReflectAcrossYEven, ReflectAcrossX};
-  case StaticSymmetry::D4verticaleven:
-    return {ReflectAcrossXEven, ReflectAcrossY};
-  case StaticSymmetry::D4diag:
-    return {ReflectAcrossYeqX, ReflectAcrossYeqNegXP1};
-  case StaticSymmetry::D4diageven:
-    return {ReflectAcrossYeqX, ReflectAcrossYeqNegX};
-  case StaticSymmetry::D8:
-    return {Rotate90, Rotate180OddBoth, ReflectAcrossYeqX};
-  case StaticSymmetry::D8even:
-    return {Rotate90Even, Rotate180EvenBoth, ReflectAcrossYeqX};
-  }
-}
-
-const LifeState C1Domain = LifeState::Parse(
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
-
-const LifeState D2YDomain = LifeState::Parse(
-        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
-        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
-        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
-        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o!");
-
-const LifeState D2XDomain = LifeState::Parse(
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
-
-const LifeState D2DiagDomain = LifeState::Parse(
-    "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
-    "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$33o$34o$35o$36o$37o$"
-    "38o$39o$40o$41o$42o$43o$44o$45o$46o$47o$48o$49o$50o$51o$52o$53o$54o$"
-    "55o$56o$57o$58o$59o$60o$61o$62o$63o$64o!");
-
-const LifeState D2NegDiagDomain = LifeState::Parse(
-    "64o$63o$62o$61o$60o$59o$58o$57o$56o$55o$54o$53o$52o$51o$50o$49o$48o$"
-    "47o$46o$45o$44o$43o$42o$41o$40o$39o$38o$37o$36o$35o$34o$33o$32o$31o$"
-    "30o$29o$28o$27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$"
-    "13o$12o$11o$10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
-
-const LifeState C2Domain = LifeState::Parse(
-    "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
-    "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
-
-const LifeState C4Domain = LifeState::Parse(
-    "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
-    "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o!");
-
-const LifeState D4DiagDomain = LifeState::Parse(
-    "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
-    "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$32o$31o$30o$29o$28o$"
-    "27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$13o$12o$11o$"
-    "10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
-
-const LifeState D8Domain = LifeState::Parse(
-        "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
-        "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o!");
-
-LifeState FundamentalDomainFast(const StaticSymmetry sym) {
-  switch (sym) {
-  case StaticSymmetry::C1:
-    return C1Domain;
-  case StaticSymmetry::D2AcrossY:
-  case StaticSymmetry::D2AcrossYEven:
-    return D2YDomain;
-  case StaticSymmetry::D2AcrossX:
-  case StaticSymmetry::D2AcrossXEven:
-    return D2XDomain;
-  case StaticSymmetry::D2diagodd:
-    return D2DiagDomain;
-  case StaticSymmetry::D2negdiagodd:
-    return D2NegDiagDomain;
-  case StaticSymmetry::C2:
-  case StaticSymmetry::C2even:
-  case StaticSymmetry::C2horizontaleven:
-  case StaticSymmetry::C2verticaleven:
-    return C2Domain;
-  case StaticSymmetry::C4:
-  case StaticSymmetry::C4even:
-  case StaticSymmetry::D4:
-  case StaticSymmetry::D4even:
-  case StaticSymmetry::D4horizontaleven:
-  case StaticSymmetry::D4verticaleven:
-    return C4Domain;
-  case StaticSymmetry::D4diag:
-  case StaticSymmetry::D4diageven:
-    return D4DiagDomain;
-  case StaticSymmetry::D8:
-  case StaticSymmetry::D8even:
-    return D8Domain;
-  }
-}
-
-LifeState FundamentalDomain(const StaticSymmetry sym) {
-  switch (sym) {
-  case StaticSymmetry::C1:
-    return LifeState::Parse(
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
-  case StaticSymmetry::D2AcrossY:
-  case StaticSymmetry::D2AcrossYEven:
-    return LifeState::Parse(
-        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
-        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
-        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
-        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o!");
-  case StaticSymmetry::D2AcrossX:
-  case StaticSymmetry::D2AcrossXEven:
-    return LifeState::Parse(
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
-  case StaticSymmetry::D2diagodd:
-    return LifeState::Parse(
-        "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
-        "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$33o$34o$35o$36o$37o$"
-        "38o$39o$40o$41o$42o$43o$44o$45o$46o$47o$48o$49o$50o$51o$52o$53o$54o$"
-        "55o$56o$57o$58o$59o$60o$61o$62o$63o$64o!");
-  case StaticSymmetry::D2negdiagodd:
-    return LifeState::Parse(
-        "64o$63o$62o$61o$60o$59o$58o$57o$56o$55o$54o$53o$52o$51o$50o$49o$48o$"
-        "47o$46o$45o$44o$43o$42o$41o$40o$39o$38o$37o$36o$35o$34o$33o$32o$31o$"
-        "30o$29o$28o$27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$"
-        "13o$12o$11o$10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
-  case StaticSymmetry::C2:
-  case StaticSymmetry::C2even:
-  case StaticSymmetry::C2horizontaleven:
-  case StaticSymmetry::C2verticaleven:
-    return LifeState::Parse(
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$"
-        "64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o$64o!");
-  case StaticSymmetry::C4:
-  case StaticSymmetry::C4even:
-  case StaticSymmetry::D4:
-  case StaticSymmetry::D4even:
-  case StaticSymmetry::D4horizontaleven:
-  case StaticSymmetry::D4verticaleven:
-    return LifeState::Parse(
-        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$"
-        "32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o$32o!");
-  case StaticSymmetry::D4diag:
-  case StaticSymmetry::D4diageven:
-    return LifeState::Parse(
-        "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
-        "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o$32o$31o$30o$29o$28o$"
-        "27o$26o$25o$24o$23o$22o$21o$20o$19o$18o$17o$16o$15o$14o$13o$12o$11o$"
-        "10o$9o$8o$7o$6o$5o$4o$3o$2o$o!");
-  case StaticSymmetry::D8:
-  case StaticSymmetry::D8even:
-    return LifeState::Parse(
-        "o$2o$3o$4o$5o$6o$7o$8o$9o$10o$11o$12o$13o$14o$15o$16o$17o$18o$19o$20o$"
-        "21o$22o$23o$24o$25o$26o$27o$28o$29o$30o$31o$32o!");
-  }
-}
-
-
-
-inline std::pair<int, int> CommuteTranslation(const SymmetryTransform sym,
-                                              std::pair<int, int> vec) {
-  int x = vec.first;
-  int y = vec.second;
-  switch (sym) {
-  case Identity:
-    return std::make_pair(x, y);
-  case ReflectAcrossXEven:
-    return std::make_pair(x, -y);
-  case ReflectAcrossX:
-    return std::make_pair(x, -y);
-  case ReflectAcrossYEven:
-    return std::make_pair(-x, y);
-  case ReflectAcrossY:
-    return std::make_pair(-x, y);
-  case Rotate90Even:
-    return std::make_pair(-y, x);
-  case Rotate90:
-    return std::make_pair(-y, x);
-  case Rotate270Even:
-    return std::make_pair(y, -x);
-  case Rotate270:
-    return std::make_pair(y, -x);
-  case Rotate180OddBoth:
-    return std::make_pair(-x, -y);
-  case Rotate180EvenHorizontal:
-    return std::make_pair(-x, -y);
-  case Rotate180EvenVertical:
-    return std::make_pair(-x, -y);
-  case Rotate180EvenBoth:
-    return std::make_pair(-x, -y);
-  case ReflectAcrossYeqX:
-    return std::make_pair(y, x);
-  case ReflectAcrossYeqNegX:
-    return std::make_pair(-y, -x);
-  case ReflectAcrossYeqNegXP1:
-    return std::make_pair(-y, -x);
-  }
-}
-
-inline std::pair<int, int> HalveOffset(const StaticSymmetry sym,
-                                       std::pair<int, int> vec) {
-  switch (sym) {
-  case C4: { // This is the center of rotation for offset rotation by 90
-    int x = vec.first;
-    int y = vec.second;
-    int x2 = (x - y) / 2;
-    int y2 = (x + y) / 2;
-    int x3 = ((x2 + 16 + 32) % 32 - 16 + 64) % 64;
-    int y3 = ((y2 + 16 + 32) % 32 - 16 + 64) % 64;
-    return std::make_pair(x3, y3);
-  }
-  default: {
-    int x = (((vec.first + 32) % 64 - 32) / 2 + 64) % 64;
-    int y = (((vec.second + 32) % 64 - 32) / 2 + 64) % 64;
-    return std::make_pair(x, y);
-  }
-  }
-}
-
-StaticSymmetry SymmetryFromString(const std::string &name) {
-  std::string start = name.substr(0, 2);
-  std::string rest = name.substr(2);
-  if (start == "D2") {
-    if (rest == "-" or rest == "vertical") {
-      return StaticSymmetry::D2AcrossX;
-    } else if (rest == "-even" or rest == "verticaleven") {
-      return StaticSymmetry::D2AcrossXEven;
-    } else if (rest == "|" or rest == "horizontal") {
-      return StaticSymmetry::D2AcrossY;
-    } else if (rest == "|even" or rest == "horizontaleven") {
-      return StaticSymmetry::D2AcrossYEven;
-    } else if (rest == "/" or rest == "/odd") {
-      return StaticSymmetry::D2negdiagodd;
-    } else if (rest == "\\" or rest == "\\odd") {
-      return StaticSymmetry::D2diagodd;
-    }
-  } else if (start == "C2") {
-    if (rest == "" or rest == "_1") {
-      return StaticSymmetry::C2;
-    } else if (rest == "even" or rest == "_4") {
-      return StaticSymmetry::C2even;
-    } else if (rest == "horizontaleven" or rest == "|even") {
-      return StaticSymmetry::C2horizontaleven;
-    } else if (rest == "verticaleven" or rest == "-even" or rest == "_2") {
-      return StaticSymmetry::C2verticaleven;
-    }
-  } else if (start == "C4") {
-    if (rest == "" or rest == "_1") {
-      return StaticSymmetry::C4;
-    } else if (rest == "even" or rest == "_4") {
-      return StaticSymmetry::C4even;
-    }
-  } else if (start == "D4") {
-    std::string evenOddInfo = rest.substr(1);
-    if (rest[0] == '+' or (rest.size() > 1 and rest[1] == '+')) {
-      if (evenOddInfo == "" or rest == "_+1") {
-        return StaticSymmetry::D4;
-      } else if (evenOddInfo == "even" or rest == "_+4") {
-        return StaticSymmetry::D4even;
-      } else if (evenOddInfo == "verticaleven" or evenOddInfo == "-even" or
-                 rest == "_+2") {
-        return StaticSymmetry::D4verticaleven;
-      } else if (evenOddInfo == "horizontaleven" or evenOddInfo == "|even") {
-        return StaticSymmetry::D4horizontaleven;
-      }
-    } else if (rest[0] == 'x' or (rest.size() > 1 and rest[1] == 'x')) {
-      if (evenOddInfo == "" or rest == "_x1") {
-        return StaticSymmetry::D4diag;
-      } else if (evenOddInfo == "even" or rest == "_x4") {
-        return StaticSymmetry::D4diageven;
-      }
-    }
-  } else if (start == "D8") {
-    if (rest == "" or rest == "_1") {
-      return StaticSymmetry::D8;
-    } else if (rest == "even" or rest == "_4") {
-      return StaticSymmetry::D8even;
-    }
-  }
-  return StaticSymmetry::C1;
-}
-
-std::string SymmetryToString(StaticSymmetry sym) {
-  switch (sym) {
-  case StaticSymmetry::C1:
-    return "C1";
-  case StaticSymmetry::D2AcrossX:
-    return "D2-";
-  case StaticSymmetry::D2AcrossXEven:
-    return "D2-even";
-  case StaticSymmetry::D2AcrossY:
-    return "D2|";
-  case StaticSymmetry::D2AcrossYEven:
-    return "D2|even";
-  case StaticSymmetry::D2diagodd:
-    return "D2\\";
-  case StaticSymmetry::D2negdiagodd:
-    return "D2/";
-  case StaticSymmetry::C2:
-    return "C2";
-  case StaticSymmetry::C2even:
-    return "C2even";
-  case StaticSymmetry::C2horizontaleven:
-    return "C2|even";
-  case StaticSymmetry::C2verticaleven:
-    return "C2-even";
-  case StaticSymmetry::C4:
-    return "C4";
-  case StaticSymmetry::C4even:
-    return "C4even";
-  case StaticSymmetry::D4:
-    return "D4+";
-  case StaticSymmetry::D4even:
-    return "D4+even";
-  case StaticSymmetry::D4horizontaleven:
-    return "D4+|even";
-  case StaticSymmetry::D4verticaleven:
-    return "D4+-even";
-  case StaticSymmetry::D4diag:
-    return "D4x";
-  case StaticSymmetry::D4diageven:
-    return "D4xeven";
-  case StaticSymmetry::D8:
-    return "D8";
-  case StaticSymmetry::D8even:
-    return "D8even";
-  }
-}
-
-std::vector<SymmetryTransform> CharToTransforms(char ch) {
-  switch (ch) {
-  case '.':
-    return SymmetryGroupFromEnum(StaticSymmetry::C1);
-  case '|':
-    return SymmetryGroupFromEnum(StaticSymmetry::D2AcrossY);
-  case '-':
-    return SymmetryGroupFromEnum(StaticSymmetry::D2AcrossX);
-  case '\\':
-    return SymmetryGroupFromEnum(StaticSymmetry::D2diagodd);
-  case '/':
-    return SymmetryGroupFromEnum(StaticSymmetry::D2negdiagodd);
-  case '+':
-  case '@':
-    return SymmetryGroupFromEnum(StaticSymmetry::C4);
-  case 'x':
-    return {Identity, Rotate90, ReflectAcrossX, ReflectAcrossYeqX};
-  case '*':
-    return SymmetryGroupFromEnum(StaticSymmetry::D8);
-  default:
-    return SymmetryGroupFromEnum(StaticSymmetry::C1);
-  }
-}
-
 void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
                 std::vector<FilterInput> &filters,
                 SearchParams &params) {
@@ -812,6 +352,7 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
   std::string maxJunk = "max-junk";
   std::string matchSurvive = "match-survive";
 
+  std::string maxOffsetGen = "max-offset-gen";
   std::string offsetArea = "offset-area";
   std::string useCollisionMasks = "use-collision-masks";
 
@@ -907,6 +448,8 @@ void ReadParams(const std::string &fname, std::vector<CatalystInput> &catalysts,
       params.stopAfterCatsDestroyed = atoi(elems[1].c_str());
     } else if (elems[0] == maxJunk){
       params.maxJunk = atoi(elems[1].c_str());
+    } else if (elems[0] == maxOffsetGen) {
+      params.maxOffsetGen = atoi(elems[1].c_str());
     } else if (elems[0] == offsetArea) {
       params.offsetArea[0] = atoi(elems[1].c_str());
       params.offsetArea[1] = atoi(elems[2].c_str());
@@ -1047,7 +590,7 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       locus = pat;
     }
 
-    LifeState shell = pat.ZOI().Shell();
+    LifeState shell = pat.ZOI() & (~pat.ZOI()).ZOI();
 
     LifeState contact;
     if (input.contactRLE != "") {
@@ -1063,11 +606,9 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     {
       result.locusAvoidMask = shell & ~contact;
       result.locusAvoidMask.Transform(Rotate180OddBoth);
-      result.locusAvoidMask.RecalculateMinMax();
 
       result.locusReactionMask = shell & contact;
       result.locusReactionMask.Transform(Rotate180OddBoth);
-      result.locusReactionMask.RecalculateMinMax();
       result.locusReactionMask &= ~result.locusAvoidMask;
 
       // result.locusAvoidMask = result.locusAvoidMask.Shell();
@@ -1088,27 +629,21 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
 
       result.locusReactionMask1 = state1 & contact;
       result.locusReactionMask1.Transform(Rotate180OddBoth);
-      result.locusReactionMask1.RecalculateMinMax();
 
       result.locusReactionMask2 = state2 & contact;
       result.locusReactionMask2.Transform(Rotate180OddBoth);
-      result.locusReactionMask2.RecalculateMinMax();
 
       // result.locusReactionMaskMore = stateMore & shell & ~nonLocusZOI;
       // result.locusReactionMaskMore.Transform(Rotate180OddBoth);
-      // result.locusReactionMaskMore.RecalculateMinMax();
 
       result.locusAvoidMask1 = state1 & shell & ~contact;
       result.locusAvoidMask1.Transform(Rotate180OddBoth);
-      result.locusAvoidMask1.RecalculateMinMax();
 
       result.locusAvoidMask2 = state2 & shell & ~contact;
       result.locusAvoidMask2.Transform(Rotate180OddBoth);
-      result.locusAvoidMask2.RecalculateMinMax();
 
       // result.locusAvoidMaskMore = stateMore & shell & nonLocusZOI;
       // result.locusAvoidMaskMore.Transform(Rotate180OddBoth);
-      // result.locusAvoidMaskMore.RecalculateMinMax();
 
       // result.locusReactionPop = result.locusReactionMask.GetPop();
       result.locusReactionPop1 = result.locusReactionMask1.GetPop();
@@ -1121,9 +656,8 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
       // result.hasLocusReactionPopMore = result.locusReactionPopMore > 0;
 
       // p2 HACK
-      result.offReactionMask = gen1.ZOI().Shell();
+      result.offReactionMask = gen1.ZOI() & (~gen1.ZOI()).ZOI();
       result.offReactionMask.Transform(Rotate180OddBoth);
-      result.offReactionMask.RecalculateMinMax();
 
       LifeState off1, off2, offMore;
       UpdateCounts(gen1, off1, off2, offMore);
@@ -1142,9 +676,13 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     }
 
     for (unsigned k = 0; k < input.forbiddenRLE.size(); k++) {
-      result.forbidden.push_back(LifeTarget::Parse(input.forbiddenRLE[k].c_str(),
-                                                   input.forbiddenXY[k].first,
-                                                   input.forbiddenXY[k].second, tran));
+      LifeTarget target;
+      target.wanted = LifeState::Parse(input.forbiddenRLE[k].c_str(),
+                                        input.forbiddenXY[k].first,
+                                        input.forbiddenXY[k].second, tran);
+      target.unwanted = target.wanted.GetBoundary();
+
+      result.forbidden.push_back(target);
     }
 
     result.maxDisappear = input.maxDisappear;
@@ -1164,7 +702,6 @@ std::vector<CatalystData> CatalystData::FromInput(CatalystInput &input) {
     if(input.fixed) {
       // We flip it back to avoid a convolve later
       result.locusReactionMask.Transform(Rotate180OddBoth);
-      result.locusReactionMask.RecalculateMinMax();
     }
 
     results.push_back(result);
@@ -1191,7 +728,8 @@ public:
 FilterData FilterData::FromInput(FilterInput &input) {
   FilterData result;
 
-  result.target = LifeTarget::Parse(input.rle.c_str(), input.x, input.y);
+  result.target.wanted = LifeState::Parse(input.rle.c_str(), input.x, input.y);
+  result.target.unwanted = result.target.wanted.GetBoundary();
   result.gen = input.gen;
   result.range = input.range;
   result.type = input.type;
@@ -1328,7 +866,7 @@ public:
 
   SearchResult(LifeState &initState, const Configuration &conf,
                unsigned firstGenSurviveIn, unsigned genSurvive) {
-    init.Copy(initState);
+    init = initState;
 
     maxGenSurvive = genSurvive;
     firstGenSurvive = firstGenSurviveIn;
@@ -1343,33 +881,35 @@ private:
 
 public:
   LifeState categoryKey;
+  unsigned categoryGen;
   std::vector<SearchResult> results;
 
-  Category(LifeState &catalystRemoved, SearchResult &firstResult,
+  Category(LifeState &catalystRemoved, unsigned gen, SearchResult &firstResult,
            unsigned catDeltaIn, unsigned maxGen) {
     categoryKey = catalystRemoved;
+    categoryGen = gen;
     results.push_back(firstResult);
     catDelta = catDeltaIn;
     maxgen = maxGen;
 
     LifeState temp = categoryKey;
-    temp.Step(maxgen - temp.gen);
+    temp.Step(maxgen - categoryGen);
     hash = temp.GetHash();
   }
 
   void Add(SearchResult &result) { results.push_back(result); }
 
-  bool BelongsTo(LifeState &test, const uint64_t &testHash) {
+  bool BelongsTo(LifeState &test, unsigned testGen, const uint64_t &testHash) {
     if (testHash != hash)
       return false;
 
     LifeState tempCat = categoryKey;
     LifeState tempTest = test;
 
-    if (tempTest.gen > tempCat.gen)
-      tempCat.Step(tempTest.gen - tempCat.gen);
-    else if (tempTest.gen < tempCat.gen)
-      tempTest.Step(tempCat.gen - tempTest.gen);
+    if (testGen > categoryGen)
+      tempCat.Step(testGen - categoryGen);
+    else if (testGen < categoryGen)
+      tempTest.Step(categoryGen - testGen);
 
     for (unsigned i = 0; i < catDelta; i++) {
       if (tempTest == tempCat)
@@ -1404,7 +944,7 @@ public:
     for (unsigned l = 0; l < howmany; l++)
       for (int j = 0; j < N; j++)
         for (int i = 0; i < N; i++)
-          vec[Dist * l + i][j] = results[l].init.GetCell(i - 32, j - 32) == 1;
+          vec[Dist * l + i][j] = results[l].init.GetSafe(i - 32, j - 32) == 1;
 
     return GetRLE(vec);
   }
@@ -1431,16 +971,14 @@ public:
            unsigned genSurvive) {
 
     LifeState result = afterCatalyst ^ catalysts;
-    result.gen = firstGenSurvive;
 
-    result.Step(maxgen - result.gen);
+    result.Step(maxgen - firstGenSurvive);
     uint64_t hash = result.GetHash();
 
     result = afterCatalyst ^ catalysts;
-    result.gen = firstGenSurvive;
 
     for (auto & category: categories) {
-      if (category->BelongsTo(result, hash)) {
+      if (category->BelongsTo(result, firstGenSurvive, hash)) {
           SearchResult r(init, conf, firstGenSurvive, genSurvive);
           category->Add(r);
           return;
@@ -1448,136 +986,21 @@ public:
     }
 
     LifeState categoryKey = afterCatalyst ^ catalysts;
-    categoryKey.gen = firstGenSurvive;
 
     SearchResult r(init, conf, firstGenSurvive, genSurvive);
-    categories.push_back(new Category(categoryKey, r, catDelta, maxgen));
+    categories.push_back(new Category(categoryKey, firstGenSurvive, r, catDelta, maxgen));
   }
 
   std::string CategoriesRLE(int maxCatSize) {
     std::stringstream ss;
     for (auto & category: categories) {
-      ss << category->RLE(maxCatSize);
+      ss << category->RLE(maxCatSize) << std::endl;
     }
 
     return ss.str();
   }
 };
 
-inline std::pair<int, int> PerpComponent(SymmetryTransform transf,
-                                         std::pair<int, int> offset) {
-  switch (transf) {
-  case ReflectAcrossX:
-    return std::make_pair(0, offset.second);
-  case ReflectAcrossY:
-    return std::make_pair(offset.first, 0);
-  case ReflectAcrossYeqX: {
-    int x = (offset.first + 32) % 64 - 32;
-    int y = (offset.second + 32) % 64 - 32;
-    return std::make_pair(((x - y + 128) / 2) % 64,
-                          ((-x + y + 128) / 2) % 64);
-  }
-  case ReflectAcrossYeqNegXP1: {
-    int x = (offset.first + 32) % 64 - 32;
-    int y = (offset.second + 32) % 64 - 32;
-    return std::make_pair(((x + y + 128) / 2) % 64,
-                          ((x + y + 128) / 2) % 64);
-  }
-  default:
-    return offset;
-  }
-}
-
-LifeState Symmetricize(const LifeState &state, StaticSymmetry sym,
-                                 std::pair<int, int> offset) {
-  switch (sym) {
-  case C1:
-    return state;
-  case C2: {
-    LifeState sym = state;
-    sym.FlipX();
-    sym.FlipY();
-    sym.Move(offset.first+1, offset.second+1);
-    sym.Join(state);
-    return sym;
-  }
-  case C4: {
-    LifeState sym = state;
-    sym.Transform(Rotate90);
-    sym.Move(offset);
-    sym.Join(state);
-
-    LifeState sym2 = sym;
-    sym2.FlipX();
-    sym2.FlipY();
-    sym2.Move(offset.first - offset.second + 1, offset.second + offset.first + 1);
-    sym.Join(sym2);
-    return sym;
-  }
-  case D2AcrossX: {
-    LifeState sym = state;
-    sym.FlipX();
-    sym.Move(offset.first, offset.second + 1);
-    sym.Join(state);
-    return sym;
-  }
-  case D2AcrossY: {
-    LifeState sym = state;
-    sym.FlipY();
-    sym.Move(offset.first + 1, offset.second);
-    sym.Join(state);
-    return sym;
-  }
-  case D2diagodd: {
-    LifeState sym = state;
-    sym.Transform(ReflectAcrossYeqX);
-    sym.Move(offset);
-    sym.Join(state);
-    return sym;
-  }
-  case D2negdiagodd: {
-    LifeState sym = state;
-    sym.Transpose(true);
-    sym.Move(offset.first + 1, offset.second + 1);
-    sym.Join(state);
-    return sym;
-  }
-
-  case D4: {
-    LifeState acrossx = state;
-    auto xoffset = PerpComponent(ReflectAcrossX, offset);
-    acrossx.FlipX();
-    acrossx.Move(xoffset.first, xoffset.second + 1);
-    acrossx.Join(state);
-
-    LifeState acrossy = acrossx;
-    auto yoffset = PerpComponent(ReflectAcrossY, offset);
-    acrossy.FlipY();
-    acrossy.Move(yoffset.first + 1, yoffset.second);
-    acrossy.Join(acrossx);
-
-    return acrossy;
-  }
-  case D4diag: {
-    LifeState acrossy = state;
-    acrossy.Transform(ReflectAcrossYeqX);
-    auto yoffset = PerpComponent(ReflectAcrossYeqX, offset);
-    acrossy.Move(yoffset);
-    acrossy.Join(state);
-
-    LifeState acrossx = acrossy;
-    acrossx.FlipX();
-    acrossx.FlipY();
-    acrossx.Move(offset.first + 1, offset.second+1);
-    acrossx.Join(acrossy);
-
-    return acrossx;
-  }
-
-  default:
-    __builtin_unreachable();
-  }
-}
 
 struct SearchState {
   LifeState state;
@@ -1594,6 +1017,10 @@ struct SearchState {
   StaticSymmetry freeSymmetry;
   std::array<LifeState, 6> triedOffsets;
   Configuration config;
+
+  unsigned currentGen;
+
+  unsigned freeStateGen;
 
   unsigned endTime;
 
@@ -1650,7 +1077,6 @@ public:
           continue;
 
         catalystCollisionMasks[s * nonfixedCatalystCount + t] = CollisionMask(catalysts[s], catalysts[t]);
-        catalystCollisionMasks[s * nonfixedCatalystCount + t].RecalculateMinMax();
       }
     }
   }
@@ -1777,7 +1203,7 @@ public:
 
   bool HasForbidden(Configuration &conf, unsigned curIter) {
     LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
-    workspace.Join(conf.startingCatalysts);
+    workspace |= conf.startingCatalysts;
 
     std::vector<LifeTarget> movedTargets;
 
@@ -1803,7 +1229,8 @@ public:
 
   bool ValidateFilters(Configuration &conf, unsigned successtime, unsigned failuretime) {
     LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
-    workspace.Join(conf.startingCatalysts);
+    workspace |= conf.startingCatalysts;
+    unsigned workspaceGen = 0;
 
     unsigned stopTime;
     if (params.stopAfterCatsDestroyed != -1)
@@ -1824,12 +1251,12 @@ public:
 
     for (unsigned g = 0; g <= std::min(filterMaxGen, stopTime); g++) {
       for (auto &filter : filters) {
-        bool inSingle = workspace.gen == filter.gen;
+        bool inSingle = workspaceGen == filter.gen;
         bool inRange = filter.gen == -1 &&
-                       filter.range.first <= workspace.gen &&
-                       filter.range.second >= workspace.gen;
+                       filter.range.first <= workspaceGen &&
+                       filter.range.second >= workspaceGen;
 
-        bool shouldCheck = inSingle || (inRange && workspace.gen + params.stableInterval >= successtime);
+        bool shouldCheck = inSingle || (inRange && workspaceGen + params.stableInterval >= successtime);
 
         bool succeeded = false;
 
@@ -1842,6 +1269,7 @@ public:
       }
 
       workspace.Step();
+      workspaceGen++;
     }
 
     return false;
@@ -1849,7 +1277,7 @@ public:
 
   bool CheckOscillating(Configuration &conf, unsigned successtime, unsigned failuretime) {
     LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
-    workspace.Join(conf.startingCatalysts);
+    workspace |= conf.startingCatalysts;
 
     unsigned stopTime;
     if (params.stopAfterCatsDestroyed != -1)
@@ -1897,7 +1325,7 @@ public:
         return;
 
       LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
-      workspace.Join(conf.startingCatalysts);
+      workspace |= conf.startingCatalysts;
       workspace.Move(shift);
 
       LifeState init = workspace;
@@ -1923,7 +1351,7 @@ public:
 
     // If all filters validated update results
     LifeState workspace = Symmetricize(pat, conf.symmetry, conf.symmetryOffset);
-    workspace.Join(conf.startingCatalysts);
+    workspace |= conf.startingCatalysts;
     workspace.Move(shift);
 
     LifeState init = workspace;
@@ -1991,54 +1419,6 @@ public:
     }
   }
 
-  LifeState IntersectingOffsets(const LifeState &pat1, const LifeState &pat2, StaticSymmetry oldsym, StaticSymmetry newsym) {
-    if (oldsym != C1) {
-      newsym = D2Continuation(oldsym);
-    }
-
-    LifeState transformed;
-    switch (newsym) {
-    case C2:
-      return pat2.Convolve(pat1);
-    case C4: {
-      transformed = pat1;
-      transformed.Transform(Rotate270);
-
-      // // Very inefficient
-      // LifeState doubledcollisions = pat2.Convolve(pat1);
-      // doubledcollisions.Transform(ReflectAcrossYeqNegXP1);
-      // doubledcollisions = doubledcollisions.Skew().HalveY();
-      // doubledcollisions.Transform(ReflectAcrossYeqNegXP1);
-      // doubledcollisions = doubledcollisions.InvSkew();
-
-      return pat2.Convolve(transformed); // | doubledcollisions;
-    }
-    case D2AcrossX:
-      transformed = pat1;
-      transformed.Transform(ReflectAcrossY);
-      return pat2.Convolve(transformed);
-    case D2AcrossY:
-      transformed = pat1;
-      transformed.Transform(ReflectAcrossX);
-      return pat2.Convolve(transformed);
-    case D2diagodd:
-      transformed = pat1;
-      transformed.Transform(ReflectAcrossYeqNegXP1);
-      return pat2.Convolve(transformed);
-    case D2negdiagodd:
-      transformed = pat1;
-      transformed.Transform(ReflectAcrossYeqX);
-      return pat2.Convolve(transformed);
-    default:
-      __builtin_unreachable();
-    }
-  }
-
-  LifeState IntersectingOffsets(const LifeState &active, StaticSymmetry oldsym,
-                                StaticSymmetry newsym) {
-    return IntersectingOffsets(active, active, oldsym, newsym);
-  }
-
   LifeState InteractingOffsets(const LifeState &a, const LifeState &a1,
                                const LifeState &a2, const LifeState &aMore,
                                const LifeState &b, const LifeState &b1,
@@ -2050,15 +1430,15 @@ public:
     switch (newsym) {
     case C2:
     case C4:
-      return IntersectingOffsets(a1, b2, oldsym, newsym) |
-        IntersectingOffsets(a2, b1, oldsym, newsym) |
-        IntersectingOffsets(a | a1 | a2 | aMore, b | bMore, oldsym, newsym) |
-        IntersectingOffsets(a | aMore, b | b1 | b2 | bMore, oldsym, newsym);
+      return IntersectingOffsets(a1, b2, newsym) |
+        IntersectingOffsets(a2, b1, newsym) |
+        IntersectingOffsets(a | a1 | a2 | aMore, b | bMore, newsym) |
+        IntersectingOffsets(a | aMore, b | b1 | b2 | bMore, newsym);
     case D2AcrossX:
     case D2AcrossY:
     case D2diagodd:
     case D2negdiagodd:
-      return IntersectingOffsets(a | a1 | a2 | aMore, b | b1 | b2 | bMore, oldsym, newsym);
+      return IntersectingOffsets(a | a1 | a2 | aMore, b | b1 | b2 | bMore, newsym);
     default:
       __builtin_unreachable();
     }
@@ -2074,18 +1454,18 @@ public:
     switch (newsym) {
     case C2:
     case C4:
-      return IntersectingOffsets(a1, a2, oldsym, newsym) |
-             IntersectingOffsets(a | aMore, a | a1 | a2 | aMore, oldsym, newsym);
+      return IntersectingOffsets(a1, a2, newsym) |
+             IntersectingOffsets(a | aMore, a | a1 | a2 | aMore, newsym);
     // case C4:
-    //   return IntersectingOffsets(a1, a2, oldsym, newsym) |
-    //          IntersectingOffsets(a2, a1, oldsym, newsym) |
-    //          IntersectingOffsets(a | aMore, a | a1 | a2 | aMore, oldsym, newsym) |
-    //          IntersectingOffsets(a | a1 | a2 | aMore, a | aMore, oldsym, newsym);
+    //   return IntersectingOffsets(a1, a2, newsym) |
+    //          IntersectingOffsets(a2, a1, newsym) |
+    //          IntersectingOffsets(a | aMore, a | a1 | a2 | aMore, newsym) |
+    //          IntersectingOffsets(a | a1 | a2 | aMore, a | aMore, newsym);
     case D2AcrossX:
     case D2AcrossY:
     case D2diagodd:
     case D2negdiagodd:
-      return IntersectingOffsets(a | a1 | a2 | aMore, a | a1 | a2 | aMore, oldsym, newsym);
+      return IntersectingOffsets(a | a1 | a2 | aMore, a | a1 | a2 | aMore, newsym);
     default:
       __builtin_unreachable();
     }
@@ -2103,15 +1483,16 @@ public:
       return LifeState::SolidRect(-32, 0, 64, 1);
     case D2diagodd: {
       LifeState diag;
-      for (int i = 0; i < 64; ++i) {
-        diag.SetCell(i, 64 - i, 1);
+      diag.Set(0, 0, 1);
+      for (int i = 1; i < 64; ++i) {
+        diag.Set(i, 64 - i, 1);
       }
       return diag;
     }
     case D2negdiagodd: {
       LifeState negdiag;
       for (int i = 0; i < 64; ++i) {
-        negdiag.SetCell(i, i, 1);
+        negdiag.Set(i, i, 1);
       }
       return negdiag;
     }
@@ -2133,11 +1514,13 @@ public:
     SearchState search;
     search.state = LifeState();
     search.state.JoinWSymChain(pat, params.symmetryChain);
+    search.currentGen = 0;
     search.history = search.state;
     search.history1 = search.state;
     search.history2 = search.state;
     search.historyMore = search.state;
     search.freeState = search.state;
+    search.freeStateGen = 0;
     search.freeHistory = search.state;
     search.freeHistory1 = search.state;
     search.freeHistory2 = search.state;
@@ -2153,7 +1536,7 @@ public:
     search.missingTime = std::array<int, MAX_CATALYSTS>();
     search.missingTime.fill(-1);
     search.recoveredTime = std::array<unsigned, MAX_CATALYSTS>();
-    search.endTime = filterMaxGen;
+    search.endTime = std::max(filterMaxGen, params.maxOffsetGen);
 
     LifeState patzoi = pat.ZOI();
     search.triedOffsets = StartingOffsets(patzoi);
@@ -2166,11 +1549,14 @@ public:
 
     search.config.startingCatalysts = alsoRequired;
 
+    // std::cout << search.triedOffsets[OffsetIndexForSym(C1, C2)].RLE() << std::endl;
+    // exit(0);
+
     LifeState bounds =
         LifeState::SolidRect(params.searchArea[0], params.searchArea[1],
                              params.searchArea[2], params.searchArea[3]);
 
-    bounds &= FundamentalDomainFast(params.symmetry);
+    bounds &= FundamentalDomain(params.symmetry);
 
     std::vector<LifeState> masks = std::vector<LifeState>(nonfixedCatalystCount);
     for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
@@ -2191,6 +1577,10 @@ public:
                       const LifeState &activePart1,
                       const LifeState &activePart2,
                       const LifeState &activePartMore) {
+    // if(search.config.symmetry == C1)
+    //   TryApplyingSpecificSymmetry(search, masks, shiftedTargets, activePart,
+    //                               activePart1, activePart2, activePartMore, C2);
+    // return;
 
     switch (search.config.symmetry) {
     case C1:
@@ -2223,11 +1613,24 @@ public:
     LifeState newOffsets = InteractingOffsets(state, state1, state2, stateMore,
                                               search.config.symmetry, newSym)
       & ~search.triedOffsets[OffsetIndexForSym(search.config.symmetry, newSym)];
+
+    // if (search.config.symmetry == C1 && newSym == C2 && search.currentGen == 2) {
+    //   std::cout << search.triedOffsets[OffsetIndexForSym(search.config.symmetry, newSym)].RLE() << std::endl;
+    //   std::cout << newOffsets.RLE() << std::endl;
+    // }
+
     search.triedOffsets[OffsetIndexForSym(search.config.symmetry, newSym)] |= newOffsets;
 
     while (!newOffsets.IsEmpty()) {
       // Do the placement
       auto newOffset = newOffsets.FirstOn();
+
+      // if (newOffset != std::make_pair(7, -1 + 64)) {
+      //   newOffsets.Erase(newOffset.first, newOffset.second);
+      //   continue;
+      // }
+
+      // std::cout << "made it" << std::endl;
 
       // HACK: avoid some bad wrapping cases
       if (newSym == D4diag) {
@@ -2278,7 +1681,7 @@ public:
 
       if (newSearch.config.count != params.numCatalysts) {
         newMasks = masks;
-        LifeState fundamentalDomain = FundamentalDomainFast(newSym);
+        LifeState fundamentalDomain = FundamentalDomain(newSym);
         fundamentalDomain.Move(HalveOffset(newSym, newOffset));
         for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
           newMasks[t] |= ~fundamentalDomain;
@@ -2302,7 +1705,6 @@ public:
         // We need to update the masks for the continuation.
         newSearch.triedOffsets[continuationIndex] = search.triedOffsets[continuationIndex];
         newSearch.triedOffsets[continuationIndex].Move(newOffset);
-        // TODO: this is wrong, should use InteractingOffsets somehow:
         newSearch.triedOffsets[continuationIndex] |= IntersectingOffsets(newSearch.history, C1, D2Continuation(newSym));
 
         if(newSym == D2diagodd || newSym == D2negdiagodd)
@@ -2326,7 +1728,7 @@ public:
       LifeState requiredViolations = search.required & (lookahead ^ search.config.startingCatalysts);
       std::pair<int, int> cell = requiredViolations.FirstOn();
       if (cell != std::make_pair(-1, -1))
-        return {cell, search.state.gen + g};
+        return {cell, search.currentGen + g};
 
       for (unsigned i = 0; i < search.config.count; i++) {
         if (lookahead.Contains(shiftedTargets[i]) || catalysts[search.config.curs[i]].sacrificial) {
@@ -2338,7 +1740,7 @@ public:
         if ((unsigned)missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
           std::pair<int, int> cell = (shiftedTargets[i].wanted & ~lookahead).FirstOn();
           if (cell != std::make_pair(-1, -1))
-            return {cell, search.state.gen + g};
+            return {cell, search.currentGen + g};
         }
       }
     }
@@ -2350,7 +1752,7 @@ public:
                               const LifeState &activeZOI,
                               const LifeState &twonext) {
     for (unsigned s = nonfixedCatalystCount; s < nonfixedCatalystCount + fixedCatalystCount; s++) {
-      if (catalysts[s].fixedGen != search.state.gen)
+      if (catalysts[s].fixedGen != search.currentGen)
         continue;
 
       bool alreadyUsed = false;
@@ -2392,14 +1794,14 @@ public:
       if(!(catalysts[s].required & search.history).IsEmpty())
         continue;
 
-      newSearch.endTime = std::max(newSearch.endTime, search.state.gen + catalysts[s].maxDisappear);
+      newSearch.endTime = std::max(newSearch.endTime, search.currentGen + catalysts[s].maxDisappear);
 
 
       LifeState symCatalyst = catalysts[s].state;
       symCatalyst = Symmetricize(symCatalyst, newSearch.config.symmetry,
                                  newSearch.config.symmetryOffset);
       newSearch.config.startingCatalysts |= symCatalyst;
-      if(search.state.gen % 2 == 1)
+      if(search.currentGen % 2 == 1)
         symCatalyst.Step();
       newSearch.state |= symCatalyst;
 
@@ -2490,7 +1892,7 @@ public:
 
         if(params.useCollisionMasks) {
           for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-            newMasks[t].Join(catalystCollisionMasks[s * nonfixedCatalystCount + t]);
+            newMasks[t] |= catalystCollisionMasks[s * nonfixedCatalystCount + t];
           }
         }
       }
@@ -2546,7 +1948,7 @@ public:
 
       // p2 HACK
       if (catalysts[s].periodic) {
-        if (search.state.gen % 2 == catalysts[s].phase){
+        if (search.currentGen % 2 == catalysts[s].phase){
           newPlacements |= catalysts[s].locusReactionMask1.Convolve(state2);
           newPlacements |= catalysts[s].locusReactionMask2.Convolve(state1);
           if (catalysts[s].canSmother)
@@ -2588,7 +1990,7 @@ public:
         if (catalysts[s].mustInclude)
           newSearch.config.mustIncludeCount++;
 
-        newSearch.endTime = std::max(newSearch.endTime, search.state.gen + catalysts[s].maxDisappear);
+        newSearch.endTime = std::max(newSearch.endTime, search.currentGen + catalysts[s].maxDisappear);
 
         LifeState shiftedCatalyst = catalysts[s].state;
         shiftedCatalyst.Move(newPlacement.first, newPlacement.second);
@@ -2606,13 +2008,15 @@ public:
 
         newSearch.state |= symCatalyst;
         newSearch.config.startingCatalysts |= symCatalyst;
-        if(catalysts[s].periodic && search.state.gen % 2 == 1) {
+        if(catalysts[s].periodic && search.currentGen % 2 == 1) {
             symCatalyst.Step();
         }
         newSearch.state |= symCatalyst;
 
         LifeState lookahead = newSearch.state;
+        unsigned lookaheadGen = search.currentGen;
         lookahead.Step(2);
+        lookaheadGen += 2;
 
         // p2 HACK
         // Do a two-step lookahead to see if the catalyst interacts
@@ -2633,7 +2037,7 @@ public:
         }
 
         if(catalysts[s].hasRequired) {
-          newSearch.required.Join(catalysts[s].required, newPlacement.first, newPlacement.second);
+          newSearch.required |= catalysts[s].required.Moved(newPlacement.first, newPlacement.second);
         }
 
         {
@@ -2642,11 +2046,12 @@ public:
           for (unsigned i = 2; i < REQUIRED_LOOKAHEAD; i++) {
             unused &= lookahead;
 
-            if ((search.state.gen + i) % 2 == 0 && !(newSearch.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
+            if ((search.currentGen + i) % 2 == 0 && !(newSearch.required & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
               catalystFailed = true;
               break;
             }
             lookahead.Step();
+            lookaheadGen++;
           }
           if (catalystFailed) {
               if (DEBUG_OUTPUT && search.config.count == 0) {
@@ -2679,7 +2084,7 @@ public:
         if (catalysts[s].checkRecovery) {
           bool catalystFailed = false;
           if(!catalysts[s].checkReaction) {
-            int gap = (search.state.gen + catalysts[s].maxDisappear) - lookahead.gen;
+            int gap = (search.currentGen + catalysts[s].maxDisappear) - lookaheadGen;
             for (int i = 0; i < gap; i++) {
               lookahead.Step();
               // if (catalysts[s].hasRequired && !(catRequired & (lookahead ^ newSearch.config.startingCatalysts)).IsEmpty()) {
@@ -2794,8 +2199,7 @@ public:
 
           if(params.useCollisionMasks) {
             for (unsigned t = 0; t < nonfixedCatalystCount; t++) {
-              newMasks[t].Join(catalystCollisionMasks[s * nonfixedCatalystCount + t],
-                               newPlacement.first, newPlacement.second);
+              newMasks[t] |= catalystCollisionMasks[s * nonfixedCatalystCount + t].Moved(newPlacement.first, newPlacement.second);
             }
           }
         }
@@ -2822,7 +2226,7 @@ public:
         LifeState newCatalysts;
         for (unsigned i = search.freeCount; i < search.config.count; i++) {
           LifeState shiftedCatalyst = catalysts[search.config.curs[i]].state;
-          if (catalysts[search.config.curs[i]].periodic && search.freeState.gen % 2 == 1)
+          if (catalysts[search.config.curs[i]].periodic && search.freeStateGen % 2 == 1)
             shiftedCatalyst.Step();
           shiftedCatalyst.Move(search.config.curx[i], search.config.cury[i]);
           newCatalysts |= shiftedCatalyst;
@@ -2830,7 +2234,7 @@ public:
 
         if (search.config.symmetry == C1) {
           search.state = search.freeState | newCatalysts;
-          search.state.gen = search.freeState.gen;
+          search.currentGen = search.freeStateGen;
           search.history = search.freeHistory;
 
           search.history1 = search.freeHistory1;
@@ -2840,7 +2244,7 @@ public:
         } else {
           newCatalysts = Symmetricize(newCatalysts, search.config.symmetry, search.config.symmetryOffset);
           search.state = Symmetricize(search.freeState, search.config.symmetry, search.config.symmetryOffset) | newCatalysts;
-          search.state.gen = search.freeState.gen;
+          search.currentGen = search.freeStateGen;
           search.history = Symmetricize(search.freeHistory, search.config.symmetry, search.config.symmetryOffset);
 
           search.history1 = Symmetricize(search.freeHistory1, search.config.symmetry, search.config.symmetryOffset);
@@ -2861,9 +2265,9 @@ public:
     unsigned successtime;
     unsigned failuretime;
 
-    for (unsigned g = search.state.gen; g <= search.endTime; g++) {
+    for (unsigned g = search.currentGen; g <= search.endTime; g++) {
       // Block the locations that are hit too early
-      if (search.state.gen < params.startGen) {
+      if (search.currentGen < params.startGen) {
         search.history |= search.state;
 
         LifeState state1(false), state2(false), stateMore(false);
@@ -2882,9 +2286,10 @@ public:
         }
 
         search.state.Step();
+        search.currentGen++;
         continue;
       }
-      if (search.state.gen == params.startGen && search.config.count == 0) {
+      if (search.currentGen == params.startGen && search.config.count == 0) {
         for (unsigned s = 0; s < nonfixedCatalystCount; s++) {
           masks[s] |= search.history1.Convolve(catalysts[s].locusReactionMask2);
           masks[s] |= search.history2.Convolve(catalysts[s].locusReactionMask1);
@@ -2896,26 +2301,26 @@ public:
         failure = true;
       if (search.config.count < params.numCatalysts && g > params.maxGen)
         failure = true;
-      if ((search.config.count != params.numCatalysts || !SymIsTerminal(search.config.symmetry)) && !isFree && search.state.gen >= search.violationGen)
+      if ((search.config.count != params.numCatalysts || !SymIsTerminal(search.config.symmetry)) && !isFree && search.currentGen >= search.violationGen)
         failure = true;
       if (!(search.required & (search.state ^ search.config.startingCatalysts)).IsEmpty())
         failure = true;
 
       if (failure) {
-        failuretime = search.state.gen;
+        failuretime = search.currentGen;
         break;
       }
-
 
       if (search.config.count == 0 && search.config.symmetry == C1) {
         std::cout << "Collision at gen " << g << std::endl;
       }
 
-      if(!SymIsTerminal(search.config.symmetry) || search.config.count != params.numCatalysts) {
+      if((!SymIsTerminal(search.config.symmetry) && search.currentGen <= params.maxOffsetGen) || search.config.count != params.numCatalysts) {
         LifeState criticalArea(false);
         if (isFree) {
           criticalArea = ~LifeState();
           search.freeState = search.state;
+          search.freeStateGen = search.currentGen;
           search.freeHistory = search.history;
           search.freeHistory1 = search.history1;
           search.freeHistory2 = search.history2;
@@ -2925,7 +2330,7 @@ public:
           search.freeMissingTime = search.missingTime;
           search.freeRecoveredTime = search.recoveredTime;
         } else {
-          int distance = search.violationGen - search.state.gen;
+          int distance = search.violationGen - search.currentGen;
           criticalArea = LifeState::NZOIAround(search.violationCell, distance-1);
           criticalArea = Symmetricize(criticalArea, search.config.symmetry, search.config.symmetryOffset);
         }
@@ -2941,7 +2346,7 @@ public:
         bool hasActivePart = !allNew.IsEmpty();
 
         // if (hasActivePart) {
-          if (search.state.gen >= params.startGen && search.config.count != params.numCatalysts) {
+          if (search.currentGen >= params.startGen && search.config.count != params.numCatalysts) {
             LifeState next = search.state;
             next.Step();
             LifeState twonext = next;
@@ -2951,10 +2356,11 @@ public:
 
             TryAddingFixedCatalyst(search, masks, shiftedTargets, allNew, twonext);
           }
-        // }
-
-        TryApplyingSymmetry(search, masks, shiftedTargets, search.state,
-                            state1, state2, stateMore);
+          // }
+        if (search.currentGen <= params.maxOffsetGen) {
+          TryApplyingSymmetry(search, masks, shiftedTargets, search.state,
+                              state1, state2, stateMore);
+        }
 
         search.history |= search.state;
         search.history1 |= state1;
@@ -2962,8 +2368,10 @@ public:
         search.historyMore |= stateMore;
 
         search.state.Step();
+        search.currentGen++;
       } else {
         search.state.Step();
+        search.currentGen++;
       }
 
       for (unsigned i = 0; i < search.config.count; i++) {
@@ -2984,7 +2392,7 @@ public:
         }
 
         if (search.missingTime[i] != -1 && (unsigned)search.missingTime[i] > catalysts[search.config.curs[i]].maxDisappear) {
-          failuretime = search.state.gen;
+          failuretime = search.currentGen;
           failure = true;
           break;
         }

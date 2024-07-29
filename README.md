@@ -114,3 +114,10 @@ The default is "odd" transformations, i.e. those that fix the cell at
 (0,0); `verticaleven` and `horizontaleven` (referring to bounding box
 dimensions) are recognized as equivalent to `-even` and `|even`,
 respectively.
+
+Running Tests
+---
+
+You will need to install GoogleTest in a way that `pkg-config` knows
+where it is. For example, on MacOS just `brew install googletest`.
+Then run `make test`.
