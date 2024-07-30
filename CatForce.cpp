@@ -2102,7 +2102,7 @@ public:
               lookahead.Step();
               active |= lookahead ^ shiftedCatalyst;
             }
-            LifeState unused = catalysts[s].state;
+            LifeState unused = catalysts[s].statezoi;
             unused.Move(newPlacement.first, newPlacement.second);
             unused &= ~(newSearch.required | active);
             if (!unused.IsEmpty()) {
