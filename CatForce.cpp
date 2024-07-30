@@ -1298,8 +1298,8 @@ public:
 
         if(minhashes.top().first == newhash) {
           unsigned p = i - minhashes.top().second;
-          // Avoid some common periods (pentadecathlon and TL hassler)
-          return p > 10 && p != 8 && p != 15 && p != 14 && p != 30 && p != 36 && p != 46;
+          // Avoid some common periods (pentadecathlon and TL hassler, and circling *WSS)
+          return p > 10 && p != 8 && p != 15 && p != 14 && p != 30 && p != 36 && p != 46 && p != 128;
         }
 
         if(minhashes.top().first > newhash)
